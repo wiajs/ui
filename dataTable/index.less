@@ -1,0 +1,74 @@
+// 数据表格
+.data-table {
+  --f7-card-header-padding-vertical: 0px;
+  --f7-button-border-radius: 5px;
+  --f7-table-card-header-height: 48px;
+  --f7-table-head-cell-height: 40px;
+
+  .data-table-footer {
+    padding-right: 10px;
+  }
+
+  .dataTables_paginate {
+    margin: 0;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .pagination {
+    display: flex;
+    margin: 2px 0;
+    white-space: nowrap;
+    justify-content: flex-end;
+    padding-left: 0;
+    list-style: none;
+    border-radius: 0.25rem;
+
+    .page-item {
+      .page-link {
+        position: relative;
+        display: block;
+        padding: 0.5rem 0.75rem;
+        margin-left: -1px;
+        line-height: 1.25;
+        color: #007bff;
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+      }
+
+      &.active {
+        .page-link {
+          z-index: 3;
+          color: #fff;
+          background-color: #007bff;
+          border-color: #007bff;
+        }
+      }
+
+      &.disabled {
+        .page-link {
+          color: #6c757d;
+          pointer-events: none;
+          cursor: auto;
+          background-color: #fff;
+          border-color: #dee2e6;
+        }
+      }
+
+      &:first-child {
+        .page-link {
+          margin-left: 0;
+          border-top-left-radius: 0.25rem;
+          border-bottom-left-radius: 0.25rem;
+        }
+      }
+
+      &:last-child {
+        .page-link {
+          border-top-right-radius: 0.25rem;
+          border-bottom-right-radius: 0.25rem;
+        }
+      }
+    }
+  }
+}
