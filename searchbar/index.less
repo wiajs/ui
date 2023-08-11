@@ -253,7 +253,7 @@
 .page > .toolbar-top,
 .ios .page > .toolbar-top-ios,
 .md .page > .toolbar-top-md,
-.aurora .page > .toolbar-top-aurora {
+.pc .page > .toolbar-top-pc {
   ~ .searchbar {
     top: var(--f7-toolbar-height);
   }
@@ -261,7 +261,7 @@
 .page > .tabbar-labels.toolbar-top,
 .ios .page > .tabbar-labels.toolbar-top-ios,
 .md .page > .tabbar-labels.toolbar-top-md,
-.aurora .page > .tabbar-labels.toolbar-top-aurora {
+.pc .page > .tabbar-labels.toolbar-top-pc {
   ~ .searchbar {
     top: var(--f7-tabbar-labels-height);
   }
@@ -269,7 +269,7 @@
 .page > .navbar ~ .toolbar-top,
 .ios .page > .navbar ~ .toolbar-top-ios,
 .md .page > .navbar ~ .toolbar-top-md,
-.aurora .page > .navbar ~ .toolbar-top-aurora {
+.pc .page > .navbar ~ .toolbar-top-pc {
   ~ .searchbar {
     top: calc(
       var(--f7-navbar-height) + var(--f7-toolbar-height) +
@@ -280,7 +280,7 @@
 .page > .navbar ~ .tabbar-labels.toolbar-top,
 .ios .page > .navbar ~ .tabbar-labels.toolbar-top-ios,
 .md .page > .navbar ~ .tabbar-labels.toolbar-top-md,
-.aurora .page > .navbar ~ .tabbar-labels.toolbar-top-aurora {
+.pc .page > .navbar ~ .tabbar-labels.toolbar-top-pc {
   ~ .searchbar {
     top: calc(
       var(--f7-navbar-height) + var(--f7-tabbar-labels-height) +
@@ -333,6 +333,6 @@
 .if-md-theme({
   @import url('./md.less');
 });
-.if-aurora-theme({
-  @import url('./aurora.less');
+.if-pc-theme({
+  @import url('./pc.less');
 });

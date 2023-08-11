@@ -89,7 +89,7 @@ class Searchbar extends Event {
     const inline = sb.params.inline || $el.hasClass('searchbar-inline');
 
     if (typeof sb.params.backdrop === 'undefined') {
-      if (!inline) sb.params.backdrop = app.theme !== 'aurora';
+      if (!inline) sb.params.backdrop = app.theme !== 'pc';
       else sb.params.backdrop = false;
     }
 
@@ -182,7 +182,7 @@ class Searchbar extends Event {
     }
     function onInputBlur() {
       sb.$el.removeClass('searchbar-focused');
-      if (app.theme === 'aurora' && (!$disableButtonEl || !$disableButtonEl.length || !sb.params.disableButton) && !sb.query) {
+      if (app.theme === 'pc' && (!$disableButtonEl || !$disableButtonEl.length || !sb.params.disableButton) && !sb.query) {
         sb.disable();
       }
     }
