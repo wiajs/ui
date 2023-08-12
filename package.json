@@ -1,17 +1,42 @@
 {
-  "name": "@wiajs/component",
-  "version": "1.0.5",
-  "description": "wia components",
+  "name": "@wiajs/ui",
+  "version": "1.0.7",
+  "description": "wia ui",
   "main": "",
-  "scripts": {},
+  "scripts": {
+    "build": "swc --config-file ./.swcrc src -w -d dist"
+  },
+	"exports": {
+		"./*": "./*",
+		"./actions/*": "./dist/actions/*",
+		"./actions": "./dist/actions/index.js",
+		"./cropper/*": "./dist/cropper/*",
+		"./cropper": "./dist/cropper/index.js",
+		"./dataTable/*": "./dist/dataTable/*",
+		"./dataTable": "./dist/dataTable/index.js",
+		"./dataView/*": "./dist/dataView/*",
+		"./dataView": "./dist/dataView/appbar.js",
+		"./list-nav/*": "./dist/list-nav/*",
+		"./list-nav": "./dist/list-nav/index.js",
+		"./messagebar/*": "./dist/messagebar/*",
+		"./messagebar": "./dist/messagebar/index.js",
+		"./messages/*": "./dist/messages/*",
+		"./messages": "./dist/messages/index.js",
+		"./searchbar/*": "./dist/searchbar/*",
+		"./searchbar": "./dist/searchbar/index.js",
+		"./swipeout/*": "./dist/swipeout/*",
+		"./swipeout": "./dist/swipeout/index.js",
+		"./uploader/*": "./dist/uploader/*",
+		"./uploader": "./dist/uploader/index.js"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/wiajs/component.git"
+    "url": "https://github.com/wiajs/ui.git"
   },
   "keywords": [
     "wia",
     "dom",
-    "component"
+    "ui"
   ],
   "author": {
     "name": "Sibyl Yu",
@@ -19,9 +44,9 @@
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/wiajs/component/issues"
+    "url": "https://github.com/wiajs/ui/issues"
   },
-  "homepage": "https://www.wia.pub/component",
+  "homepage": "https://www.wia.pub/ui",
   "publishConfig": {
     "access": "public"
   },

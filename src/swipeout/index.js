@@ -1,4 +1,6 @@
-import {Utils} from '@wiajs/core';
+import {Utils, Support as support} from '@wiajs/core';
+
+const { nextFrame, bindMethods } = Utils;
 
 const Swipeout = {
   init() {
@@ -91,8 +93,8 @@ const Swipeout = {
       }
 
       if (
-        (translate > 0 && $actionsLeft.length === 0)
-        || (translate < 0 && $actionsRight.length === 0)
+        (translate > 0 && $actionsLeft.length === 0) ||
+        (translate < 0 && $actionsRight.length === 0)
       ) {
         if (!opened) {
           isTouched = false;
@@ -154,13 +156,17 @@ const Swipeout = {
           progress = 0;
           buttonTranslate = 0;
         }
-        $rightButtons.each((index, buttonEl) => {
+        $rightButtons.forEach((buttonEl) => {
           const $buttonEl = $(buttonEl);
           if (typeof buttonEl.f7SwipeoutButtonOffset === 'undefined') {
             $buttonEl[0].f7SwipeoutButtonOffset = buttonEl.offsetLeft;
           }
           buttonOffset = buttonEl.f7SwipeoutButtonOffset;
-          if ($overswipeRightButton.length > 0 && $buttonEl.hasClass('swipeout-overswipe') && direction === 'to-left') {
+          if (
+            $overswipeRightButton.length > 0 &&
+            $buttonEl.hasClass('swipeout-overswipe') &&
+            direction === 'to-left'
+          ) {
             $buttonEl.css({ left: `${overswipeRight ? -buttonOffset : 0}px` });
             if (overswipeRight) {
               if (!$buttonEl.hasClass('swipeout-overswipe-active')) {
@@ -176,7 +182,9 @@ const Swipeout = {
               $buttonEl.removeClass('swipeout-overswipe-active');
             }
           }
-          $buttonEl.transform(`translate3d(${buttonTranslate - (buttonOffset * (1 + Math.max(progress, -1)))}px,0,0)`);
+          $buttonEl.transform(
+            `translate3d(${buttonTranslate - buttonOffset * (1 + Math.max(progress, -1))}px,0,0)`,
+          );
         });
       }
       if ($actionsLeft.length > 0) {
@@ -194,13 +202,18 @@ const Swipeout = {
           buttonTranslate = 0;
           progress = 0;
         }
-        $leftButtons.each((index, buttonEl) => {
+        $leftButtons.forEach((buttonEl, index) => {
           const $buttonEl = $(buttonEl);
           if (typeof buttonEl.f7SwipeoutButtonOffset === 'undefined') {
-            $buttonEl[0].f7SwipeoutButtonOffset = actionsLeftWidth - buttonEl.offsetLeft - buttonEl.offsetWidth;
+            $buttonEl[0].f7SwipeoutButtonOffset =
+              actionsLeftWidth - buttonEl.offsetLeft - buttonEl.offsetWidth;
           }
           buttonOffset = buttonEl.f7SwipeoutButtonOffset;
-          if ($overswipeLeftButton.length > 0 && $buttonEl.hasClass('swipeout-overswipe') && direction === 'to-right') {
+          if (
+            $overswipeLeftButton.length > 0 &&
+            $buttonEl.hasClass('swipeout-overswipe') &&
+            direction === 'to-right'
+          ) {
             $buttonEl.css({ left: `${overswipeLeft ? buttonOffset : 0}px` });
             if (overswipeLeft) {
               if (!$buttonEl.hasClass('swipeout-overswipe-active')) {
@@ -219,7 +232,9 @@ const Swipeout = {
           if ($leftButtons.length > 1) {
             $buttonEl.css('z-index', $leftButtons.length - index);
           }
-          $buttonEl.transform(`translate3d(${buttonTranslate + (buttonOffset * (1 - Math.min(progress, 1)))}px,0,0)`);
+          $buttonEl.transform(
+            `translate3d(${buttonTranslate + buttonOffset * (1 - Math.min(progress, 1))}px,0,0)`,
+          );
         });
       }
       $swipeoutEl.trigger('swipeout', progress);
@@ -235,7 +250,7 @@ const Swipeout = {
 
       isTouched = false;
       isMoved = false;
-      const timeDiff = (new Date()).getTime() - touchStartTime;
+      const timeDiff = new Date().getTime() - touchStartTime;
       const $actions = direction === 'to-left' ? $actionsRight : $actionsLeft;
       const actionsWidth = direction === 'to-left' ? actionsRightWidth : actionsLeftWidth;
       let action;
@@ -243,17 +258,10 @@ const Swipeout = {
       let i;
 
       if (
-        (
-          timeDiff < 300
-          && (
-            (touchesDiff < -10 && direction === 'to-left')
-            || (touchesDiff > 10 && direction === 'to-right')
-          )
-        )
-        || (
-          timeDiff >= 300
-          && (Math.abs(translate) > actionsWidth / 2)
-        )
+        (timeDiff < 300 &&
+          ((touchesDiff < -10 && direction === 'to-left') ||
+            (touchesDiff > 10 && direction === 'to-right'))) ||
+        (timeDiff >= 300 && Math.abs(translate) > actionsWidth / 2)
       ) {
         action = 'open';
       } else {
@@ -295,17 +303,18 @@ const Swipeout = {
 
       let buttonOffset;
       if ($leftButtons && $leftButtons.length > 0 && $leftButtons !== $buttons) {
-        $leftButtons.each((index, buttonEl) => {
+        $leftButtons.forEach((buttonEl) => {
           const $buttonEl = $(buttonEl);
           buttonOffset = buttonEl.f7SwipeoutButtonOffset;
           if (typeof buttonOffset === 'undefined') {
-            $buttonEl[0].f7SwipeoutButtonOffset = actionsLeftWidth - buttonEl.offsetLeft - buttonEl.offsetWidth;
+            $buttonEl[0].f7SwipeoutButtonOffset =
+              actionsLeftWidth - buttonEl.offsetLeft - buttonEl.offsetWidth;
           }
           $buttonEl.transform(`translate3d(${buttonOffset}px,0,0)`);
         });
       }
       if ($rightButtons && $rightButtons.length > 0 && $rightButtons !== $buttons) {
-        $rightButtons.each((index, buttonEl) => {
+        $rightButtons.forEach((buttonEl) => {
           const $buttonEl = $(buttonEl);
           buttonOffset = buttonEl.f7SwipeoutButtonOffset;
           if (typeof buttonOffset === 'undefined') {
@@ -330,19 +339,21 @@ const Swipeout = {
       });
     }
 
-    const passiveListener = app.support.passiveListener ? { passive: true } : false;
+    const passiveListener = support.passiveListener ? { passive: true } : false;
 
     app.on('touchstart', (e) => {
       if (Swipeout.el) {
         const $targetEl = $(e.target);
-        if (!(
-          $(Swipeout.el).is($targetEl[0])
-          || $targetEl.parents('.swipeout').is(Swipeout.el)
-          || $targetEl.hasClass('modal-in')
-          || ($targetEl.attr('class') || '').indexOf('-backdrop') > 0
-          || $targetEl.hasClass('actions-modal')
-          || $targetEl.parents('.actions-modal.modal-in, .dialog.modal-in').length > 0
-        )) {
+        if (
+          !(
+            $(Swipeout.el).is($targetEl[0]) ||
+            $targetEl.parents('.swipeout').is(Swipeout.el) ||
+            $targetEl.hasClass('modal-in') ||
+            ($targetEl.attr('class') || '').indexOf('-backdrop') > 0 ||
+            $targetEl.hasClass('actions-modal') ||
+            $targetEl.parents('.actions-modal.modal-in, .dialog.modal-in').length > 0
+          )
+        ) {
           app.swipeout.close(Swipeout.el);
         }
       }
@@ -377,12 +388,18 @@ const Swipeout = {
     const swipeoutActionsWidth = $swipeoutActions.outerWidth();
     const translate = side === 'right' ? -swipeoutActionsWidth : swipeoutActionsWidth;
     if ($buttons.length > 1) {
-      $buttons.each((buttonIndex, buttonEl) => {
+      $buttons.forEach((buttonEl, buttonIndex) => {
         const $buttonEl = $(buttonEl);
         if (side === 'right') {
           $buttonEl.transform(`translate3d(${-buttonEl.offsetLeft}px,0,0)`);
         } else {
-          $buttonEl.css('z-index', $buttons.length - buttonIndex).transform(`translate3d(${swipeoutActionsWidth - buttonEl.offsetWidth - buttonEl.offsetLeft}px,0,0)`);
+          $buttonEl
+            .css('z-index', $buttons.length - buttonIndex)
+            .transform(
+              `translate3d(${
+                swipeoutActionsWidth - buttonEl.offsetWidth - buttonEl.offsetLeft
+              }px,0,0)`,
+            );
         }
       });
     }
@@ -392,7 +409,7 @@ const Swipeout = {
       app.emit('swipeoutOpened', $el[0]);
       if (callback) callback.call($el[0]);
     });
-    Utils.nextFrame(() => {
+    nextFrame(() => {
       $buttons.transform(`translate3d(${translate}px,0,0)`);
       $swipeoutContent.transform(`translate3d(${translate}px,0,0)`);
     });
@@ -403,8 +420,12 @@ const Swipeout = {
     const $el = $(el).eq(0);
     if ($el.length === 0) return;
     if (!$el.hasClass('swipeout-opened')) return;
-    const side = $el.find('.swipeout-actions-opened').hasClass('swipeout-actions-right') ? 'right' : 'left';
-    const $swipeoutActions = $el.find('.swipeout-actions-opened').removeClass('swipeout-actions-opened');
+    const side = $el.find('.swipeout-actions-opened').hasClass('swipeout-actions-right')
+      ? 'right'
+      : 'left';
+    const $swipeoutActions = $el
+      .find('.swipeout-actions-opened')
+      .removeClass('swipeout-actions-opened');
     const $buttons = $swipeoutActions.children('a');
     const swipeoutActionsWidth = $swipeoutActions.outerWidth();
     Swipeout.allow = false;
@@ -426,12 +447,14 @@ const Swipeout = {
     $el.find('.swipeout-content').transform('').transitionEnd(onSwipeoutClose);
     closeTimeout = setTimeout(onSwipeoutClose, 500);
 
-    $buttons.each((index, buttonEl) => {
+    $buttons.forEach((buttonEl) => {
       const $buttonEl = $(buttonEl);
       if (side === 'right') {
         $buttonEl.transform(`translate3d(${-buttonEl.offsetLeft}px,0,0)`);
       } else {
-        $buttonEl.transform(`translate3d(${swipeoutActionsWidth - buttonEl.offsetWidth - buttonEl.offsetLeft}px,0,0)`);
+        $buttonEl.transform(
+          `translate3d(${swipeoutActionsWidth - buttonEl.offsetWidth - buttonEl.offsetLeft}px,0,0)`,
+        );
       }
       $buttonEl.css({ left: '0px' }).removeClass('swipeout-overswipe-active');
     });
@@ -452,7 +475,8 @@ const Swipeout = {
       if ($el.parents('.virtual-list').length > 0) {
         const virtualList = $el.parents('.virtual-list')[0].f7VirtualList;
         const virtualIndex = $el[0].f7VirtualListIndex;
-        if (virtualList && typeof virtualIndex !== 'undefined') virtualList.deleteItem(virtualIndex);
+        if (virtualList && typeof virtualIndex !== 'undefined')
+          virtualList.deleteItem(virtualIndex);
       } else if (app.params.swipeout.removeElements) {
         if (app.params.swipeout.removeElementsWithTimeout) {
           setTimeout(() => {
@@ -467,7 +491,7 @@ const Swipeout = {
     });
     // eslint-disable-next-line
     // $el[0]._clientLeft = $el[0].clientLeft;
-    Utils.nextFrame(() => {
+    nextFrame(() => {
       $el
         .addClass('swipeout-deleting swipeout-transitioning')
         .css({ height: '0px' })
@@ -476,8 +500,7 @@ const Swipeout = {
     });
   },
 };
-
-export default class Swipeout Event{
+export default{
   name: 'swipeout',
   params: {
     swipeout: {
@@ -486,33 +509,13 @@ export default class Swipeout Event{
       removeElements: true,
       removeElementsWithTimeout: false,
       removeElementsTimeout: 0,
+      overswipeRatio: 1.2,
     },
   },
   create() {
     const app = this;
-    Utils.extend(app, {
-      swipeout: {
-        init: Swipeout.init.bind(app),
-        open: Swipeout.open.bind(app),
-        close: Swipeout.close.bind(app),
-        delete: Swipeout.delete.bind(app),
-      },
-    });
-    Object.defineProperty(app.swipeout, 'el', {
-      enumerable: true,
-      configurable: true,
-      get: () => Swipeout.el,
-      set(el) {
-        Swipeout.el = el;
-      },
-    });
-    Object.defineProperty(app.swipeout, 'allow', {
-      enumerable: true,
-      configurable: true,
-      get: () => Swipeout.allow,
-      set(allow) {
-        Swipeout.allow = allow;
-      },
+    bindMethods(app, {
+      swipeout: Swipeout,
     });
   },
   clicks: {

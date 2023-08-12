@@ -206,7 +206,7 @@ export default class Uploader {
     <span class="_img"></span>
     <div class="flex-center _opr">
       <a href="javascript:;" name="delete">
-        <i class="icon iconfont">&#xe8b6;</i>
+        <i class="icon iconfont">&#xebbf;</i>
       </a>
     </div>
   </div>`;
