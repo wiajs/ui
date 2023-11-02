@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Node 20",
+  "compilerOptions": {
+    // https://github.com/tsconfig/bases/blob/main/bases/node20.json
+    "lib": ["ES2022", "dom"],
+    "module": "Node16", // commonjs
+    "target": "es2022", // es5,es6,es2020,es2021,es2022
+    "jsx": "react",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+
+    "allowJs": true,
+    // vscode 中 "javascript.validate.enable": false, 则无法开启tscheck
+    "checkJs": true, // 默认是否开启js类型检查，文件中通过@ts-check @ts-nocheck 开启、关闭！
+    "strictNullChecks": false, // 严格 null 检查
+    "useUnknownInCatchVariables": false,
+    "baseUrl": ".", // 解析非相对模块的基地址，默认是当前目录
+    "outDir": "./dist", // 指定输出目录
+
+    "noImplicitAny": true, // 不允许隐式的any类型
+    "removeComments": true, // 删除注释
+    "preserveConstEnums": true, // 保留 const 和 enum 声明
+    "noFallthroughCasesInSwitch": true, // 防止switch语句贯穿(即如果没有break语句后面不会执行)
+    // "declaration": false, // 生成声明文件，开启后会自动生成声明文件
+    // "declarationDir": "./typing", // 指定生成声明文件存放目录
+    // "emitDeclarationOnly": true, // 只生成声明文件，不生成js文件
+    "sourceMap": false // 生成目标文件的sourceMap文件，用于调试
+  },
+  "include": ["src/**/*", "test/jsdoc/*"],
+  "exclude": ["node_modules", "dist"]
+}
