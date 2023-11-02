@@ -11,11 +11,11 @@
 通过表头数据传入选项参数。
 
 - checkbox: true/false，是否带 checkbox 勾选框。
-- id: 数据列中第几列为列 id，一般用于按 id 修改，行数据。
-  数组格式，数据数组中，第几列为 id 字段，从 0 开始，作为唯一标记，作为模板标识。
-- hide: 隐藏数据列，数组格式，数据数组中，不显示的列，从 0 开始。
+- id: Number，数据列中第几列为列 id，一般用于选择后按 id 操作行数据。
+  数组格式，第几列为 id 字段，从 0 开始，作为唯一标记，作为模板标识。
+- hide: Array，隐藏数据列，数组格式，不显示的列，从 0 开始。
   超出 head 中显示的列，可不列入，自动不显示。
-- link: 显示列中，第几列为可点击跳转的链接
+- link: Array，显示列中，第几列为可点击跳转的链接
   数组格式，从 1 开始，点击触发 onlink 事件，参数中带被点击的数据。
 - sort: 字符串，空，不填，表示不排序，名称表示缺省按哪列名称排序。
 - page: 不填，或填 0，不分页，填数字，比如 10，表示分页，每页 10 行数据。默认不分页。
@@ -25,7 +25,7 @@
 
 ```js
 const _head = [
-  {checkbox: true, id: [0], hide: [0], link: [1], page: 3, pageLink: 10, sort: '贷款时间'},
+  {checkbox: true, id: 0, hide: [0], link: [1], page: 3, pageLink: 10, sort: '贷款时间'},
   {name: '贷款编号', type: 'string', sort: false},
   {name: '贷款金额', type: 'number', sort: true},
   {name: '订单数量', type: 'number', sort: false},

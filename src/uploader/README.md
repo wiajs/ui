@@ -42,21 +42,6 @@ _uploader = new Uploader({
     // xhr配置
     data: {}, // 添加到请求头的内容
   });
-
-  dir: 'star/etrip/demo', // 图片存储路径，格式: 所有者/应用名称/分类
-  el: pg.class('uploader'), // 组件容器
-  input: pg.name('avatar'), // 上传成功后的url填入输入框，便于提交
-  choose: pg.name('choose'), // 点击触发选择文件，可选，多文件时，可不填
-
-  multiple: false, // 可否同时选择多个文件
-  limit: 1, // 文件数限制 0 不限，1 则限制单个文件，如 头像
-  accept: 'image/jpg,image/jpeg,image/png,image/gif', // 选择文件类型
-  compress: true, // 自动压缩
-  quality: 0.5, // 压缩比
-
-  // xhr配置
-  data: {}, // 添加到请求头的内容
-});
 ```
 
 #### 状态/事件监听
@@ -66,6 +51,18 @@ _uploader = new Uploader({
 uploader
   .on('choose', files => {
     // 用于接受选择的文件，根据业务规则过滤
+    let R = files;
+
+    const area = _.area.val();
+    const building = _.building.val();
+    const room = _.room.val();
+    const floor = _.floor.val();
+    if ([area, building, room, floor].some(v => !v)) {
+      alert('请填完以上信息后再上传合同！');
+      R = false;
+    } else _uploader.opt.data.pre = `${area}${building}${floor}${room}`;
+
+    return R;
   })
   .on('change', files => {
     // 添加、删除文件时的触发钩子，用于更新视图
@@ -97,6 +94,33 @@ uploader
 - remove(id)
 - clear()
   清除
+
+#### 加载图片
+
+input 中设置 图片网址，可自动加载，用于数据加载时，加载图片
+
+```js
+        {
+          dir: 'https://img.wia.pub/star/etrip/xhlm',
+          file: [
+            'c8238fe5ffd169cb83e92eed7a1c2a82.jpg',
+            '391c5b4152a51cfba8a3dcad44bce70f.jpg',
+          ],
+        }
+        // 或者
+        {
+          file: [
+            'https://img.wia.pub/star/etrip/xhlm/c8238fe5ffd169cb83e92eed7a1c2a82.jpg',
+            'https://img.wia.pub/star/etrip/xhlm/391c5b4152a51cfba8a3dcad44bce70f.jpg',
+          ],
+        }
+        // 或者
+          'https://img.wia.pub/star/etrip/xhlm/c8238fe5ffd169cb83e92eed7a1c2a82.jpg',
+          'https://img.wia.pub/star/etrip/xhlm/391c5b4152a51cfba8a3dcad44bce70f.jpg'
+        // 或者
+        'https://img.wia.pub/star/etrip/xhlm/c8238fe5ffd169cb83e92eed7a1c2a82.jpg',
+
+```
 
 // 凡是涉及到动态添加 dom，事件绑定
 // 应该提供销毁 API
@@ -265,11 +289,7 @@ class Uploader {
   loadFiles(files) {
     if (!files) return false;
 
-    if (
-      this.limit !== -1 &&
-      files.length &&
-      files.length + this.uploadFiles.length > this.limit
-    ) {
+    if (this.limit !== -1 && files.length && files.length + this.uploadFiles.length > this.limit) {
       this._callHook('exceed', files);
       return false;
     }

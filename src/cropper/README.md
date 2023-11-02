@@ -131,7 +131,7 @@ function init(pg, param) {
     _cropper.on('crop', (el, data) => {
       console.log('crop', {el, data});
       // _.name('data').text(JSON.stringify(data));
-});
+    });
   }
 }
 ```

@@ -79,7 +79,7 @@ export default class DataTable extends Event {
         <th class="checkbox-cell">
           <label class="checkbox">
             <input type="checkbox" />
-            <i class="icon-checkbox"></i>
+            <i class="icon-checkbox" />
           </label>
         </th>
       );
@@ -126,9 +126,7 @@ export default class DataTable extends Event {
   }
 
   /**
-   *
-   * @param {*} col 列数
-   * @param {*} data 数据
+   * 生成table表，包括 thead、tbody、分页
    * @returns
    */
   render() {
@@ -162,12 +160,12 @@ export default class DataTable extends Event {
       // 表主体
       v = (
         <tbody name="tbBody">
-          <tr name={`${name}-tp`} style="display: none;">
+          <tr name={`${name}-tp`} style={{display: 'none'}}>
             {head[0].checkbox && (
               <td class="checkbox-cell">
                 <label class="checkbox">
                   <input type="checkbox" />
-                  <i class="icon-checkbox"></i>
+                  <i class="icon-checkbox" />
                 </label>
               </td>
             )}
@@ -182,14 +180,16 @@ export default class DataTable extends Event {
       if (head[0].page) {
         v = (
           <div class="data-table-footer">
-            <div class="dataTables_paginate paging_simple_numbers"></div>
+            <div class="dataTables_paginate paging_simple_numbers" />
           </div>
         );
         // 加入到容器，而非表格
         el.append(v);
       }
 
+      // 绑定事件，如点击head排序
       this.bind();
+      // 数据显示
       this.setView();
     } catch (ex) {
       console.log('render', {ex: ex.message});
@@ -201,25 +201,33 @@ export default class DataTable extends Event {
    * @param {*} data 外部传入数据，重置表数据
    */
   setView(data) {
+    try {
     const {head} = this;
+      const {page: hpage, sort: hsort} = head[0];
+      let {id: hid} = head[0];
+      if (hid && hid < 0) hid = undefined;
 
     if (data) {
-      if (head[0].page || head[0].sort) {
+        if (hpage || hsort) {
         // 克隆数组数据，用于排序、分页，不改变原数据
         this.data = [...data];
       } else this.data = data || [];
     }
 
     // 缺省排序
-    if (head[0].sort) {
-      const c = getCol(head, head[0].sort);
+      if (hsort) {
+        const c = getCol(head, hsort);
       if (c) {
         sort(this.data, c.col, c.type);
       }
     }
+
     // 数据与模板结合，生成数据视图
-    if (this.pageBar(1)) this.paging(1);
-    else this.tb.setView(data);
+      if (this.pageBar()) this.paging();
+      else this.tb.setView(data, hid); 
+    } catch (ex) {
+      console.error('setView exp:', ex.message);
+    }
   }
 
   /**
@@ -292,19 +300,24 @@ export default class DataTable extends Event {
 
   /**
    * 分页跳转
-   * @param {*} i 分页序数，从1开始
+   * @param {*} i 分页序数，从1开始，默认第一页
    */
-  paging(i) {
+  paging(i = 1) {
     const {data, tb, el, head} = this;
+    let {id: hid} = head[0];
+    if (hid && hid < 0) hid = undefined;
+
     el.class('.page-item.active').removeClass('active');
     el.findNode(`a[data-page="${i}"]`).parent().addClass('active');
     const plen = head[0].page;
     const start = (i - 1) * plen;
-    tb.setView(data.slice(start, start + plen));
+    tb.setView(data.slice(start, start + plen), hid);
   }
 
   bind() {
     const {tb, el, head} = this;
+    let {id: hid} = head[0];
+    if (hid && hid < 0) hid = undefined;
 
     // 表格排序
     el.name('tbHead').click(ev => {
@@ -313,7 +326,8 @@ export default class DataTable extends Event {
         const c = getCol(head, th.html());
         if (c) {
           sort(this.data, c.col, c.type, th.hasClass('sortable-desc'));
-          if (this.pageBar(1)) this.paging(1);
+          if (this.pageBar()) this.paging(1);
+          else this.tb.setView(this.data, hid);
         }
       }
     });

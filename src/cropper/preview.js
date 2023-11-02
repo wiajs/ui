@@ -147,22 +147,22 @@ export default {
       });
 
       $n.findNode('img').css(
-          $.assign(
-            {
-              width: width * ratio,
-              height: height * ratio,
-            },
-            getTransforms(
-              $.assign(
-                {
-                  translateX: -left * ratio,
-                  translateY: -top * ratio,
-                },
-                imageData
-              )
+        $.assign(
+          {
+            width: width * ratio,
+            height: height * ratio,
+          },
+          getTransforms(
+            $.assign(
+              {
+                translateX: -left * ratio,
+                translateY: -top * ratio,
+              },
+              imageData
             )
           )
-        );
+        )
+      );
     });
   },
 };
