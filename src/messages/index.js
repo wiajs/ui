@@ -21,26 +21,27 @@ const def = {
 };
 
 export default class Messages extends Event {
-  constructor(page, opt = {}) {
+  constructor(page, opts = {}) {
+    const opt = {...def, ...opts};
     super(opt, [page]);
 
-    const m = this;
-
-    m.params = Utils.extend(def, opt);
+    const _ = this;
+    _.opt = opt;
+    _.params = opt;
 
     // 消息容器
     const $el = opt.el || page.view.def.selector;
-    if ($el.length === 0) return m;
+    if ($el.length === 0) return _;
 
     // 已创建实例，直接返回
     if ($el[0].wiaMessages) return $el[0].wiaMessages;
 
-    $el[0].wiaMessages = m;
+    $el[0].wiaMessages = _;
 
     const $pageContentEl = $el.closest('.page-content').eq(0);
 
-    Utils.extend(m, {
-      messages: m.params.messages,
+    Utils.extend(_, {
+      messages: _.params.messages,
       $el,
       el: $el[0], // dom对象
       $pageContentEl,
@@ -48,7 +49,7 @@ export default class Messages extends Event {
     });
 
     // Init
-    m.init();
+    _.init();
 
     // return m;
   }
@@ -57,50 +58,49 @@ export default class Messages extends Event {
   getMessageData(messageEl) {
     const $messageEl = $(messageEl);
     const data = {
-      name: $messageEl.find('.message-name').html(),
-      header: $messageEl.find('.message-header').html(),
-      textHeader: $messageEl.find('.message-text-header').html(),
-      textFooter: $messageEl.find('.message-text-footer').html(),
-      footer: $messageEl.find('.message-footer').html(),
+      name: $messageEl.find('.message-name')?.html(),
+      header: $messageEl.find('.message-header')?.html(),
+      textHeader: $messageEl.find('.message-text-header')?.html(),
+      textFooter: $messageEl.find('.message-text-footer')?.html(),
+      footer: $messageEl.find('.message-footer')?.html(),
       isTitle: $messageEl.hasClass('messages-title'),
       type: $messageEl.hasClass('message-sent') ? 'sent' : 'received',
-      text: $messageEl.find('.message-text').html(),
-      image: $messageEl.find('.message-image').html(),
-      imageSrc: $messageEl.find('.message-image img').attr('src'),
+      text: $messageEl.find('.message-text')?.html(),
+      image: $messageEl.find('.message-image')?.html(),
+      imageSrc: $messageEl.find('.message-image img')?.attr('src'),
       typing: $messageEl.hasClass('message-typing'),
     };
-    if (data.isTitle) {
-      data.text = $messageEl.html();
-    }
-    if (data.text && data.textHeader) {
+
+    if (data.isTitle) data.text = $messageEl.html();
+    if (data.text && data.textHeader)
       data.text = data.text.replace(
         `<div class="message-text-header">${data.textHeader}</div>`,
         ''
       );
-    }
-    if (data.text && data.textFooter) {
+
+    if (data.text && data.textFooter)
       data.text = data.text.replace(
         `<div class="message-text-footer">${data.textFooter}</div>`,
         ''
       );
-    }
+
     let avatar = $messageEl.find('.message-avatar').css('background-image');
     if (avatar === 'none' || avatar === '') avatar = undefined;
-    if (avatar && typeof avatar === 'string') {
+    if (avatar && typeof avatar === 'string')
       avatar = avatar.replace('url(', '').replace(')', '').replace(/"/g, '').replace(/'/g, '');
-    } else {
-      avatar = undefined;
-    }
+    else avatar = undefined;
+
     data.avatar = avatar;
 
     return data;
   }
 
   getMessagesData() {
-    const m = this;
+    const _ = this;
     const data = [];
-    m.$el.find('.message, .messages-title').each((index, messageEl) => {
-      data.push(m.getMessageData(messageEl));
+
+    _.$el.find('.message, .messages-title').forEach(messageEl => {
+      data.push(_.getMessageData(messageEl));
     });
     return data;
   }
@@ -366,7 +366,7 @@ export default class Messages extends Event {
   }
 
   addMessages(...args) {
-    const m = this;
+    const _ = this;
     let messagesToAdd;
     let animate;
     let method;
@@ -379,62 +379,62 @@ export default class Messages extends Event {
       animate = true;
     }
     if (typeof method === 'undefined') {
-      method = m.params.newMessagesFirst ? 'prepend' : 'append';
+      method = _.params.newMessagesFirst ? 'prepend' : 'append';
     }
 
-    const {scrollHeightBefore, scrollBefore} = m.setScrollData();
+    const {scrollHeightBefore, scrollBefore} = _.setScrollData();
 
     // Add message to DOM and data
     let messagesHTML = '';
-    const typingMessage = m.messages.filter(el => el.isTyping)[0];
+    const typingMessage = _.messages.filter(el => el.isTyping)[0];
     messagesToAdd.forEach(messageToAdd => {
       if (typingMessage) {
         if (method === 'append') {
-          m.messages.splice(m.messages.indexOf(typingMessage), 0, messageToAdd);
+          _.messages.splice(_.messages.indexOf(typingMessage), 0, messageToAdd);
         } else {
-          m.messages.splice(m.messages.indexOf(typingMessage) + 1, 0, messageToAdd);
+          _.messages.splice(_.messages.indexOf(typingMessage) + 1, 0, messageToAdd);
         }
       } else {
-        m.messages[method === 'append' ? 'push' : 'unshift'](messageToAdd);
+        _.messages[method === 'append' ? 'push' : 'unshift'](messageToAdd);
       }
-      messagesHTML += m.renderMessage(messageToAdd);
+      messagesHTML += _.renderMessage(messageToAdd);
     });
     const $messagesEls = $(messagesHTML);
     if (animate) {
-      if (method === 'append' && !m.params.newMessagesFirst) {
+      if (method === 'append' && !_.params.newMessagesFirst) {
         $messagesEls.addClass('message-appear-from-bottom');
       }
-      if (method === 'prepend' && m.params.newMessagesFirst) {
+      if (method === 'prepend' && _.params.newMessagesFirst) {
         $messagesEls.addClass('message-appear-from-top');
       }
     }
     if (typingMessage) {
       if (method === 'append') {
-        $messagesEls.insertBefore(m.$el.find('.message-typing'));
+        $messagesEls.insertBefore(_.$el.find('.message-typing'));
       } else {
-        $messagesEls.insertAfter(m.$el.find('.message-typing'));
+        $messagesEls.insertAfter(_.$el.find('.message-typing'));
       }
     } else {
-      m.$el[method]($messagesEls);
+      _.$el[method]($messagesEls);
     }
 
     // Layout
-    if (m.params.autoLayout) m.layout();
+    if (_.params.autoLayout) _.layout();
 
     if (method === 'prepend' && !typingMessage) {
-      m.pageContentEl.scrollTop =
-        scrollBefore + (m.pageContentEl.scrollHeight - scrollHeightBefore);
+      _.pageContentEl.scrollTop =
+        scrollBefore + (_.pageContentEl.scrollHeight - scrollHeightBefore);
     }
 
     if (
-      m.params.scrollMessages &&
-      ((method === 'append' && !m.params.newMessagesFirst) ||
-        (method === 'prepend' && m.params.newMessagesFirst && !typingMessage))
+      _.params.scrollMessages &&
+      ((method === 'append' && !_.params.newMessagesFirst) ||
+        (method === 'prepend' && _.params.newMessagesFirst && !typingMessage))
     ) {
-      m.scrollWithEdgeCheck(animate);
+      _.scrollWithEdgeCheck(animate);
     }
 
-    return m;
+    return _;
   }
 
   showTyping(message = {}) {
@@ -523,15 +523,11 @@ export default class Messages extends Event {
    * 初始化
    */
   init() {
-    const m = this;
-    if (!m.messages || m.messages.length === 0) {
-      m.messages = m.getMessagesData();
-    }
-    if (m.params.messages && m.params.messages.length) {
-      m.renderMessages();
-    }
-    if (m.params.autoLayout) m.layout();
-    if (m.params.scrollMessages) m.scroll(0);
+    const _ = this;
+    if (!_.messages || _.messages.length === 0) _.messages = _.getMessagesData();
+    if (_.params.messages && _.params.messages.length) _.renderMessages();
+    if (_.params.autoLayout) _.layout();
+    if (_.params.scrollMessages) _.scroll(0);
   }
 
   /**

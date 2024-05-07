@@ -1,40 +1,40 @@
 [
   {
-  "$schema": "https://json.schemastore.org/swcrc",
-		"test": ".*[.]js$",
+    "$schema": "https://json.schemastore.org/swcrc",
+    "test": ".*[.]js$",
     "exclude": [".*[.]d[.]ts$"],
-  "jsc": {
-    "parser": {
-      "syntax": "ecmascript", // "typescript"
+    "jsc": {
+      "parser": {
+        "syntax": "ecmascript", // "typescript"
         "jsx": true,
-      "dynamicImport": false,
-      "privateMethod": true,
-      "functionBind": false,
-      "exportDefaultFrom": false,
-      "exportNamespaceFrom": false,
+        "dynamicImport": false,
+        "privateMethod": true,
+        "functionBind": false,
+        "exportDefaultFrom": false,
+        "exportNamespaceFrom": false,
         "decorators": false,
-      "decoratorsBeforeExport": false,
-      "topLevelAwait": false,
-      "importMeta": false
-    },
-    "transform": {
+        "decoratorsBeforeExport": false,
+        "topLevelAwait": false,
+        "importMeta": false
+      },
+      "transform": {
         "react": {
           // "runtime": "automatic", // or classic
           "throwIfNamespace": true,
           "useBuiltins": false,
           "development": false
-},
+        },
         "decoratorVersion": "2022-03" // "2021-12" (default)
+      },
+      "target": "es2022", // es5,es6,es2020,es2021,es2022
+      "loose": true,
+      "externalHelpers": false,
+      "keepClassNames": true // 保留原始类名
     },
-    "target": "es2022", // es5,es6,es2020,es2021,es2022
-    "loose": true,
-    "externalHelpers": false,
-    "keepClassNames": true // 保留原始类名
-  },
-  "module": {
+    "module": {
       "type": "es6" // 输出模块类型  "es6",  "commonjs"
-  },
-  "minify": false, // 压缩代码
-  "sourceMaps": false 
+    },
+    "minify": false, // 压缩代码
+    "sourceMaps": false
   }
 ]

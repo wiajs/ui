@@ -1,10 +1,13 @@
 English | [Chinese](./README.CN.md)
 
-# Wia Components
+# Wia UI
 
-Components for [wia](https://www.wia.pub) applications.
+UI mponents for [wia](https://www.wia.pub) applications.
 
 See [wia components](https://www.wia.pub/doc/component.html) documentation for detailed description.
+
+Some components copy from F7 and removed tight integration with the Wia App,
+You need to new and manual process code。
 
 ## install
 
@@ -13,7 +16,7 @@ You will need Node.js installed on your system.
 First, install
 
 ```bash
-$ npm install @wiajs/component
+$ npm i -D @wiajs/ui
 ```
 
 ## To use
@@ -24,7 +27,7 @@ in register.js file:
 
 ```js
 
-import Uploader from '@wiajs/component/uploader';
+import Uploader from '@wiajs/ui/uploader';
 
 function init(pg)
   _uploader = new Uploader({
@@ -50,7 +53,7 @@ function init(pg)
 in your register.less file:
 
 ```less
-@import '@wiajs/component/uploader/index.less';
+@import '@wiajs/ui/dist/uploader/index.less';
 ```
 
 in your register.html file:

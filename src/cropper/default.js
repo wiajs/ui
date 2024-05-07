@@ -1,4 +1,4 @@
-import {DRAG_MODE_CROP} from './constant';
+import {DRAG_MODE_CROP} from './constant'
 
 export default {
   // Define the view mode of the cropper
@@ -78,4 +78,4 @@ export default {
   cropmove: null,
   cropend: null,
   crop: null,
-};
+}

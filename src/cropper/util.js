@@ -1,4 +1,8 @@
+import {getSize} from '@wiajs/lib/img/util';
+
 import {IS_BROWSER, WINDOW} from './constant';
+
+export {getSize};
 
 /**
  * Check if the given value is not a number.
@@ -32,30 +36,6 @@ export function isObject(value) {
 
 const {hasOwnProperty} = Object.prototype;
 
-/**
- * Check if the given value is a plain object.
- * @param {*} value - The value to check.
- * @returns {boolean} Returns `true` if the given value is a plain object, else `false`.
- */
-export function isPlainObject(value) {
-  if (!isObject(value)) {
-    return false;
-  }
-
-  try {
-    const {constructor} = value;
-    const {prototype} = constructor;
-
-    return (
-      constructor &&
-      prototype &&
-      hasOwnProperty.call(prototype, 'isPrototypeOf')
-    );
-  } catch (error) {
-    return false;
-  }
-}
-
 const {slice} = Array.prototype;
 
 /**
@@ -77,9 +57,7 @@ const REGEXP_DECIMALS = /\.\d*(?:0|9){12}\d*$/;
  * @returns {number} Returns the normalized number.
  */
 export function normalizeDecimalNumber(value, times = 100000000000) {
-  return REGEXP_DECIMALS.test(value)
-    ? Math.round(value * times) / times
-    : value;
+  return REGEXP_DECIMALS.test(value) ? Math.round(value * times) / times : value;
 }
 
 const REGEXP_CAMEL_CASE = /([a-z\d])([A-Z])/g;
@@ -120,9 +98,7 @@ export function isCrossOriginURL(url) {
 
   return (
     parts !== null &&
-    (parts[1] !== location.protocol ||
-      parts[2] !== location.hostname ||
-      parts[3] !== location.port)
+    (parts[1] !== location.protocol || parts[2] !== location.hostname || parts[3] !== location.port)
   );
 }
 
@@ -142,13 +118,7 @@ export function addTimestamp(url) {
  * @param {Object} obj - The target object.
  * @returns {string} A string contains transform values.
  */
-export function getTransforms({
-  rotate,
-  scaleX,
-  scaleY,
-  translateX,
-  translateY,
-}) {
+export function getTransforms({rotate, scaleX, scaleY, translateX, translateY}) {
   const values = [];
 
   if ($.isNumber(translateX) && translateX !== 0) {
@@ -228,42 +198,6 @@ export function getPointersCenter(pointers) {
 }
 
 /**
- * Get the max sizes in a rectangle under the given aspect ratio.
- * @param {Object} data - The original sizes.
- * @param {string} [type='contain'] - The adjust type.
- * @returns {Object} The result sizes.
- */
-export function getAdjustedSizes(
-  {aspectRatio, height, width},
-  type = 'contain' // or 'cover'
-) {
-  const isValidWidth = isPositiveNumber(width);
-  const isValidHeight = isPositiveNumber(height);
-
-  if (isValidWidth && isValidHeight) {
-    const adjustedWidth = height * aspectRatio;
-
-    if (
-      (type === 'contain' && adjustedWidth > width) ||
-      (type === 'cover' && adjustedWidth < width)
-    ) {
-      height = width / aspectRatio;
-    } else {
-      width = height * aspectRatio;
-    }
-  } else if (isValidWidth) {
-    height = width / aspectRatio;
-  } else if (isValidHeight) {
-    width = height * aspectRatio;
-  }
-
-  return {
-    width,
-    height,
-  };
-}
-
-/**
  * Get the new sizes of a rectangle after rotated.
  * @param {Object} data - The original sizes.
  * @returns {Object} The result sizes.
@@ -326,47 +260,38 @@ export function getSourceCanvas(
 ) {
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
-  const maxSizes = getAdjustedSizes({
-    aspectRatio,
+  const maxSizes = getSize({
+    aspect: aspectRatio,
     width: maxWidth,
     height: maxHeight,
   });
-  const minSizes = getAdjustedSizes(
+  const minSizes = getSize(
     {
-      aspectRatio,
+      aspect: aspectRatio,
       width: minWidth,
       height: minHeight,
     },
     'cover'
   );
-  const width = Math.min(
-    maxSizes.width,
-    Math.max(minSizes.width, naturalWidth)
-  );
-  const height = Math.min(
-    maxSizes.height,
-    Math.max(minSizes.height, naturalHeight)
-  );
+  const width = Math.min(maxSizes.width, Math.max(minSizes.width, naturalWidth));
+  const height = Math.min(maxSizes.height, Math.max(minSizes.height, naturalHeight));
 
   // Note: should always use image's natural sizes for drawing as
   // imageData.naturalWidth === canvasData.naturalHeight when rotate % 180 === 90
-  const destMaxSizes = getAdjustedSizes({
-    aspectRatio: imageAspectRatio,
+  const destMaxSizes = getSize({
+    aspect: imageAspectRatio,
     width: maxWidth,
     height: maxHeight,
   });
-  const destMinSizes = getAdjustedSizes(
+  const destMinSizes = getSize(
     {
-      aspectRatio: imageAspectRatio,
+      aspect: imageAspectRatio,
       width: minWidth,
       height: minHeight,
     },
     'cover'
   );
-  const destWidth = Math.min(
-    destMaxSizes.width,
-    Math.max(destMinSizes.width, imageNaturalWidth)
-  );
+  const destWidth = Math.min(destMaxSizes.width, Math.max(destMinSizes.width, imageNaturalWidth));
   const destHeight = Math.min(
     destMaxSizes.height,
     Math.max(destMinSizes.height, imageNaturalHeight)
@@ -383,221 +308,7 @@ export function getSourceCanvas(
   context.scale(scaleX, scaleY);
   context.imageSmoothingEnabled = imageSmoothingEnabled;
   context.imageSmoothingQuality = imageSmoothingQuality;
-  context.drawImage(
-    image,
-    ...params.map(param => Math.floor(normalizeDecimalNumber(param)))
-  );
+  context.drawImage(image, ...params.map(param => Math.floor(normalizeDecimalNumber(param))));
   context.restore();
   return canvas;
-}
-
-const {fromCharCode} = String;
-
-/**
- * Get string from char code in data view.
- * @param {DataView} dataView - The data view for read.
- * @param {number} start - The start index.
- * @param {number} length - The read length.
- * @returns {string} The read result.
- */
-export function getStringFromCharCode(dataView, start, length) {
-  let str = '';
-
-  length += start;
-
-  for (let i = start; i < length; i += 1) {
-    str += fromCharCode(dataView.getUint8(i));
-  }
-
-  return str;
-}
-
-const REGEXP_DATA_URL_HEAD = /^data:.*,/;
-
-/**
- * Transform Data URL to array buffer.
- * @param {string} dataURL - The Data URL to transform.
- * @returns {ArrayBuffer} The result array buffer.
- */
-export function dataURLToArrayBuffer(dataURL) {
-  const base64 = dataURL.replace(REGEXP_DATA_URL_HEAD, '');
-  const binary = atob(base64);
-  const arrayBuffer = new ArrayBuffer(binary.length);
-  const uint8 = new Uint8Array(arrayBuffer);
-
-  forEach(uint8, (value, i) => {
-    uint8[i] = binary.charCodeAt(i);
-  });
-
-  return arrayBuffer;
-}
-
-/**
- * Transform array buffer to Data URL.
- * @param {ArrayBuffer} arrayBuffer - The array buffer to transform.
- * @param {string} mimeType - The mime type of the Data URL.
- * @returns {string} The result Data URL.
- */
-export function arrayBufferToDataURL(arrayBuffer, mimeType) {
-  const chunks = [];
-
-  // Chunk Typed Array for better performance (#435)
-  const chunkSize = 8192;
-  let uint8 = new Uint8Array(arrayBuffer);
-
-  while (uint8.length > 0) {
-    // XXX: Babel's `toConsumableArray` helper will throw error in IE or Safari 9
-    // eslint-disable-next-line prefer-spread
-    chunks.push(
-      fromCharCode.apply(null, toArray(uint8.subarray(0, chunkSize)))
-    );
-    uint8 = uint8.subarray(chunkSize);
-  }
-
-  return `data:${mimeType};base64,${btoa(chunks.join(''))}`;
-}
-
-/**
- * Get orientation value from given array buffer.
- * @param {ArrayBuffer} arrayBuffer - The array buffer to read.
- * @returns {number} The read orientation value.
- */
-export function resetAndGetOrientation(arrayBuffer) {
-  const dataView = new DataView(arrayBuffer);
-  let orientation;
-
-  // Ignores range error when the image does not have correct Exif information
-  try {
-    let littleEndian;
-    let app1Start;
-    let ifdStart;
-
-    // Only handle JPEG image (start by 0xFFD8)
-    if (dataView.getUint8(0) === 0xff && dataView.getUint8(1) === 0xd8) {
-      const length = dataView.byteLength;
-      let offset = 2;
-
-      while (offset + 1 < length) {
-        if (
-          dataView.getUint8(offset) === 0xff &&
-          dataView.getUint8(offset + 1) === 0xe1
-        ) {
-          app1Start = offset;
-          break;
-        }
-
-        offset += 1;
-      }
-    }
-
-    if (app1Start) {
-      const exifIDCode = app1Start + 4;
-      const tiffOffset = app1Start + 10;
-
-      if (getStringFromCharCode(dataView, exifIDCode, 4) === 'Exif') {
-        const endianness = dataView.getUint16(tiffOffset);
-
-        littleEndian = endianness === 0x4949;
-
-        if (littleEndian || endianness === 0x4d4d /* bigEndian */) {
-          if (dataView.getUint16(tiffOffset + 2, littleEndian) === 0x002a) {
-            const firstIFDOffset = dataView.getUint32(
-              tiffOffset + 4,
-              littleEndian
-            );
-
-            if (firstIFDOffset >= 0x00000008) {
-              ifdStart = tiffOffset + firstIFDOffset;
-            }
-          }
-        }
-      }
-    }
-
-    if (ifdStart) {
-      const length = dataView.getUint16(ifdStart, littleEndian);
-      let offset;
-      let i;
-
-      for (i = 0; i < length; i += 1) {
-        offset = ifdStart + i * 12 + 2;
-
-        if (
-          dataView.getUint16(offset, littleEndian) === 0x0112 /* Orientation */
-        ) {
-          // 8 is the offset of the current tag's value
-          offset += 8;
-
-          // Get the original orientation value
-          orientation = dataView.getUint16(offset, littleEndian);
-
-          // Override the orientation with its default value
-          dataView.setUint16(offset, 1, littleEndian);
-          break;
-        }
-      }
-    }
-  } catch (error) {
-    orientation = 1;
-  }
-
-  return orientation;
-}
-
-/**
- * Parse Exif Orientation value.
- * @param {number} orientation - The orientation to parse.
- * @returns {Object} The parsed result.
- */
-export function parseOrientation(orientation) {
-  let rotate = 0;
-  let scaleX = 1;
-  let scaleY = 1;
-
-  switch (orientation) {
-    // Flip horizontal
-    case 2:
-      scaleX = -1;
-      break;
-
-    // Rotate left 180°
-    case 3:
-      rotate = -180;
-      break;
-
-    // Flip vertical
-    case 4:
-      scaleY = -1;
-      break;
-
-    // Flip vertical and rotate right 90°
-    case 5:
-      rotate = 90;
-      scaleY = -1;
-      break;
-
-    // Rotate right 90°
-    case 6:
-      rotate = 90;
-      break;
-
-    // Flip horizontal and rotate right 90°
-    case 7:
-      rotate = 90;
-      scaleX = -1;
-      break;
-
-    // Rotate left 90°
-    case 8:
-      rotate = -90;
-      break;
-
-    default:
-  }
-
-  return {
-    rotate,
-    scaleX,
-    scaleY,
-  };
 }

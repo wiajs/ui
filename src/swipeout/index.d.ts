@@ -1,4 +1,4 @@
-import { CSSSelector, Framework7Plugin } from '../app/app-class.js';
+import { CSSSelector, Framework7Plugin } from '@wiajs/core/app.js';
 
 export namespace Swipeout {
   interface DomEvents {

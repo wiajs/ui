@@ -1,10 +1,12 @@
 Chinese | [English](./README.md)
 
-# Wia 组件库
+# Wia UI 组件库
 
 创建[wia](https://www.wia.pub) 应用的组件库。
 
-详细信息请参建 [wia components](https://www.wia.pub/doc/component.html)。
+详细信息请参建 [wia UI](https://www.wia.pub/doc/ui.html)。
+
+部分组件从 F7 拷贝而来，去掉了与 App 的紧密集成，需手工通过代码引用、new 和控制组件。
 
 ## 安装
 
@@ -24,7 +26,7 @@ register.js 代码文件:
 
 ```js
 
-import Uploader from '@wiajs/component/uploader';
+import Uploader from '@wiajs/ui/uploader';
 
 function init(pg)
   _uploader = new Uploader({
@@ -50,7 +52,7 @@ function init(pg)
 register.less 样式文件:
 
 ```less
-@import '@wiajs/component/uploader/index.less';
+@import '@wiajs/ui/dist/uploader/index.less';
 ```
 
 register.html html 文件:

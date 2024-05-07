@@ -20,33 +20,42 @@
 
 然后，我们可以根据需求，大概设计出想要的 API 效果，再根据 API 推导出内部实现。
 
+参考：
+https://github.com/impeiran/Blog/tree/master/uploader
+https://weui.io/#uploader
+
 ### 使用
 
 ```js
 _uploader = new Uploader({
-    aspectRatio: 1, // 宽高比
-    crop: 'img/crop', // 裁剪
-  upload: true, // 自动上传
-  url: _url, // 上传网址
-    dir: 'star/etrip/xhlm', // 图片存储路径，格式: 所有者/应用名称/分类
+    dir: 'img/mine/', // 图片存储路径
+    url: _url, // 上传网址
     el: _.class('uploader'), // 组件容器
-    input: _.name('icon'), // 上传成功后的url填入输入框，便于提交
-    choose: _.name('choose'), // 点击触发选择文件
-
+    input: _.icon, // 上传成功后的url填入输入框，便于提交
+    choose: _.choose, // 点击触发选择文件
+    // accept: 'application/pdf', // 选择文件类型
+    accept: 'image/jpg,image/jpeg,image/png,image/gif', // 文件类型
+    compress: true, // 启动压缩
+    quality: 0.8, // 压缩比
+    maxSize: 200, // 压缩后最大尺寸单位 KB
+    // width: 80,
+    // height: 80,
+    // resize: 'cover', // 按指定宽高自动裁剪
+    aspectRatio: 1, // 宽高比
     multiple: false, // 可否同时选择多个文件
     limit: 1, // 文件数限制 -1 0 不限，1 则限制单个文件，如 头像
-    accept: 'image/jpg,image/jpeg,image/png,image/gif', // 选择文件类型
-    compress: true, // 自动压缩
-    quality: 0.5, // 压缩比
+    crop: 'img/crop', // 裁剪，需裁剪 page
 
     // xhr配置
-    data: {}, // 添加到请求头的内容
+    data: {bucket: 'fin'}, // 腾讯云存储桶
   });
 ```
 
 #### 状态/事件监听
 
 ```javascript
+import Uploader from '@wiajs/ui/uploader';
+
 // 链式调用更优雅
 uploader
   .on('choose', files => {
@@ -85,7 +94,7 @@ uploader
 
 - chooseFile()
   选择文件，需在点击交互中触发
-- replace()
+- update()
   替换当前文件，裁剪时需要用裁剪后的文件替换当前未裁剪文件
 - loadFiles(files);
   独立出添加文件函数，方便拓展
@@ -97,7 +106,9 @@ uploader
 
 #### 加载图片
 
-input 中设置 图片网址，可自动加载，用于数据加载时，加载图片
+
+设置input中，会触发change事件，自动加载 preview，preview根据状态，向容器添加图片显示html代码。
+用于数据加载时，加载图片，输入参数格式：
 
 ```js
         {
@@ -289,7 +300,11 @@ class Uploader {
   loadFiles(files) {
     if (!files) return false;
 
-    if (this.limit !== -1 && files.length && files.length + this.uploadFiles.length > this.limit) {
+    if (
+      this.limit !== -1 &&
+      files.length &&
+      files.length + this.uploadFiles.length > this.limit
+    ) {
       this._callHook('exceed', files);
       return false;
     }

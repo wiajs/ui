@@ -4,21 +4,13 @@ const rules = {
   // "arrow-parens": [2, "as-needed"],
   'arrow-parens': [2, 'as-needed', {requireForBlockBody: false}],
   'arrow-body-style': [2, 'as-needed'],
-  'global-require': 0,
+  quotes: [1, 'single'],
   'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
   'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
-  quotes: [1, 'single'],
   'no-alert': 0,
   'no-trailing-spaces': 0,
   'nonblock-statement-body-position': 0, // [2, "beside"], // if else 强制单行
-  'block-spacing': 0, // 对象空格
-  'function-paren-newline': 0, // 函数参数换行
-  'linebreak-style': 0,
-  'lines-between-class-members': 0,
-  'class-methods-use-this': 0,
-  'import/no-extraneous-dependencies': 0,
-  indent: [2, 2, {SwitchCase: 1}],
-  'object-curly-spacing': 0,
+  'no-await-in-loop': 0,
   'no-plusplus': 0,
   'no-multi-spaces': 0,
   'no-param-reassign': ['warn', {props: false}],
@@ -28,8 +20,33 @@ const rules = {
   'no-unused-vars': [1, {vars: 'local', args: 'after-used'}],
   'no-cond-assign': ['error', 'except-parens'],
   'no-return-assign': [2, 'except-parens'],
-  'no-await-in-loop': 0,
   'import/prefer-default-export': 0,
+  'block-spacing': 0, // 对象空格
+  'function-paren-newline': 0, // 函数参数换行
+  'linebreak-style': 0,
+  'lines-between-class-members': 0,
+  'class-methods-use-this': 0,
+  'import/no-extraneous-dependencies': 0,
+  indent: [2, 2, {SwitchCase: 1}],
+  'react/jsx-filename-extension': [1, {extensions: ['.js', '.jsx']}],
+  'react/style-prop-object': 0,
+  'jsx-a11y/label-has-associated-control': [
+    'error',
+    {
+      required: {
+        some: ['nesting', 'id'],
+      },
+    },
+  ],
+  'jsx-a11y/label-has-for': [
+    'error',
+    {
+      required: {
+        some: ['nesting', 'id'],
+      },
+    },
+  ],
+  'object-curly-spacing': 0,
   'operator-linebreak': 0,
   'generator-star-spacing': 0,
   // if while function 后面的{必须与if在同一行，java风格。
@@ -48,6 +65,7 @@ const rules = {
   // 强制方法必须返回值，TypeScript强类型，不配置
   'consistent-return': 0,
   'object-curly-newline': 0,
+  radix: ['error', 'as-needed'],
   semi: 0, // 分号检查
   'space-before-function-paren': 0, // ["error", "never"]
   'func-names': ['error', 'never'],
@@ -55,7 +73,7 @@ const rules = {
 
 module.exports = {
   root: true, // 停止父目录查找配置
-  parser: '@babel/eslint-parser', // "typescript-eslint-parser", "babel-eslint",
+  parser: '@babel/eslint-parser', // espree
   env: {
     es6: true,
     es2017: true,
@@ -96,7 +114,6 @@ module.exports = {
     'plugin:react/recommended',
     'airbnb',
     'plugin:prettier/recommended',
-    'plugin:import/recommended',
   ],
   rules: {
     ...rules,
@@ -104,12 +121,7 @@ module.exports = {
   overrides: [
     {
       files: ['src/**/*.js'],
-      extends: [
-        'plugin:react/recommended',
-        'airbnb-base',
-        'plugin:prettier/recommended',
-        'plugin:import/recommended'
-      ],
+      extends: ['plugin:react/recommended', 'airbnb-base', 'plugin:prettier/recommended'],
       plugins: ['react'],
       rules: {
         ...rules,

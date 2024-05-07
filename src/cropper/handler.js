@@ -10,57 +10,55 @@ import {
   EVENT_CROP_MOVE,
   EVENT_CROP_START,
   REGEXP_ACTIONS,
-} from './constant';
-import {getPointer} from './util';
+} from './constant'
+import {getPointer} from './util'
 
 export default {
   resize() {
     if (this.disabled) {
-      return;
+      return
     }
 
-    const {opt, container, containerData} = this;
-    const ratio = container.offsetWidth / containerData.width;
+    const {opt, container, containerData} = this
+    const ratio = container.offsetWidth / containerData.width
 
     // Resize when width changed or height changed
     if (ratio !== 1 || container.offsetHeight !== containerData.height) {
-      let canvasData;
-      let cropBoxData;
+      let canvasData
+      let cropBoxData
 
       if (opt.restore) {
-        canvasData = this.getCanvasData();
-        cropBoxData = this.getCropBoxData();
+        canvasData = this.getCanvasData()
+        cropBoxData = this.getCropBoxData()
       }
 
-      this.render();
+      this.render()
 
       if (opt.restore) {
         this.setCanvasData(
           $.forEach(canvasData, (n, i) => {
-            canvasData[i] = n * ratio;
+            canvasData[i] = n * ratio
           })
-        );
+        )
         this.setCropBoxData(
           $.forEach(cropBoxData, (n, i) => {
-            cropBoxData[i] = n * ratio;
+            cropBoxData[i] = n * ratio
           })
-        );
+        )
       }
     }
   },
 
   dblclick() {
     if (this.disabled || this.opt.dragMode === DRAG_MODE_NONE) {
-      return;
+      return
     }
 
-    this.setDragMode(
-      this.dragBox.hasClass(CLASS_CROP) ? DRAG_MODE_MOVE : DRAG_MODE_CROP
-    );
+    this.setDragMode(this.dragBox.hasClass(CLASS_CROP) ? DRAG_MODE_MOVE : DRAG_MODE_CROP)
   },
 
   cropStart(event) {
-    const {buttons, button} = event;
+    const {buttons, button} = event
 
     if (
       this.disabled ||
@@ -73,25 +71,25 @@ export default {
           // Open context menu
           event.ctrlKey))
     ) {
-      return;
+      return
     }
 
-    const {opt, pointers} = this;
+    const {opt, pointers} = this
 
     if (event.changedTouches) {
       // Handle touch event
       $.forEach(event.changedTouches, touch => {
-        pointers[touch.identifier] = getPointer(touch);
-      });
+        pointers[touch.identifier] = getPointer(touch)
+      })
     } else {
       // Handle mouse event and pointer event
-      pointers[event.pointerId || 0] = getPointer(event);
+      pointers[event.pointerId || 0] = getPointer(event)
     }
 
-    const action = $(event.target).data(DATA_ACTION);
+    const action = $(event.target).data(DATA_ACTION)
 
     if (!REGEXP_ACTIONS.test(action)) {
-      return;
+      return
     }
 
     // // 触发 dom 节点事件
@@ -105,7 +103,7 @@ export default {
       el: this.el,
       originalEvent: event,
       action,
-    });
+    })
 
     // 调用事件处理函数，事件处理函数调用Event.preventDefault()
     // 则返回值为false；否则返回true
@@ -119,34 +117,34 @@ export default {
     // }
 
     // This line is required for preventing page zooming in iOS browsers
-    event.preventDefault();
+    event.preventDefault()
 
-    this.action = action;
-    this.cropping = false;
+    this.action = action
+    this.cropping = false
 
     if (action === ACTION_CROP) {
-      this.cropping = true;
-      this.dragBox.addClass(CLASS_MODAL);
+      this.cropping = true
+      this.dragBox.addClass(CLASS_MODAL)
     }
   },
 
   cropMove(event) {
-    const {action} = this;
+    const {action} = this
 
     if (this.disabled || !action) {
-      return;
+      return
     }
 
-    const {pointers} = this;
+    const {pointers} = this
 
-    event.preventDefault();
+    event.preventDefault()
 
     // 触发组件事件
     this.emit(`local::${EVENT_CROP_MOVE} cropper${EVENT_CROP_MOVE}`, {
       el: this.el,
       originalEvent: event,
       action,
-    });
+    })
 
     // if (
     //   dispatchEvent(this.element, EVENT_CROP_MOVE, {
@@ -160,43 +158,43 @@ export default {
     if (event.changedTouches) {
       $.forEach(event.changedTouches, touch => {
         // The first parameter should not be undefined (#432)
-        $.assign(pointers[touch.identifier] || {}, getPointer(touch, true));
-      });
+        $.assign(pointers[touch.identifier] || {}, getPointer(touch, true))
+      })
     } else {
-      $.assign(pointers[event.pointerId || 0] || {}, getPointer(event, true));
+      $.assign(pointers[event.pointerId || 0] || {}, getPointer(event, true))
     }
 
-    this.change(event);
+    this.change(event)
   },
 
   cropEnd(event) {
     if (this.disabled) {
-      return;
+      return
     }
 
-    const {action, pointers} = this;
+    const {action, pointers} = this
 
     if (event.changedTouches) {
       $.forEach(event.changedTouches, touch => {
-        delete pointers[touch.identifier];
-      });
+        delete pointers[touch.identifier]
+      })
     } else {
-      delete pointers[event.pointerId || 0];
+      delete pointers[event.pointerId || 0]
     }
 
     if (!action) {
-      return;
+      return
     }
 
-    event.preventDefault();
+    event.preventDefault()
 
     if (!Object.keys(pointers).length) {
-      this.action = '';
+      this.action = ''
     }
 
     if (this.cropping) {
-      this.cropping = false;
-      this.dragBox.toggleClass(CLASS_MODAL, this.cropped && this.opt.modal);
+      this.cropping = false
+      this.dragBox.toggleClass(CLASS_MODAL, this.cropped && this.opt.modal)
     }
 
     // 触发组件事件
@@ -204,6 +202,6 @@ export default {
       el: this.el,
       originalEvent: event,
       action,
-    });
+    })
   },
-};
+}
