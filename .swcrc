@@ -1,8 +1,7 @@
 [
   {
     "$schema": "https://json.schemastore.org/swcrc",
-    "test": ".*[.]js$",
-    "exclude": [".*[.]d[.]ts$"],
+    "test": "\\.(js|jsx|mjs|cjs)$",
     "jsc": {
       "parser": {
         "syntax": "ecmascript", // "typescript"
@@ -19,7 +18,7 @@
       },
       "transform": {
         "react": {
-          // "runtime": "automatic", // or classic
+          "runtime": "automatic", // or classic
           "throwIfNamespace": true,
           "useBuiltins": false,
           "development": false
@@ -33,6 +32,31 @@
     },
     "module": {
       "type": "es6" // 输出模块类型  "es6",  "commonjs"
+    },
+    "minify": false, // 压缩代码
+    "sourceMaps": false
+  },
+  {
+    "$schema": "https://json.schemastore.org/swcrc",
+    "test": "\\.(ts|tsx)$",
+    "exclude": [".*\\.map$"],
+    "jsc": {
+      "parser": {
+        "syntax": "typescript",
+        "tsx": false,
+        "decorators": true,
+        "dynamicImport": false
+      },
+      "transform": {
+        "decoratorVersion": "2022-03"
+      },
+      "target": "es2022", // es5,es6,es2020,es2021,es2022
+      "loose": true,
+      "externalHelpers": false,
+      "keepClassNames": true // 保留原始类名
+    },
+    "module": {
+      "type": "commonjs"
     },
     "minify": false, // 压缩代码
     "sourceMaps": false

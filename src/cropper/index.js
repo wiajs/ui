@@ -1,8 +1,9 @@
-/** @jsx jsx */
-import {jsx, Event} from '@wiajs/core'
+/** @jsx-x jsx */
+/** @jsxImportSource @wiajs/core */
+import {Event} from '@wiajs/core'
 import {getExif, getRotate, urlToBuf, bufToUrl} from '@wiajs/lib/img/util'
 // @ts-ignore
-import styles from './index.less'
+import * as css from './index.less'
 
 import DEFAULTS from './default'
 import render from './render'
@@ -41,6 +42,7 @@ export default class Cropper extends Event {
     super(opt, [app])
 
     this.el = opt.el
+    this.el.addClass(`${css.wiaui_cropper}`) // 添加样式scope
     this.img = this.el.findNode('img').dom
 
     if (!this.img || !REGEXP_TAG_NAME.test(this.img.tagName)) {
@@ -234,6 +236,7 @@ export default class Cropper extends Event {
         naturalHeight,
         aspectRatio: naturalWidth / naturalHeight,
       })
+      this.initialImageData = $.assign({}, this.imageData)
       this.sizing = false
       this.sized = true
       this.build()
@@ -297,45 +300,45 @@ export default class Cropper extends Event {
     const div = document.createElement('div')
 
     div.innerHTML = (
-      <div class={styles.container} touch-action='none'>
-        <div class={styles.wrapbox}>
-          <div class={styles.canvas}></div>
+      <div class={css.container} touch-action="none">
+        <div class={css.wrapbox}>
+          <div class={css.canvas}></div>
         </div>
-        <div class={styles.dragbox}></div>
-        <div class={styles.cropbox}>
-          <span class={styles.viewbox}></span>
-          <span class={`${styles.dashed} ${styles.dashed_h}`}></span>
-          <span class={`${styles.dashed} ${styles.dashed_v}`}></span>
-          <span class={styles.center}></span>
-          <span class={styles.face}></span>
-          <span class={`${styles.line} ${styles.line_e}`} data-cropper-action='e' />
-          <span class={`${styles.line} ${styles.line_n}`} data-cropper-action='n' />
-          <span class={`${styles.line} ${styles.line_w}`} data-cropper-action='w' />
-          <span class={`${styles.line} ${styles.line_s}`} data-cropper-action='s' />
-          <span class={`${styles.point} ${styles.point_e}`} data-cropper-action='e' />
-          <span class={`${styles.point} ${styles.point_n}`} data-cropper-action='n' />
-          <span class={`${styles.point} ${styles.point_w}`} data-cropper-action='w' />
-          <span class={`${styles.point} ${styles.point_s}`} data-cropper-action='s' />
-          <span class={`${styles.point} ${styles.point_ne}`} data-cropper-action='ne' />
-          <span class={`${styles.point} ${styles.point_nw}`} data-cropper-action='nw' />
-          <span class={`${styles.point} ${styles.point_sw}`} data-cropper-action='sw' />
-          <span class={`${styles.point} ${styles.point_se}`} data-cropper-action='se' />
+        <div class={css.dragbox}></div>
+        <div class={css.cropbox}>
+          <span class={css.viewbox}></span>
+          <span class={`${css.dashed} ${css.dashed_h}`}></span>
+          <span class={`${css.dashed} ${css.dashed_v}`}></span>
+          <span class={css.center}></span>
+          <span class={css.face}></span>
+          <span class={`${css.line} ${css.line_e}`} data-cropper-action="e" />
+          <span class={`${css.line} ${css.line_n}`} data-cropper-action="n" />
+          <span class={`${css.line} ${css.line_w}`} data-cropper-action="w" />
+          <span class={`${css.line} ${css.line_s}`} data-cropper-action="s" />
+          <span class={`${css.point} ${css.point_e}`} data-cropper-action="e" />
+          <span class={`${css.point} ${css.point_n}`} data-cropper-action="n" />
+          <span class={`${css.point} ${css.point_w}`} data-cropper-action="w" />
+          <span class={`${css.point} ${css.point_s}`} data-cropper-action="s" />
+          <span class={`${css.point} ${css.point_ne}`} data-cropper-action="ne" />
+          <span class={`${css.point} ${css.point_nw}`} data-cropper-action="nw" />
+          <span class={`${css.point} ${css.point_sw}`} data-cropper-action="sw" />
+          <span class={`${css.point} ${css.point_se}`} data-cropper-action="se" />
         </div>
       </div>
     )
 
-    const cropper = $(div).class(`${styles.container}`)
-    const canvas = cropper.class(`${styles.canvas}`)
-    const dragBox = cropper.class(`${styles.dragbox}`)
-    const cropBox = $(cropper).class(`${styles.cropbox}`)
-    const face = cropBox.class(`${styles.face}`)
+    const cropper = $(div).class(`${css.container}`)
+    const canvas = cropper.class(`${css.canvas}`)
+    const dragBox = cropper.class(`${css.dragbox}`)
+    const cropBox = $(cropper).class(`${css.cropbox}`)
+    const face = cropBox.class(`${css.face}`)
 
     this.container = container
     this.cropper = cropper
     this.canvas = canvas
     this.dragBox = dragBox
     this.cropBox = cropBox
-    this.viewBox = cropper.class(`${styles.viewbox}`)
+    this.viewBox = cropper.class(`${css.viewbox}`)
     this.face = face
 
     canvas.append(image)
@@ -360,11 +363,11 @@ export default class Cropper extends Event {
 
     cropBox.addClass(CLASS_HIDDEN)
 
-    if (!opt.guides) cropBox.class(`${styles.dashed}`).addClass(CLASS_HIDDEN)
+    if (!opt.guides) cropBox.class(`${css.dashed}`).addClass(CLASS_HIDDEN)
 
-    if (!opt.center) cropBox.class(`${styles.center}`).addClass(CLASS_HIDDEN)
+    if (!opt.center) cropBox.class(`${css.center}`).addClass(CLASS_HIDDEN)
 
-    if (opt.background) cropper.addClass(`${styles.bg}`)
+    if (opt.background) cropper.addClass(`${css.bg}`)
 
     if (!opt.highlight) face.addClass(CLASS_INVISIBLE)
 
@@ -374,8 +377,8 @@ export default class Cropper extends Event {
     }
 
     if (!opt.cropBoxResizable) {
-      cropBox.class(`${styles.line}`).addClass(CLASS_HIDDEN)
-      cropBox.class(`${styles.point}`).addClass(CLASS_HIDDEN)
+      cropBox.class(`${css.line}`).addClass(CLASS_HIDDEN)
+      cropBox.class(`${css.point}`).addClass(CLASS_HIDDEN)
     }
 
     this.render()

@@ -1,5 +1,5 @@
 // @ts-ignore
-import styles from './index.less'
+import * as css from './index.less'
 
 export const IS_BROWSER = typeof window !== 'undefined' && typeof window.document !== 'undefined'
 export const WINDOW = IS_BROWSER ? window : {}
@@ -24,13 +24,13 @@ export const ACTION_SOUTH_EAST = 'se'
 export const ACTION_SOUTH_WEST = 'sw'
 
 // Classes
-export const CLASS_CROP = `${styles.crop}`
-export const CLASS_DISABLED = `${styles.disabled}`
-export const CLASS_HIDDEN = `${styles.hidden}`
-export const CLASS_HIDE = `${styles.hide}`
-export const CLASS_INVISIBLE = `${styles.invisible}`
-export const CLASS_MODAL = `${styles.modal}`
-export const CLASS_MOVE = `${styles.move}`
+export const CLASS_CROP = `${css.crop}`
+export const CLASS_DISABLED = `${css.disabled}`
+export const CLASS_HIDDEN = `${css.hidden}`
+export const CLASS_HIDE = `${css.hide}`
+export const CLASS_INVISIBLE = `${css.invisible}`
+export const CLASS_MODAL = `${css.modal}`
+export const CLASS_MOVE = `${css.move}`
 
 // Data keys
 export const DATA_ACTION = `${NAMESPACE}Action`

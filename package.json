@@ -1,10 +1,11 @@
 {
   "name": "@wiajs/ui",
-  "version": "1.1.9",
+  "version": "1.2.16",
   "description": "wia app ui packages",
   "main": "",
   "scripts": {
-    "build": "swc --config-file ./.swcrc src -w -d dist --strip-leading-paths"
+    "build": "node copy-assets.js",
+    "postbuild": "swc --config-file ./.swcrc src -d dist --strip-leading-paths"
   },
   "exports": {
     "./*": "./*",
@@ -26,6 +27,8 @@
     "./searchbar": "./dist/searchbar/index.js",
     "./swipeout/*": "./dist/swipeout/*",
     "./swipeout": "./dist/swipeout/index.js",
+    "./swiper/*": "./dist/swiper/*",
+    "./swiper": "./dist/swiper/index.js",
     "./uploader": "./dist/uploader/index.js",
     "./verify": "./dist/verify/index.js"
   },

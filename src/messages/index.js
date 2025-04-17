@@ -1,6 +1,7 @@
-/** @jsx jsx */
+/** @jsx-x jsx */
+/** @jsxImportSource @wiajs/core */
 
-import {Utils, Event, jsx} from '@wiajs/core';
+import {Utils, Event} from '@wiajs/core'
 
 const def = {
   selector: '.messages',
@@ -18,27 +19,27 @@ const def = {
   sameAvatarMessageRule: undefined,
   customClassMessageRule: undefined,
   renderMessage: undefined,
-};
+}
 
 export default class Messages extends Event {
   constructor(page, opts = {}) {
-    const opt = {...def, ...opts};
-    super(opt, [page]);
+    const opt = {...def, ...opts}
+    super(opt, [page])
 
-    const _ = this;
-    _.opt = opt;
-    _.params = opt;
+    const _ = this
+    _.opt = opt
+    _.params = opt
 
     // 消息容器
-    const $el = opt.el || page.view.def.selector;
-    if ($el.length === 0) return _;
+    const $el = opt.el || page.view.def.selector
+    if ($el.length === 0) return _
 
     // 已创建实例，直接返回
-    if ($el[0].wiaMessages) return $el[0].wiaMessages;
+    if ($el[0].wiaMessages) return $el[0].wiaMessages
 
-    $el[0].wiaMessages = _;
+    $el[0].wiaMessages = _
 
-    const $pageContentEl = $el.closest('.page-content').eq(0);
+    const $pageContentEl = $el.closest('.page-content').eq(0)
 
     Utils.extend(_, {
       messages: _.params.messages,
@@ -46,17 +47,17 @@ export default class Messages extends Event {
       el: $el[0], // dom对象
       $pageContentEl,
       pageContentEl: $pageContentEl[0],
-    });
+    })
 
     // Init
-    _.init();
+    _.init()
 
     // return m;
   }
 
   // eslint-disable-next-line
   getMessageData(messageEl) {
-    const $messageEl = $(messageEl);
+    const $messageEl = $(messageEl)
     const data = {
       name: $messageEl.find('.message-name')?.html(),
       header: $messageEl.find('.message-header')?.html(),
@@ -69,40 +70,34 @@ export default class Messages extends Event {
       image: $messageEl.find('.message-image')?.html(),
       imageSrc: $messageEl.find('.message-image img')?.attr('src'),
       typing: $messageEl.hasClass('message-typing'),
-    };
+    }
 
-    if (data.isTitle) data.text = $messageEl.html();
+    if (data.isTitle) data.text = $messageEl.html()
     if (data.text && data.textHeader)
-      data.text = data.text.replace(
-        `<div class="message-text-header">${data.textHeader}</div>`,
-        ''
-      );
+      data.text = data.text.replace(`<div class="message-text-header">${data.textHeader}</div>`, '')
 
     if (data.text && data.textFooter)
-      data.text = data.text.replace(
-        `<div class="message-text-footer">${data.textFooter}</div>`,
-        ''
-      );
+      data.text = data.text.replace(`<div class="message-text-footer">${data.textFooter}</div>`, '')
 
-    let avatar = $messageEl.find('.message-avatar').css('background-image');
-    if (avatar === 'none' || avatar === '') avatar = undefined;
+    let avatar = $messageEl.find('.message-avatar').css('background-image')
+    if (avatar === 'none' || avatar === '') avatar = undefined
     if (avatar && typeof avatar === 'string')
-      avatar = avatar.replace('url(', '').replace(')', '').replace(/"/g, '').replace(/'/g, '');
-    else avatar = undefined;
+      avatar = avatar.replace('url(', '').replace(')', '').replace(/"/g, '').replace(/'/g, '')
+    else avatar = undefined
 
-    data.avatar = avatar;
+    data.avatar = avatar
 
-    return data;
+    return data
   }
 
   getMessagesData() {
-    const _ = this;
-    const data = [];
+    const _ = this
+    const data = []
 
     _.$el.find('.message, .messages-title').forEach(messageEl => {
-      data.push(_.getMessageData(messageEl));
-    });
-    return data;
+      data.push(_.getMessageData(messageEl))
+    })
+    return data
   }
 
   /**
@@ -111,19 +106,19 @@ export default class Messages extends Event {
    * @returns
    */
   renderMessage(messageToRender) {
-    const m = this;
+    const m = this
     const message = Utils.extend(
       {
         type: 'sent',
         attrs: {},
       },
       messageToRender
-    );
+    )
     if (m.params.renderMessage) {
-      return m.params.renderMessage.call(m, message);
+      return m.params.renderMessage.call(m, message)
     }
     if (message.isTitle) {
-      return `<div class="messages-title">${message.text}</div>`;
+      return `<div class="messages-title">${message.text}</div>`
     }
     return (
       <div
@@ -162,164 +157,164 @@ export default class Messages extends Event {
           {message.footer && <div class="message-footer">{message.footer}</div>}
         </div>
       </div>
-    );
+    )
   }
 
   renderMessages(
     messagesToRender = this.messages,
     method = this.params.newMessagesFirst ? 'prepend' : 'append'
   ) {
-    const m = this;
-    const html = messagesToRender.map(message => m.renderMessage(message)).join('');
-    m.$el[method](html);
+    const m = this
+    const html = messagesToRender.map(message => m.renderMessage(message)).join('')
+    m.$el[method](html)
   }
 
   isFirstMessage(...args) {
-    const m = this;
-    if (m.params.firstMessageRule) return m.params.firstMessageRule(...args);
-    return false;
+    const m = this
+    if (m.params.firstMessageRule) return m.params.firstMessageRule(...args)
+    return false
   }
 
   isLastMessage(...args) {
-    const m = this;
-    if (m.params.lastMessageRule) return m.params.lastMessageRule(...args);
-    return false;
+    const m = this
+    if (m.params.lastMessageRule) return m.params.lastMessageRule(...args)
+    return false
   }
 
   isTailMessage(...args) {
-    const m = this;
-    if (m.params.tailMessageRule) return m.params.tailMessageRule(...args);
-    return false;
+    const m = this
+    if (m.params.tailMessageRule) return m.params.tailMessageRule(...args)
+    return false
   }
 
   isSameNameMessage(...args) {
-    const m = this;
-    if (m.params.sameNameMessageRule) return m.params.sameNameMessageRule(...args);
-    return false;
+    const m = this
+    if (m.params.sameNameMessageRule) return m.params.sameNameMessageRule(...args)
+    return false
   }
 
   isSameHeaderMessage(...args) {
-    const m = this;
-    if (m.params.sameHeaderMessageRule) return m.params.sameHeaderMessageRule(...args);
-    return false;
+    const m = this
+    if (m.params.sameHeaderMessageRule) return m.params.sameHeaderMessageRule(...args)
+    return false
   }
 
   isSameFooterMessage(...args) {
-    const m = this;
-    if (m.params.sameFooterMessageRule) return m.params.sameFooterMessageRule(...args);
-    return false;
+    const m = this
+    if (m.params.sameFooterMessageRule) return m.params.sameFooterMessageRule(...args)
+    return false
   }
 
   isSameAvatarMessage(...args) {
-    const m = this;
-    if (m.params.sameAvatarMessageRule) return m.params.sameAvatarMessageRule(...args);
-    return false;
+    const m = this
+    if (m.params.sameAvatarMessageRule) return m.params.sameAvatarMessageRule(...args)
+    return false
   }
 
   isCustomClassMessage(...args) {
-    const m = this;
-    if (m.params.customClassMessageRule) return m.params.customClassMessageRule(...args);
-    return undefined;
+    const m = this
+    if (m.params.customClassMessageRule) return m.params.customClassMessageRule(...args)
+    return undefined
   }
 
   layout() {
-    const m = this;
+    const m = this
     m.$el.find('.message, .messages-title').each((index, messageEl) => {
-      const $messageEl = $(messageEl);
+      const $messageEl = $(messageEl)
       if (!m.messages) {
-        m.messages = m.getMessagesData();
+        m.messages = m.getMessagesData()
       }
-      const classes = [];
-      const message = m.messages[index];
-      const previousMessage = m.messages[index - 1];
-      const nextMessage = m.messages[index + 1];
+      const classes = []
+      const message = m.messages[index]
+      const previousMessage = m.messages[index - 1]
+      const nextMessage = m.messages[index + 1]
       if (m.isFirstMessage(message, previousMessage, nextMessage)) {
-        classes.push('message-first');
+        classes.push('message-first')
       }
       if (m.isLastMessage(message, previousMessage, nextMessage)) {
-        classes.push('message-last');
+        classes.push('message-last')
       }
       if (m.isTailMessage(message, previousMessage, nextMessage)) {
-        classes.push('message-tail');
+        classes.push('message-tail')
       }
       if (m.isSameNameMessage(message, previousMessage, nextMessage)) {
-        classes.push('message-same-name');
+        classes.push('message-same-name')
       }
       if (m.isSameHeaderMessage(message, previousMessage, nextMessage)) {
-        classes.push('message-same-header');
+        classes.push('message-same-header')
       }
       if (m.isSameFooterMessage(message, previousMessage, nextMessage)) {
-        classes.push('message-same-footer');
+        classes.push('message-same-footer')
       }
       if (m.isSameAvatarMessage(message, previousMessage, nextMessage)) {
-        classes.push('message-same-avatar');
+        classes.push('message-same-avatar')
       }
-      let customMessageClasses = m.isCustomClassMessage(message, previousMessage, nextMessage);
+      let customMessageClasses = m.isCustomClassMessage(message, previousMessage, nextMessage)
       if (customMessageClasses && customMessageClasses.length) {
         if (typeof customMessageClasses === 'string') {
-          customMessageClasses = customMessageClasses.split(' ');
+          customMessageClasses = customMessageClasses.split(' ')
         }
         customMessageClasses.forEach(customClass => {
-          classes.push(customClass);
-        });
+          classes.push(customClass)
+        })
       }
       $messageEl.removeClass(
         // eslint-disable-next-line
         'message-first message-last message-tail message-same-name message-same-header message-same-footer message-same-avatar'
-      );
+      )
       classes.forEach(className => {
-        $messageEl.addClass(className);
-      });
-    });
+        $messageEl.addClass(className)
+      })
+    })
   }
 
   clear() {
-    const m = this;
-    m.messages = [];
-    m.$el.html('');
+    const m = this
+    m.messages = []
+    m.$el.html('')
   }
 
   removeMessage(messageToRemove, layout = true) {
-    const m = this;
+    const m = this
     // Index or El
-    let index;
-    let $el;
+    let index
+    let $el
     if (typeof messageToRemove === 'number') {
-      index = messageToRemove;
-      $el = m.$el.find('.message, .messages-title').eq(index);
+      index = messageToRemove
+      $el = m.$el.find('.message, .messages-title').eq(index)
     } else if (m.messages && m.messages.indexOf(messageToRemove) >= 0) {
-      index = m.messages.indexOf(messageToRemove);
-      $el = m.$el.children().eq(index);
+      index = m.messages.indexOf(messageToRemove)
+      $el = m.$el.children().eq(index)
     } else {
-      $el = $(messageToRemove);
-      index = $el.index();
+      $el = $(messageToRemove)
+      index = $el.index()
     }
     if ($el.length === 0) {
-      return m;
+      return m
     }
-    $el.remove();
-    m.messages.splice(index, 1);
-    if (m.params.autoLayout && layout) m.layout();
-    return m;
+    $el.remove()
+    m.messages.splice(index, 1)
+    if (m.params.autoLayout && layout) m.layout()
+    return m
   }
 
   removeMessages(messagesToRemove, layout = true) {
-    const m = this;
+    const m = this
     if (Array.isArray(messagesToRemove)) {
-      const messagesToRemoveEls = [];
+      const messagesToRemoveEls = []
       messagesToRemove.forEach(messageToRemoveIndex => {
-        messagesToRemoveEls.push(m.$el.find('.message, .messages-title').eq(messageToRemoveIndex));
-      });
+        messagesToRemoveEls.push(m.$el.find('.message, .messages-title').eq(messageToRemoveIndex))
+      })
       messagesToRemoveEls.forEach(messageToRemove => {
-        m.removeMessage(messageToRemove, false);
-      });
+        m.removeMessage(messageToRemove, false)
+      })
     } else {
       $(messagesToRemove).each((index, messageToRemove) => {
-        m.removeMessage(messageToRemove, false);
-      });
+        m.removeMessage(messageToRemove, false)
+      })
     }
-    if (m.params.autoLayout && layout) m.layout();
-    return m;
+    if (m.params.autoLayout && layout) m.layout()
+    return m
   }
 
   /**
@@ -328,102 +323,101 @@ export default class Messages extends Event {
    * @returns
    */
   addMessage(...args) {
-    const m = this;
-    let messageToAdd;
-    let animate;
-    let method;
+    const m = this
+    let messageToAdd
+    let animate
+    let method
     if (typeof args[1] === 'boolean') {
-      [messageToAdd, animate, method] = args;
+      ;[messageToAdd, animate, method] = args
     } else {
-      [messageToAdd, method, animate] = args;
+      ;[messageToAdd, method, animate] = args
     }
     if (typeof animate === 'undefined') {
-      animate = true;
+      animate = true
     }
     if (typeof method === 'undefined') {
-      method = m.params.newMessagesFirst ? 'prepend' : 'append';
+      method = m.params.newMessagesFirst ? 'prepend' : 'append'
     }
 
-    return m.addMessages([messageToAdd], animate, method);
+    return m.addMessages([messageToAdd], animate, method)
   }
 
   setScrollData() {
-    const m = this;
+    const m = this
     // Define scroll positions before new messages added
-    const scrollHeightBefore = m.pageContentEl.scrollHeight;
-    const heightBefore = m.pageContentEl.offsetHeight;
-    const scrollBefore = m.pageContentEl.scrollTop;
+    const scrollHeightBefore = m.pageContentEl.scrollHeight
+    const heightBefore = m.pageContentEl.offsetHeight
+    const scrollBefore = m.pageContentEl.scrollTop
     m.scrollData = {
       scrollHeightBefore,
       heightBefore,
       scrollBefore,
-    };
+    }
     return {
       scrollHeightBefore,
       heightBefore,
       scrollBefore,
-    };
+    }
   }
 
   addMessages(...args) {
-    const _ = this;
-    let messagesToAdd;
-    let animate;
-    let method;
+    const _ = this
+    let messagesToAdd
+    let animate
+    let method
     if (typeof args[1] === 'boolean') {
-      [messagesToAdd, animate, method] = args;
+      ;[messagesToAdd, animate, method] = args
     } else {
-      [messagesToAdd, method, animate] = args;
+      ;[messagesToAdd, method, animate] = args
     }
     if (typeof animate === 'undefined') {
-      animate = true;
+      animate = true
     }
     if (typeof method === 'undefined') {
-      method = _.params.newMessagesFirst ? 'prepend' : 'append';
+      method = _.params.newMessagesFirst ? 'prepend' : 'append'
     }
 
-    const {scrollHeightBefore, scrollBefore} = _.setScrollData();
+    const {scrollHeightBefore, scrollBefore} = _.setScrollData()
 
     // Add message to DOM and data
-    let messagesHTML = '';
-    const typingMessage = _.messages.filter(el => el.isTyping)[0];
+    let messagesHTML = ''
+    const typingMessage = _.messages.filter(el => el.isTyping)[0]
     messagesToAdd.forEach(messageToAdd => {
       if (typingMessage) {
         if (method === 'append') {
-          _.messages.splice(_.messages.indexOf(typingMessage), 0, messageToAdd);
+          _.messages.splice(_.messages.indexOf(typingMessage), 0, messageToAdd)
         } else {
-          _.messages.splice(_.messages.indexOf(typingMessage) + 1, 0, messageToAdd);
+          _.messages.splice(_.messages.indexOf(typingMessage) + 1, 0, messageToAdd)
         }
       } else {
-        _.messages[method === 'append' ? 'push' : 'unshift'](messageToAdd);
+        _.messages[method === 'append' ? 'push' : 'unshift'](messageToAdd)
       }
-      messagesHTML += _.renderMessage(messageToAdd);
-    });
-    const $messagesEls = $(messagesHTML);
+      messagesHTML += _.renderMessage(messageToAdd)
+    })
+    const $messagesEls = $(messagesHTML)
     if (animate) {
       if (method === 'append' && !_.params.newMessagesFirst) {
-        $messagesEls.addClass('message-appear-from-bottom');
+        $messagesEls.addClass('message-appear-from-bottom')
       }
       if (method === 'prepend' && _.params.newMessagesFirst) {
-        $messagesEls.addClass('message-appear-from-top');
+        $messagesEls.addClass('message-appear-from-top')
       }
     }
     if (typingMessage) {
       if (method === 'append') {
-        $messagesEls.insertBefore(_.$el.find('.message-typing'));
+        $messagesEls.insertBefore(_.$el.find('.message-typing'))
       } else {
-        $messagesEls.insertAfter(_.$el.find('.message-typing'));
+        $messagesEls.insertAfter(_.$el.find('.message-typing'))
       }
     } else {
-      _.$el[method]($messagesEls);
+      _.$el[method]($messagesEls)
     }
 
     // Layout
-    if (_.params.autoLayout) _.layout();
+    if (_.params.autoLayout) _.layout()
 
     if (method === 'prepend' && !typingMessage) {
-      _.pageContentEl.scrollTop =
-        scrollBefore + (_.pageContentEl.scrollHeight - scrollHeightBefore);
+      _.pageContentEl.scrollTop = scrollBefore + (_.pageContentEl.scrollHeight - scrollHeightBefore)
     }
 
     if (
@@ -431,17 +425,17 @@ export default class Messages extends Event {
       ((method === 'append' && !_.params.newMessagesFirst) ||
         (method === 'prepend' && _.params.newMessagesFirst && !typingMessage))
     ) {
-      _.scrollWithEdgeCheck(animate);
+      _.scrollWithEdgeCheck(animate)
     }
 
-    return _;
+    return _
   }
 
   showTyping(message = {}) {
-    const m = this;
-    const typingMessage = m.messages.filter(el => el.isTyping)[0];
+    const m = this
+    const typingMessage = m.messages.filter(el => el.isTyping)[0]
     if (typingMessage) {
-      m.removeMessage(m.messages.indexOf(typingMessage));
+      m.removeMessage(m.messages.indexOf(typingMessage))
     }
     m.addMessage(
       Utils.extend(
@@ -451,30 +445,30 @@ export default class Messages extends Event {
         },
         message
       )
-    );
-    return m;
+    )
+    return m
   }
 
   hideTyping() {
-    const m = this;
-    let typingMessageIndex;
-    let typingFound;
+    const m = this
+    let typingMessageIndex
+    let typingFound
     m.messages.forEach((message, index) => {
-      if (message.isTyping) typingMessageIndex = index;
-    });
+      if (message.isTyping) typingMessageIndex = index
+    })
     if (typeof typingMessageIndex !== 'undefined') {
       if (m.$el.find('.message').eq(typingMessageIndex).hasClass('message-typing')) {
-        typingFound = true;
-        m.removeMessage(typingMessageIndex);
+        typingFound = true
+        m.removeMessage(typingMessageIndex)
       }
     }
     if (!typingFound) {
-      const $typingMessageEl = m.$el.find('.message-typing');
+      const $typingMessageEl = m.$el.find('.message-typing')
       if ($typingMessageEl.length) {
-        m.removeMessage($typingMessageEl);
+        m.removeMessage($typingMessageEl)
       }
     }
-    return m;
+    return m
   }
 
   /**
@@ -482,19 +476,19 @@ export default class Messages extends Event {
    * @param {*} animate
    */
   scrollWithEdgeCheck(animate) {
-    const m = this;
-    const {scrollBefore, scrollHeightBefore, heightBefore} = m.scrollData;
+    const m = this
+    const {scrollBefore, scrollHeightBefore, heightBefore} = m.scrollData
     if (m.params.scrollMessagesOnEdge) {
-      let onEdge = false;
+      let onEdge = false
       if (m.params.newMessagesFirst && scrollBefore === 0) {
-        onEdge = true;
+        onEdge = true
       }
       if (!m.params.newMessagesFirst && scrollBefore - (scrollHeightBefore - heightBefore) >= -10) {
-        onEdge = true;
+        onEdge = true
       }
-      if (onEdge) m.scroll(animate ? undefined : 0);
+      if (onEdge) m.scroll(animate ? undefined : 0)
     } else {
-      m.scroll(animate ? undefined : 0);
+      m.scroll(animate ? undefined : 0)
     }
   }
 
@@ -505,42 +499,42 @@ export default class Messages extends Event {
    * @returns
    */
   scroll(duration = 300, scrollTop) {
-    const m = this;
-    const currentScroll = m.pageContentEl.scrollTop;
-    let newScrollTop;
-    if (typeof scrollTop !== 'undefined') newScrollTop = scrollTop;
+    const m = this
+    const currentScroll = m.pageContentEl.scrollTop
+    let newScrollTop
+    if (typeof scrollTop !== 'undefined') newScrollTop = scrollTop
     else {
       newScrollTop = m.params.newMessagesFirst
         ? 0
-        : m.pageContentEl.scrollHeight - m.pageContentEl.offsetHeight;
-      if (newScrollTop === currentScroll) return m;
+        : m.pageContentEl.scrollHeight - m.pageContentEl.offsetHeight
+      if (newScrollTop === currentScroll) return m
     }
-    m.$pageContentEl.scrollTop(newScrollTop, duration);
-    return m;
+    m.$pageContentEl.scrollTop(newScrollTop, duration)
+    return m
   }
 
   /**
    * 初始化
    */
   init() {
-    const _ = this;
-    if (!_.messages || _.messages.length === 0) _.messages = _.getMessagesData();
-    if (_.params.messages && _.params.messages.length) _.renderMessages();
-    if (_.params.autoLayout) _.layout();
-    if (_.params.scrollMessages) _.scroll(0);
+    const _ = this
+    if (!_.messages || _.messages.length === 0) _.messages = _.getMessagesData()
+    if (_.params.messages && _.params.messages.length) _.renderMessages()
+    if (_.params.autoLayout) _.layout()
+    if (_.params.scrollMessages) _.scroll(0)
   }
 
   /**
    * 解构函数
    */
   destroy() {
-    const m = this;
-    m.emit('local::beforeDestroy messagesBeforeDestroy', m);
-    m.$el.trigger('messages:beforedestroy');
+    const m = this
+    m.emit('local::beforeDestroy messagesBeforeDestroy', m)
+    m.$el.trigger('messages:beforedestroy')
     if (m.$el[0]) {
-      m.$el[0].wiaMessages = null;
-      delete m.$el[0].wiaMessages;
+      m.$el[0].wiaMessages = null
+      delete m.$el[0].wiaMessages
     }
-    Utils.deleteProps(m);
+    Utils.deleteProps(m)
   }
 }

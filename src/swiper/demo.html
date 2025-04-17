@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, minimal-ui, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="full-screen" content="yes" />
+    <meta name="browsermode" content="application" />
+    <meta name="apple-mobile-web-app-title" content="wia ui" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="renderer" content="webkit" />
+    <meta name="force-rendering" content="webkit" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="author" content="广州诺亚科技有限公司" />
+
+    <!-- Color theme for statusbar (Android only) -->
+    <meta name="theme-color" content="#2196f3" />
+    <!-- Your app title -->
+    <title>Swiper</title>
+    <link rel="shortcut icon" href="https://cos.wia.pub/wiajs/favicon.ico" type="image/x-icon" />
+    <!-- Path to Framework7 Library Bundle CSS -->
+    <!-- <link rel="stylesheet" href="https://cdn.bootcss.com/framework7/4.4.7/css/framework7.bundle.css"> -->
+    <link rel="stylesheet" href="https://camp.wia.pub/sink/f7.min.css?t=3" />
+    <!-- <link rel="stylesheet" href="f7.css?t=223" /> -->
+    <link rel="stylesheet" href="https://camp.wia.pub/sink/f7.sink.min.css?t=3" />
+    <!-- <link rel="stylesheet" href="f7.camp.css?t=223" /> -->
+    <link rel="stylesheet" href="https://camp.wia.pub/wia/iconcamp240805.css?t=11" />
+    <link rel="stylesheet" href="https://fin.wia.pub/wia/iconfin240803.css?t=11" />
+    <!-- <link rel="stylesheet" href="icon230808.css?t=11" /> -->
+    <link rel="stylesheet" href="https://camp.wia.pub/sink/index.css?t=11" />
+    <!-- <link rel="stylesheet" href="index.css?t=36" /> -->
+    <link rel="stylesheet/less" type="text/css" href="index.less" />
+    <!-- <link rel="stylesheet" href="index.css?t=36" /> -->
+  </head>
+  <body>
+    <!-- App root element -->
+    <div id="wia-app" class="framework7-root">
+      <!-- Your main view, should have "view-main" class -->
+      <div id="wia-view" class="view view-main view-init" data-master-detail-breakpoint="768">
+        <div class="page page-current">
+          <div class="navbar">
+            <div class="navbar-bg"></div>
+            <div class="navbar-inner sliding">
+              <div class="left">
+                <a class="link back" name="back">
+                  <i class="icon icon-back"></i>
+                  <span class="if-not-md">Back</span>
+                </a>
+              </div>
+              <div class="title">Swiper</div>
+            </div>
+          </div>
+          <div class="page-content">
+            <div name="swiper" class="wiaui_swiper">
+              <div class="swipe-wrap"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/less@4"></script>
+    <script src="https://cos.wia.pub/wiajs/base.min.js?t=207"></script>
+    <script type="module">
+      import $ from 'https://cos.wia.pub/wiajs/dom.mjs'
+      import {log as Log} from 'https://cos.wia.pub/wiajs/util.mjs'
+      import {App} from 'https://cos.wia.pub/wiajs/core.mjs'
+      // 页面调试，需屏蔽代码中的 import styles from './index.less' 和
+      // _.wrap.removeClass('swiper').addClass(`${styles.swiper} swiper`)
+      import Swiper from './index.js'
+
+      const log = Log({m: 'index'})
+      let _v
+      let _swiper
+      ;(async () => {
+        // App.use([Navbar])
+        const app = new App({
+          el: '#wia-app', // App root element
+          view: 'wia-view', // Your main view
+          theme: 'ios', // 主题：auto ios md pc
+          init: true, // 初始化
+        })
+
+        $.app = app
+        _v = $.app.$el.find('.page')
+
+        log('wia app ready...')
+
+        const imgs = [
+          'https://camp.wia.pub/img/meal/swiper-01.png',
+          'https://camp.wia.pub/img/meal/swiper-02.png',
+          'https://camp.wia.pub/img/meal/swiper-03.png',
+          'https://camp.wia.pub/img/meal/swiper-04.png',
+          'https://camp.wia.pub/img/meal/swiper-05.png',
+        ]
+
+        _swiper = starSwipe(imgs, 4.3)
+      })()
+
+      /**
+       * 轮播图
+       * @param {string[]} imgs
+       * @param {*} pre
+       */
+      function starSwipe(imgs, whr) {
+        let R
+
+        if (imgs.length > 0) {
+          R = new Swiper({
+            imgs,
+            WHR: whr || 1,
+          })
+        }
+
+        return R
+      }
+    </script>
+  </body>
+</html>

@@ -25,12 +25,13 @@
  * };
  */
 
-/** @jsx jsx */
-import {Event, jsx} from '@wiajs/core';
+/** @jsx-x jsx */
+/** @jsxImportSource @wiajs/core */
+import {Event} from '@wiajs/core'
 
 const def = {
   col: 4,
-};
+}
 
 export default class DataView extends Event {
   /**
@@ -39,10 +40,10 @@ export default class DataView extends Event {
    * @param {*} opt 选项，激活名称
    */
   constructor(page, opt) {
-    super(opt, [page]);
-    this.page = page;
-    this.opt = {...def, ...opt};
-    this.render(this.opt.col, opt.data);
+    super(opt, [page])
+    this.page = page
+    this.opt = {...def, ...opt}
+    this.render(this.opt.col, opt.data)
   }
 
   /**
@@ -51,7 +52,7 @@ export default class DataView extends Event {
    * @returns
    */
   col(cnt) {
-    const R = [];
+    const R = []
     for (let i = 0; i < cnt; i++) {
       R.push(
         <div class="col item-content item-input">
@@ -62,9 +63,9 @@ export default class DataView extends Event {
             </div>
           </div>
         </div>
-      );
+      )
     }
-    return R;
+    return R
   }
 
   /**
@@ -76,25 +77,25 @@ export default class DataView extends Event {
   render(col, data) {
     try {
       if (!col || !data) {
-        console.log('param is null.');
-        return;
+        console.log('param is null.')
+        return
       }
-      const {el} = this.opt;
-      el.addClass('dataView');
+      const {el} = this.opt
+      el.addClass('dataView')
 
       // jsx 通过函数调用，实现html生成。
       const v = $(
         <div name="dataView-tp" tp={`kv-${col}`} class="row">
           {this.col(col)}
         </div>
-      );
+      )
       // 加入到容器
-      el.child(v);
+      el.child(v)
       // 数据与模板结合，生成数据视图
-      el.setView(data, 'dataView');
-      el.find('input[value=""]').upper('.item-input-wrap').hide();
+      el.setView(data, 'dataView')
+      el.find('input[value=""]').upper('.item-input-wrap').hide()
     } catch (ex) {
-      console.log('render', {ex: ex.message});
+      console.log('render', {ex: ex.message})
     }
   }
 }

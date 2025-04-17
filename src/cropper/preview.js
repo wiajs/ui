@@ -27,6 +27,7 @@ export default {
 
     let previews = preview
 
+    // 预览在容器内的图片层
     if (typeof preview === 'string') {
       previews = el.dom.querySelectorAll(preview)
     } else if (preview.querySelector) {
@@ -94,6 +95,10 @@ export default {
     })
   },
 
+  /**
+   * 宽度根据外部样式确定，高度根据宽度动态计算
+   * @returns
+   */
   preview() {
     const _ = this
     const {opt} = _

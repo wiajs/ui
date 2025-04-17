@@ -6,14 +6,14 @@
       [
         {
           text: '新建费用',
-          icon: '<i class="icon iconfont iconicon_add"></i>',
+          icon: '<i class="icon wiaicon iconicon_add"></i>',
           onClick: function () {
             $.app.dialog.alert('Button1 clicked');
           },
         },
         {
           text: '选取费用',
-          icon: '<i class="icon iconfont iconsanheng"></i>',
+          icon: '<i class="icon wiaicon iconsanheng"></i>',
         },
       ],
       // Second group
@@ -35,13 +35,13 @@
     <div class="actions-group">
       <div name="btnNewFee" class="actions-button">
         <div class="actions-button-media">
-          <i class="icon iconfont iconicon_add"></i>
+          <i class="icon wiaicon iconicon_add"></i>
         </div>
         <div class="actions-button-text">新建费用</div>
       </div>
       <div name="btnSelFee" class="actions-button">
         <div class="actions-button-media">
-          <i class="icon iconfont iconsanheng"></i>
+          <i class="icon wiaicon iconsanheng"></i>
         </div>
         <div class="actions-button-text">选取费用</div>
       </div>

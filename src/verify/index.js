@@ -1,8 +1,10 @@
-/** @jsx jsx */
+/** @jsx-x jsx */
+/** @jsxImportSource @wiajs/core */
 
-import {Event, jsx} from '@wiajs/core';
-import styles from './index.less';
+import {Event} from '@wiajs/core'
+import * as css from './index.less'
 
+// const css = styles['wiaui-verify']
 // console.log('verify', {styles});
 
 /**
@@ -29,7 +31,7 @@ import styles from './index.less';
  */
 
 const def = {
-  el: '.verify', // 容器
+  el: '.wiaui_verify', // 容器
   lang: 'zh',
   tip: '请向右滑动填充拼图',
   // url: 'https://cos.wia.pub/wiajs/img/verify', // 图片下载网址
@@ -43,61 +45,62 @@ const def = {
   len: 0,
   x: 0,
   y: 0,
-};
+}
 
 /** @enum {number} */
 const Status = {
   fail: -1, // 失败
   null: 0, // 未加载图片
   succ: 1,
-  try: 2, // 就绪，可使用
-  over: 3, // 超过三次
-};
+  ready: 2, // 就绪，可使用
+  over: 3, // 超过三次，换图片再试
+  smsMax: 4, // 短信超过最大发送次数
+}
 
 /**
  * 滑动条验证
 
  */
 export default class Verify extends Event {
-  status = Status.null;
+  status = Status.null
 
   /** @type {HTMLCanvasElement} */
-  canvas;
+  canvas
   /** @type {HTMLElement} */
-  refreshIcon;
+  refreshIcon
 
   /** @type {HTMLCanvasElement} */
-  block;
+  block
   /** @type {HTMLElement} */
-  sliderContainer;
+  sliderContainer
 
   /** @type {HTMLElement} */
-  sliderMask;
+  sliderMask
   /** @type {HTMLElement} */
-  text;
+  text
   /** @type {HTMLElement} */
-  slider;
+  slider
   /** @type {HTMLElement} */
-  sliderIcon;
+  sliderIcon
   /** @type {CanvasRenderingContext2D} */
-  backCtx;
+  backCtx
   /** @type {CanvasRenderingContext2D} */
-  blockCtx;
+  blockCtx
   /** @type {number[]} */
-  trail;
+  trail
   /** @type {string} */
-  mobile;
+  mobile
   /** @type {OptType} */
-  opt;
+  opt
   /** @type {JQuery<HTMLElement>} */
-  el;
+  el
 
   /** @type {()=>void} */
-  onSuccess;
+  onSuccess
+  /** @type {(status:number)=>void} */
+  onFail
   /** @type {()=>void} */
-  onFail;
-  /** @type {()=>void} */
-  onRefresh;
+  onRefresh
 
   /**
    * 构造函数
@@ -105,34 +108,34 @@ export default class Verify extends Event {
    * @param {*} opts
    */
   constructor(page, opts = {}) {
-    super(opts, [page]);
-    const _ = this;
+    super(opts, [page])
+    const _ = this
     try {
-      if (opts.lang === 'en') opts.tip = opts.tip ?? 'please slide to fill';
+      if (opts.lang === 'en') opts.tip = opts.tip ?? 'please slide to fill'
 
       /** @type {OptType} */
-      const opt = {...def, ...opts};
-      const {width} = opt;
+      const opt = {...def, ...opts}
+      const {width} = opt
       // 匹配iPhone屏幕避免页面左右滑动，iPhone 13 屏幕实际宽度340，原因不明
       if (width && width < opt.cw) {
-        opt.ratio = opt.cw / width;
-        opt.cw = width;
-        opt.ch = Math.round(opt.ch / opt.ratio);
-      } else opt.ratio = 1;
+        opt.ratio = opt.cw / width
+        opt.cw = width
+        opt.ch = Math.round(opt.ch / opt.ratio)
+      } else opt.ratio = 1
 
-      opt.srw = Math.round((opt.sw + opt.sr * 2 + 9) / opt.ratio); // 滑块实际边长
+      opt.srw = Math.round((opt.sw + opt.sr * 2 + 9) / opt.ratio) // 滑块实际边长
 
-      _.opt = opt;
-      _.el = $(opt.el);
+      _.opt = opt
+      _.el = $(opt.el)
 
-      if (opt.mobile) _.mobile = opt.mobile;
-      if (opt.onSuccess) _.onSuccess = opt.onSuccess;
-      if (opt.onFail) _.onFail = opt.onFail;
-      if (opt.onRefresh) _.onRefresh = opt.onRefresh;
+      if (opt.mobile) _.mobile = opt.mobile
+      if (opt.onSuccess) _.onSuccess = opt.onSuccess
+      if (opt.onFail) _.onFail = opt.onFail
+      if (opt.onRefresh) _.onRefresh = opt.onRefresh
 
-      _.init();
+      _.init()
     } catch (e) {
-      console.error(`constructor exp:${e.message}`);
+      console.error(`constructor exp:${e.message}`)
     }
   }
 
@@ -140,56 +143,55 @@ export default class Verify extends Event {
    * 初始化
    */
   async init() {
-    const _ = this;
-    const {opt} = _;
-    let {el} = _;
+    const _ = this
+    const {opt} = _
+    let {el} = _
     try {
-      const {tip, ch, cw, srw} = opt;
+      const {tip, ch, cw, srw} = opt
 
       const html = (
-        <div class={styles.verify} style={`width: ${cw}px`}>
+        <div class={css.wiaui_verify} style={`width: ${cw}px`}>
           <canvas width={cw} height={ch} />
-          <div class={styles.refreshIcon}>
-            <i class="iconfont">&#xe614;</i>
+          <div class={css.refreshIcon}>
+            <i class="wiaicon">&#xe614;</i>
           </div>
-          <canvas class={styles.piece} width={srw} height={ch} />
-          <div class={styles.sliderContainer} style={`width: ${cw}px`}>
-            <div class={styles.sliderMask}>
-              <div class={styles.slider}>
-                <span class={styles.sliderIcon}>
-                  <i class="iconfont rotate-90">&#xe675;</i>
+          <canvas class={css.piece} width={srw} height={ch} />
+          <div class={css.sliderContainer} style={`width: ${cw}px`}>
+            <div class={css.sliderMask}>
+              <div class={css.slider}>
+                <span class={css.sliderIcon}>
+                  <i class="wiaicon rotate-90">&#xe675;</i>
                 </span>
               </div>
             </div>
-            <span class={styles.sliderText}>{tip}</span>
+            <span class={css.sliderText}>{tip}</span>
           </div>
         </div>
-      );
+      )
 
       // 替换当前节点
-      const prev = el.before(html).prev();
-      el.remove();
-      el = prev;
-      $.el = prev;
+      const prev = el.before(html).prev()
+      el.remove()
+      el = prev
+      $.el = prev
 
       // 所有直接子元素节点
-      const child = el.dom.children;
+      const child = el.dom.children
 
-      [_.canvas, _.refreshIcon, _.block, _.sliderContainer] = child;
+      ;[_.canvas, _.refreshIcon, _.block, _.sliderContainer] = child
+      ;[_.sliderMask, _.text] = _.sliderContainer.children
+      ;[_.slider] = _.sliderMask.children
+      ;[_.sliderIcon] = _.slider.children
+      _.backCtx = _.canvas.getContext('2d')
+      _.blockCtx = _.block.getContext('2d')
 
-      [_.sliderMask, _.text] = _.sliderContainer.children;
-      [_.slider] = _.sliderMask.children;
-      [_.sliderIcon] = _.slider.children;
-      _.backCtx = _.canvas.getContext('2d');
-      _.blockCtx = _.block.getContext('2d');
+      scale(_.backCtx)
+      scale(_.blockCtx)
 
-      scale(_.backCtx);
-      scale(_.blockCtx);
-
-      _.trail = [];
-      _.bind();
+      _.trail = []
+      _.bind()
     } catch (e) {
-      console.error(`init exp:${e.message}`);
+      console.error(`init exp:${e.message}`)
     }
   }
 
@@ -198,25 +200,25 @@ export default class Verify extends Event {
    * @param {string} mobile
    */
   async loadImg(mobile) {
-    if (!mobile || !/1\d{10}/.test(mobile)) return;
+    if (!mobile || !/1\d{10}/.test(mobile)) return
 
-    const _ = this;
-    const {opt} = _;
-    const {cw, ch, srw} = opt;
+    const _ = this
+    const {opt} = _
+    const {cw, ch, srw} = opt
 
     try {
-      _.mobile = mobile;
-      const rs = await _.getImg();
+      _.mobile = mobile
+      const rs = await _.getImg()
       if (rs) {
-        const imgs = await Promise.all([loadImg(rs.back), loadImg(rs.block)]);
+        const imgs = await Promise.all([loadImg(rs.back), loadImg(rs.block)])
         if (imgs) {
-          _.backCtx.drawImage(imgs[0], 0, 0, cw, ch); // 背景
-          _.blockCtx.drawImage(imgs[1], 0, 0, srw, ch); // 背景
-          _.status = Status.try;
+          _.backCtx.drawImage(imgs[0], 0, 0, cw, ch) // 背景
+          _.blockCtx.drawImage(imgs[1], 0, 0, srw, ch) // 背景
+          _.status = Status.ready
         }
       }
     } catch (e) {
-      console.log(`loadImg exp:${e.message}`);
+      console.log(`loadImg exp:${e.message}`)
     }
   }
 
@@ -224,12 +226,12 @@ export default class Verify extends Event {
    * 清除
    */
   clean() {
-    const _ = this;
-    const {opt} = _;
-    const {cw, ch, srw} = opt;
+    const _ = this
+    const {opt} = _
+    const {cw, ch, srw} = opt
 
-    _.backCtx.clearRect(0, 0, cw, ch);
-    _.blockCtx.clearRect(0, 0, srw, ch);
+    _.backCtx.clearRect(0, 0, cw, ch)
+    _.blockCtx.clearRect(0, 0, srw, ch)
     // _.block.width = cw;
   }
 
@@ -237,25 +239,25 @@ export default class Verify extends Event {
    * 绑定事件
    */
   bind() {
-    const _ = this;
-    const {opt} = _;
-    const {cw} = opt;
+    const _ = this
+    const {opt} = _
+    const {cw} = opt
 
     // _.el.dom.onselectstart = () => false;
 
     $(_.refreshIcon).click(async ev => {
-      await _.reload();
-      if (_.onRefresh) _.onRefresh();
-    });
+      await _.reload()
+      if (_.onRefresh) _.onRefresh()
+    })
 
     /** {number} */
-    let originX = 0;
+    let originX = 0
     /** {number} */
-    let originY = 0;
+    let originY = 0
     /** {number[]} */
-    const trail = [];
+    const trail = []
     /** {boolean} */
-    let isMouseDown = false;
+    let isMouseDown = false
 
     /**
      * 滑动开始
@@ -263,13 +265,13 @@ export default class Verify extends Event {
      */
     function handleStart(ev) {
       if (ev instanceof MouseEvent) {
-        originX = ev.clientX;
-        originY = ev.clientY;
+        originX = ev.clientX
+        originY = ev.clientY
       } else if (ev instanceof TouchEvent) {
-        originX = ev.touches[0].clientX;
-        originY = ev.touches[0].clientY;
+        originX = ev.touches[0].clientX
+        originY = ev.touches[0].clientY
       }
-      isMouseDown = true;
+      isMouseDown = true
     }
 
     /**
@@ -277,30 +279,30 @@ export default class Verify extends Event {
      * @param {MouseEvent | TouchEvent} ev
      */
     function handleMove(ev) {
-      if (!isMouseDown) return false;
+      if (!isMouseDown) return false
 
-      let eventX = 0;
-      let eventY = 0;
+      let eventX = 0
+      let eventY = 0
       if (ev instanceof MouseEvent) {
-        eventX = ev.clientX;
-        eventY = ev.clientY;
+        eventX = ev.clientX
+        eventY = ev.clientY
       } else if (ev instanceof TouchEvent) {
-        eventX = ev.touches[0].clientX;
-        eventY = ev.touches[0].clientY;
+        eventX = ev.touches[0].clientX
+        eventY = ev.touches[0].clientY
       }
-      const moveX = eventX - originX;
-      const moveY = eventY - originY;
+      const moveX = eventX - originX
+      const moveY = eventY - originY
 
-      if (moveX < 0 || moveX + 58 >= cw) return false;
+      if (moveX < 0 || moveX + 58 >= cw) return false
 
-      _.slider.style.left = `${moveX}px`;
+      _.slider.style.left = `${moveX}px`
       // const blockLeft = (w - 40 - 20) / (w - 40) * moveX
-      const blockLeft = moveX;
-      _.block.style.left = `${blockLeft}px`;
+      const blockLeft = moveX
+      _.block.style.left = `${blockLeft}px`
 
-      $(_.sliderContainer).addClass(styles.sliderContainer_active);
-      _.sliderMask.style.width = `${moveX + 12}px`;
-      trail.push(moveY);
+      $(_.sliderContainer).addClass(css.sliderContainer_active)
+      _.sliderMask.style.width = `${moveX + 12}px`
+      trail.push(moveY)
     }
 
     /**
@@ -308,68 +310,77 @@ export default class Verify extends Event {
      * @param {MouseEvent | TouchEvent} ev
      */
     async function handleEnd(ev) {
-      if (!isMouseDown) return false;
+      if (!isMouseDown) return false
 
-      isMouseDown = false;
-      let eventX = 0;
+      isMouseDown = false
+      let eventX = 0
       if (ev instanceof MouseEvent) {
-        eventX = ev.clientX;
+        eventX = ev.clientX
       } else if (ev instanceof TouchEvent) {
-        eventX = ev.changedTouches[0].clientX;
+        eventX = ev.changedTouches[0].clientX
       }
 
-      if (eventX === originX) return false;
+      if (eventX === originX) return false
 
-      $(_.sliderContainer).removeClass(styles.sliderContainer_active);
-      _.trail = trail;
+      $(_.sliderContainer).removeClass(css.sliderContainer_active)
+      _.trail = trail
 
-      if (_.status !== Status.over) _.status = await _.verify();
+      if (_.status !== Status.over) _.status = await _.verify()
 
       switch (_.status) {
         case Status.succ:
-          $(_.sliderIcon).html(`<i class="iconfont">&#xe664;</i>`);
+          $(_.sliderIcon).html(`<i class="wiaicon">&#xe664;</i>`)
           // $(_.sliderIcon).html(`<i class="fas fa-check" aria-hidden="true"></i>`);
 
-          $(_.sliderContainer).addClass(styles.sliderContainer_success);
+          $(_.sliderContainer).addClass(css.sliderContainer_success)
 
-          if (_.onSuccess) _.onSuccess();
-          break;
+          if (_.onSuccess) _.onSuccess()
+          break
 
-        case Status.try:
-          $(_.sliderContainer).addClass(styles.sliderContainer_fail);
-          $(_.text).html('差点成功，请再试一次');
-          _.reset();
-          break;
+        case Status.ready:
+          $(_.sliderContainer).addClass(css.sliderContainer_fail)
+          $(_.text).html('差点成功，请再试一次')
+          _.reset()
+          break
 
         case Status.over:
-          $(_.sliderContainer).addClass(styles.sliderContainer_fail);
-          $(_.text).html('请点击右上角刷新图标');
-          _.reset();
-          alert('请点击右上角刷新图标重新匹配！');
-          break;
+          $(_.sliderContainer).addClass(css.sliderContainer_fail)
+          $(_.text).html('请点击右上角刷新图标')
+          _.reset()
+          alert('请点击右上角刷新图标重新匹配！')
+          break
+
+        case Status.smsMax:
+          $(_.sliderContainer).addClass(css.sliderContainer_fail)
+          $(_.text).html('登录次数太多，请联系管理员！')
+          alert('登录次数太多，请联系管理员！')
+
+          if (_.onFail) _.onFail(Status.smsMax)
+
+          break
 
         default: {
-          $(_.sliderIcon).html(`<i class="iconfont">&#xe641;</i>`);
-          $(_.sliderContainer).addClass(styles.sliderContainer_fail);
+          $(_.sliderIcon).html(`<i class="wiaicon">&#xe641;</i>`)
+          $(_.sliderContainer).addClass(css.sliderContainer_fail)
 
-          if (_.onFail) _.onFail();
+          if (_.onFail) _.onFail(Status.fail)
 
           setTimeout(() => {
-            _.reset();
-          }, 1000);
+            _.reset()
+          }, 1000)
         }
       }
     }
 
-    _.slider.addEventListener('mousedown', handleStart);
-    _.slider.addEventListener('touchstart', handleStart);
-    _.block.addEventListener('mousedown', handleStart);
-    _.block.addEventListener('touchstart', handleStart);
+    _.slider.addEventListener('mousedown', handleStart)
+    _.slider.addEventListener('touchstart', handleStart)
+    _.block.addEventListener('mousedown', handleStart)
+    _.block.addEventListener('touchstart', handleStart)
 
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('touchmove', handleMove);
-    document.addEventListener('mouseup', handleEnd);
-    document.addEventListener('touchend', handleEnd);
+    document.addEventListener('mousemove', handleMove)
+    document.addEventListener('touchmove', handleMove)
+    document.addEventListener('mouseup', handleEnd)
+    document.addEventListener('touchend', handleEnd)
   }
 
   /**
@@ -377,54 +388,55 @@ export default class Verify extends Event {
    * @returns {Promise<Status>}
    */
   async verify() {
-    let R = Status.fail;
+    let R = Status.fail
 
-    const _ = this;
-    const {mobile, trail, opt} = _;
-    const {url, ratio} = opt;
+    const _ = this
+    const {mobile, trail, opt} = _
+    const {url, ratio} = opt
     try {
-      const left = Math.round(parseInt(_.block.style.left.replace('px', '')) * ratio);
+      const left = Math.round(parseInt(_.block.style.left.replace('px', '')) * ratio)
 
-      const rs = await $.post(`${url}/verify`, {left, mobile, trail});
-      console.log('verify', {rs});
+      const rs = await $.post(`${url}/verify`, {left, mobile, trail})
+      console.log('verify', {rs})
 
-      if (rs?.code === 200) R = Status.succ;
-      else if (rs?.code === 4039) R = Status.over;
-      else if (rs?.code === 4041) R = Status.try;
+      if (rs?.code === 200) R = Status.succ
+      else if (rs?.code === 4039) R = Status.over
+      else if (rs?.code === 4041) R = Status.ready
+      else if (rs?.code === 4028) R = Status.smsMax
     } catch (e) {
-      console.error(`verify exp:${e.message}`);
+      console.error(`verify exp:${e.message}`)
     }
 
-    return R;
+    return R
   }
 
   reset() {
-    const _ = this;
-    const {opt} = _;
+    const _ = this
+    const {opt} = _
 
-    _.sliderContainer.className = styles.sliderContainer;
+    _.sliderContainer.className = css.sliderContainer
 
-    $(_.sliderIcon).html(`<i class="iconfont rotate-90">&#xe675;</i>`);
+    $(_.sliderIcon).html(`<i class="wiaicon rotate-90">&#xe675;</i>`)
     // $(_.sliderIcon).html(`<i class="fas fa-bars fa-rotate-90" aria-hidden="true"></i>`);
 
-    _.slider.style.left = '0';
-    _.block.style.left = '0';
-    _.sliderMask.style.width = '0';
+    _.slider.style.left = '0'
+    _.block.style.left = '0'
+    _.sliderMask.style.width = '0'
   }
 
   async reload() {
-    const _ = this;
-    const {opt} = _;
+    const _ = this
+    const {opt} = _
     try {
-      const {tip} = opt;
+      const {tip} = opt
 
-      _.status = Status.null;
-      _.reset();
-      _.clean();
-      await _.loadImg(_.mobile);
-      $(_.text).html(tip);
+      _.status = Status.null
+      _.reset()
+      _.clean()
+      await _.loadImg(_.mobile)
+      $(_.text).html(tip)
     } catch (e) {
-      console.error(`reload exp:${e.message}`);
+      console.error(`reload exp:${e.message}`)
     }
   }
 
@@ -433,28 +445,28 @@ export default class Verify extends Event {
    * @returns {Promise<{back: string, block: string, time: number}>}
    */
   async getImg() {
-    let R;
-    const _ = this;
-    const {mobile, opt} = _;
-    const {url, count} = opt;
+    let R
+    const _ = this
+    const {mobile, opt} = _
+    const {url, count} = opt
 
     try {
       // R = `${url}/${random(1, count)}.jpg`;
-      const rs = await $.post(`${url}/getVerify`, {mobile});
+      const rs = await $.post(`${url}/getVerify`, {mobile})
       if (rs?.code === 200 && rs.data) {
-        console.log('getImg', {rs});
+        console.log('getImg', {rs})
         // {
         //   back: 'https://img.wia.pub/lianlian/verify/b2f300ffbf949460037368c18a0be637.jpg';
         //   block: 'https://img.wia.pub/lianlian/verify/b2f300ffbf949460037368c18a0be637.png';
         //   time: 120;
         // }
-        R = rs.data;
-      }
+        R = rs.data
+      } else if (rs?.code === 4039) alert('登录次数太多，请联系管理员！')
     } catch (e) {
-      console.log(`getImg exp:${e.message}`);
+      console.log(`getImg exp:${e.message}`)
     }
 
-    return R;
+    return R
   }
 
   destroy() {}
@@ -466,20 +478,29 @@ export default class Verify extends Event {
  * @returns
  */
 function getRatio(ctx) {
-  // 设备像素比，高清屏上，一个图片像素点对应屏幕2-4个像素点
-  // 如果图片密度不够，就会模糊，高清屏需要高密度图片
-  const dpr = window.devicePixelRatio || 1;
-  // 存储像素比
-  const bsr =
-    ctx.webkitBackingStorePixelRatio ||
-    ctx.mozBackingStorePixelRatio ||
-    ctx.msBackingStorePixelRatio ||
-    ctx.oBackingStorePixelRatio ||
-    ctx.backingStorePixelRatio ||
-    1;
+  let R = 1
+  try {
+    // 设备像素比，高清屏上，一个图片像素点对应屏幕2-4个像素点
+    // 如果图片密度不够，就会模糊，高清屏需要高密度图片
+    const dpr = window.devicePixelRatio || 1
+    // 存储像素比，浏览器在渲染 canvas 之前会用几个像素存储画布信息
+    const bsr =
+      ctx.backingStorePixelRatio ||
+      ctx.webkitBackingStorePixelRatio ||
+      ctx.mozBackingStorePixelRatio ||
+      ctx.msBackingStorePixelRatio ||
+      ctx.oBackingStorePixelRatio ||
+      1
 
-  // 设备与屏幕像素比例
-  return dpr / bsr;
+    // 设备与屏幕像素比例
+    R = dpr / bsr
+
+    console.log(`getRatio:${R}`)
+  } catch (e) {
+    console.log(`getRatio exp:${e.message}`)
+  }
+
+  return R
 }
 
 /**
@@ -490,19 +511,20 @@ function getRatio(ctx) {
  * @returns
  */
 function scale(ctx) {
-  const cv = ctx.canvas;
-  const cw = cv.width;
-  const ch = cv.height;
-  const ratio = getRatio(ctx);
+  const cv = ctx.canvas
+  const {width: cw, height: ch} = cv
+
+  const ratio = getRatio(ctx)
 
   // 放大画布，放大的画布最后缩小绘制到屏幕，单位面积的像素点更多，匹配高清屏
-  cv.width = Math.floor(cw * ratio);
-  cv.height = Math.floor(ch * ratio);
-  // 画板不变
-  cv.style.width = `${cw}px`;
-  cv.style.height = `${ch}px`;
-  ctx.scale(ratio, ratio);
-  ctx.lineWidth = 1; // 修改线条宽度的值，要求为实际像素值的一半
+  cv.width = Math.floor(cw * ratio)
+  cv.height = Math.floor(ch * ratio)
+  // 画布显示尺寸不变，画布缩小到现实尺寸
+  cv.style.width = `${cw}px`
+  cv.style.height = `${ch}px`
+  // 按缩小比例进行绘制
+  ctx.scale(ratio, ratio)
+  ctx.lineWidth = 1 // 修改线条宽度的值，要求为实际像素值的一半
 }
 
 /**
@@ -512,7 +534,7 @@ function scale(ctx) {
  * @returns
  */
 function sum(x, y) {
-  return x + y;
+  return x + y
 }
 
 /**
@@ -521,7 +543,7 @@ function sum(x, y) {
  * @returns
  */
 function square(x) {
-  return x * x;
+  return x * x
 }
 
 /**
@@ -531,7 +553,7 @@ function square(x) {
  * @returns
  */
 function random(min, max) {
-  return Math.round(Math.random() * (max - min) + min);
+  return Math.round(Math.random() * (max - min) + min)
 }
 
 /**
@@ -542,13 +564,13 @@ function random(min, max) {
 function loadImg(src) {
   return new Promise((res, rej) => {
     // 不能使用页面中的img,页面中的img会压缩图片，得不到图片真实大小!
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.src = src;
+    const img = new Image()
+    img.crossOrigin = 'Anonymous'
+    img.src = src
     if (img.complete) {
-      res(img);
+      res(img)
     } else {
-      img.onload = () => res(img);
+      img.onload = () => res(img)
     }
-  });
+  })
 }

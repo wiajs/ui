@@ -27,19 +27,20 @@ const _data = [
 ];
  */
 
-/** @jsx jsx */
-import {compareObj} from '@wiajs/core/util/tool';
-import {Event, jsx} from '@wiajs/core';
+/** @jsx-x jsx */
+/** @jsxImportSource @wiajs/core */
+import {compareObj} from '@wiajs/core/util/tool'
+import {Event} from '@wiajs/core'
 
 const def = {
   name: 'tbData',
-};
+}
 
 export default class DataTable extends Event {
-  head = []; // 表头
-  data = []; // 数据
-  el = null; // 容器
-  tb = null; // 表格
+  head = [] // 表头
+  data = [] // 数据
+  el = null // 容器
+  tb = null // 表格
 
   /**
    * 表构造
@@ -47,24 +48,24 @@ export default class DataTable extends Event {
    * @param {*} opt 选项，激活名称
    */
   constructor(page, opt) {
-    super(opt, [page]);
-    this.page = page;
-    this.opt = {...def, ...opt};
+    super(opt, [page])
+    this.page = page
+    this.opt = {...def, ...opt}
 
     // 表数据
     if (this.opt.data && this.opt.data.length > 0) {
       if (this.opt.head[0].page || this.opt.head[0].sort) {
         // 克隆数组数据，用于排序、分页，不改变原数据
-        this.data = [...this.opt.data];
-        if (this.opt.head[0].page && !this.opt.head[0].pageLink) this.opt.head[0].pageLink = 10;
-      } else this.data = opt.data;
+        this.data = [...this.opt.data]
+        if (this.opt.head[0].page && !this.opt.head[0].pageLink) this.opt.head[0].pageLink = 10
+      } else this.data = opt.data
     }
 
-    this.head = this.opt.head;
-    this.el = this.opt.el;
+    this.head = this.opt.head
+    this.el = this.opt.el
 
     // 生成表html
-    this.render();
+    this.render()
   }
 
   /**
@@ -73,7 +74,7 @@ export default class DataTable extends Event {
    * @returns
    */
   th(head) {
-    const R = [];
+    const R = []
     if (head[0].checkbox)
       R.push(
         <th class="checkbox-cell">
@@ -82,15 +83,15 @@ export default class DataTable extends Event {
             <i class="icon-checkbox" />
           </label>
         </th>
-      );
+      )
 
     for (let i = 1; i < head.length; i++) {
-      const d = head[i];
-      const cls = [d.type === 'number' ? 'numeric-cell' : 'label-cell'];
-      if (d.sort) cls.push('sortable-cell');
-      R.push(<th class={cls.join(' ')}>{d.name}</th>);
+      const d = head[i]
+      const cls = [d.type === 'number' ? 'numeric-cell' : 'label-cell']
+      if (d.sort) cls.push('sortable-cell')
+      R.push(<th class={cls.join(' ')}>{d.name}</th>)
     }
-    return R;
+    return R
   }
 
   /**
@@ -100,29 +101,29 @@ export default class DataTable extends Event {
    * @returns
    */
   td(head) {
-    const R = [];
-    const {hide, link} = head[0];
+    const R = []
+    const {hide, link} = head[0]
 
-    let col = -1; // 隐藏字段需跳过
+    let col = -1 // 隐藏字段需跳过
     for (let i = 1, len = head.length; i < len; i++) {
-      col++; // 从 0 开始
+      col++ // 从 0 开始
       // 跳过隐藏列，隐藏列不显示
-      if (hide?.includes(col)) col++;
+      if (hide?.includes(col)) col++
 
-      const d = head[i];
+      const d = head[i]
       // TODO 跳转链接，需触发页面事件，方便页面类执行跳转
       if (link?.includes(i))
         R.push(
           <td class="label-cell" data-val={`$\{r[${col}]}`}>
             <a href="">{`$\{r[${col}]}`}</a>
           </td>
-        );
+        )
       else {
-        const cls = d.type === 'number' ? 'numeric-cell' : 'label-cell';
-        R.push(<td class={cls}>{`$\{r[${col}]}`}</td>);
+        const cls = d.type === 'number' ? 'numeric-cell' : 'label-cell'
+        R.push(<td class={cls}>{`$\{r[${col}]}`}</td>)
       }
     }
-    return R;
+    return R
   }
 
   /**
@@ -131,21 +132,21 @@ export default class DataTable extends Event {
    */
   render() {
     try {
-      const {head, data} = this;
+      const {head, data} = this
 
       if (!head) {
-        console.log('param is null.');
-        return;
+        console.log('param is null.')
+        return
       }
 
-      const {el, name} = this.opt;
+      const {el, name} = this.opt
 
-      let v = <table name={name}></table>;
+      let v = <table name={name}></table>
       // 加入到容器
-      el.append(v);
-      const tb = el.name(name);
+      el.append(v)
+      const tb = el.name(name)
       // 保存tb
-      this.tb = tb;
+      this.tb = tb
 
       // <table name="tbLoan">
       // jsx 通过函数调用，实现html生成。
@@ -153,9 +154,9 @@ export default class DataTable extends Event {
         <thead name="tbHead">
           <tr>{this.th(head)}</tr>
         </thead>
-      );
+      )
       // 加入到表格
-      tb.append(v);
+      tb.append(v)
 
       // 表主体
       v = (
@@ -172,27 +173,27 @@ export default class DataTable extends Event {
             {this.td(head)}
           </tr>
         </tbody>
-      );
+      )
 
       // 加入到表格
-      tb.append(v);
+      tb.append(v)
 
       if (head[0].page) {
         v = (
           <div class="data-table-footer">
             <div class="dataTables_paginate paging_simple_numbers" />
           </div>
-        );
+        )
         // 加入到容器，而非表格
-        el.append(v);
+        el.append(v)
       }
 
       // 绑定事件，如点击head排序
-      this.bind();
+      this.bind()
       // 数据显示
-      this.setView();
+      this.setView()
     } catch (ex) {
-      console.log('render', {ex: ex.message});
+      console.log('render', {ex: ex.message})
     }
   }
 
@@ -202,31 +203,31 @@ export default class DataTable extends Event {
    */
   setView(data) {
     try {
-    const {head} = this;
-      const {page: hpage, sort: hsort} = head[0];
-      let {id: hid} = head[0];
-      if (hid && hid < 0) hid = undefined;
+      const {head} = this
+      const {page: hpage, sort: hsort} = head[0]
+      let {id: hid} = head[0]
+      if (hid && hid < 0) hid = undefined
 
-    if (data) {
+      if (data) {
         if (hpage || hsort) {
-        // 克隆数组数据，用于排序、分页，不改变原数据
-        this.data = [...data];
-      } else this.data = data || [];
-    }
-
-    // 缺省排序
-      if (hsort) {
-        const c = getCol(head, hsort);
-      if (c) {
-        sort(this.data, c.col, c.type);
+          // 克隆数组数据，用于排序、分页，不改变原数据
+          this.data = [...data]
+        } else this.data = data || []
       }
-    }
 
-    // 数据与模板结合，生成数据视图
-      if (this.pageBar()) this.paging();
-      else this.tb.setView(data, hid); 
+      // 缺省排序
+      if (hsort) {
+        const c = getCol(head, hsort)
+        if (c) {
+          sort(this.data, c.col, c.type)
+        }
+      }
+
+      // 数据与模板结合，生成数据视图
+      if (this.pageBar()) this.paging()
+      else this.tb.setView(data, hid)
     } catch (ex) {
-      console.error('setView exp:', ex.message);
+      console.error('setView exp:', ex.message)
     }
   }
 
@@ -236,24 +237,24 @@ export default class DataTable extends Event {
    * @returns 是否分页
    */
   pageBar(start = 1) {
-    let R = false;
+    let R = false
 
-    const {head, data} = this;
-    const {el} = this.opt;
+    const {head, data} = this
+    const {el} = this.opt
 
     if (!head) {
-      console.log('param is null.');
-      return;
+      console.log('param is null.')
+      return
     }
 
     // 分页
-    const prow = head[0].page;
-    const plink = head[0].pageLink;
-    const paging = prow && prow > 0 && data.length > prow;
+    const prow = head[0].page
+    const plink = head[0].pageLink
+    const paging = prow && prow > 0 && data.length > prow
     if (paging) {
-      const len = Math.ceil(data.length / prow);
-      let cnt = len - (start - 1);
-      if (cnt > plink) cnt = plink;
+      const len = Math.ceil(data.length / prow)
+      let cnt = len - (start - 1)
+      if (cnt > plink) cnt = plink
 
       const v = (
         <ul class="pagination">
@@ -269,13 +270,13 @@ export default class DataTable extends Event {
             </a>
           </li>
         </ul>
-      );
+      )
       // 加入到容器
-      el.class('dataTables_paginate').empty().append(v);
-      R = paging;
-    } else el.class('dataTables_paginate').empty();
+      el.class('dataTables_paginate').empty().append(v)
+      R = paging
+    } else el.class('dataTables_paginate').empty()
 
-    return R;
+    return R
   }
 
   /**
@@ -284,7 +285,7 @@ export default class DataTable extends Event {
    * @returns 分页html节点数组
    */
   pageLink(start, cnt) {
-    const R = [];
+    const R = []
     for (let i = start; i < start + cnt; i++) {
       R.push(
         <li class={`paginate_button page-item ${i === start && 'active'}`}>
@@ -292,10 +293,10 @@ export default class DataTable extends Event {
             {i}
           </a>
         </li>
-      );
+      )
     }
 
-    return R;
+    return R
   }
 
   /**
@@ -303,52 +304,52 @@ export default class DataTable extends Event {
    * @param {*} i 分页序数，从1开始，默认第一页
    */
   paging(i = 1) {
-    const {data, tb, el, head} = this;
-    let {id: hid} = head[0];
-    if (hid && hid < 0) hid = undefined;
+    const {data, tb, el, head} = this
+    let {id: hid} = head[0]
+    if (hid && hid < 0) hid = undefined
 
-    el.class('.page-item.active').removeClass('active');
-    el.findNode(`a[data-page="${i}"]`).parent().addClass('active');
-    const plen = head[0].page;
-    const start = (i - 1) * plen;
-    tb.setView(data.slice(start, start + plen), hid);
+    el.class('.page-item.active').removeClass('active')
+    el.findNode(`a[data-page="${i}"]`).parent().addClass('active')
+    const plen = head[0].page
+    const start = (i - 1) * plen
+    tb.setView(data.slice(start, start + plen), hid)
   }
 
   bind() {
-    const {tb, el, head} = this;
-    let {id: hid} = head[0];
-    if (hid && hid < 0) hid = undefined;
+    const {tb, el, head} = this
+    let {id: hid} = head[0]
+    if (hid && hid < 0) hid = undefined
 
     // 表格排序
     el.name('tbHead').click(ev => {
-      const th = $(ev.target).upper('.sortable-cell');
+      const th = $(ev.target).upper('.sortable-cell')
       if (th.length > 0) {
-        const c = getCol(head, th.html());
+        const c = getCol(head, th.html())
         if (c) {
-          sort(this.data, c.col, c.type, th.hasClass('sortable-desc'));
-          if (this.pageBar()) this.paging(1);
-          else this.tb.setView(this.data, hid);
+          sort(this.data, c.col, c.type, th.hasClass('sortable-desc'))
+          if (this.pageBar()) this.paging(1)
+          else this.tb.setView(this.data, hid)
         }
       }
-    });
+    })
 
     // 分页 pagination
     el.class('dataTables_paginate').click(ev => {
-      const lk = $(ev.target).upper('.page-link');
-      const prow = head[0].page;
-      const plink = head[0].pageLink;
+      const lk = $(ev.target).upper('.page-link')
+      const prow = head[0].page
+      const plink = head[0].pageLink
       if (lk.length > 0 && prow > 0) {
-        let i = lk.data('page');
-        if (Number.isInteger(i)) this.paging(i);
+        let i = lk.data('page')
+        if (Number.isInteger(i)) this.paging(i)
         else if (i.startsWith('>')) {
-          i = Number.parseInt(i.substr(1), 10);
-          this.pageBar(i + 1);
+          i = Number.parseInt(i.substr(1), 10)
+          this.pageBar(i + 1)
         } else if (i.startsWith('<')) {
-          i = Number.parseInt(i.substr(1), 10);
-          this.pageBar(i - plink);
+          i = Number.parseInt(i.substr(1), 10)
+          this.pageBar(i - plink)
         }
       }
-    });
+    })
   }
 }
 
@@ -359,24 +360,24 @@ export default class DataTable extends Event {
  * @returns 表数据序号
  */
 function getCol(head, name) {
-  let R = null;
+  let R = null
 
-  const {hide} = head[0];
-  let col = -1; // 隐藏字段需跳过
+  const {hide} = head[0]
+  let col = -1 // 隐藏字段需跳过
   for (let i = 1, len = head.length; i < len; i++) {
-    col++; // 从 0 开始
+    col++ // 从 0 开始
     // 跳过隐藏列，隐藏列不显示
-    if (hide?.includes(i)) col++;
+    if (hide?.includes(i)) col++
 
     if (head[i].name === name) {
-      R = {col, type: head[i].type};
-      break;
+      R = {col, type: head[i].type}
+      break
     }
   }
 
-  return R;
+  return R
 }
 
 function sort(data, k, type, desc) {
-  return data.sort(compareObj(k, desc, type));
+  return data.sort(compareObj(k, desc, type))
 }
