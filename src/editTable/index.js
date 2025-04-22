@@ -77,6 +77,11 @@ const DataType = {
   view: 25, // 嵌套视图
 }
 
+const g = {
+  /** @type {*} */
+  lightbox: null,
+}
+
 /**
  * EditTable
  */
@@ -1190,10 +1195,12 @@ export default class EditTable extends Event {
       const thead = _.tb.tag('THEAD')
       const tbody = _.tb.tag('TBODY')
       let row = thead.lastChild().clone()
-      const {idx} = rs
-      let i = 0
+      let {idx} = rs // 数据数组索引
+      let i = -1 // 行索引
       // 行赋值
       for (const r of rs) {
+        i++
+        idx += i
         try {
           const {name} = r
           if (!name) continue
@@ -1221,7 +1228,7 @@ export default class EditTable extends Event {
           else {
             td.innerHTML = `<span name="tx" class="etValue">${value}</span>`
             //  txs[i].setAttribute('idx', '') // 每行编辑节点设置idx属性，对应名称与数据索引，方便获取、设置节点数据
-            $td.data('idx', idx + i) // td 保存 数据索引
+            $td.data('idx', idx) // td 保存 数据索引
           }
           row.append(td)
           // 插入到空行前
@@ -1235,7 +1242,7 @@ export default class EditTable extends Event {
             td.colSpan = col * 2
 
             const $td = $(td)
-            $td.data('idx', idx + i) // td 保存 数据索引
+            $td.data('idx', idx) // td 保存 数据索引
 
             $td.append(
               <div class="data-table">
@@ -1255,10 +1262,8 @@ export default class EditTable extends Event {
             tbody.dom.insertBefore(row.dom, null)
             row.show()
           } else if (type === DataType.attach && value?.length) {
-            _.fillAttach(value, thead, tbody, col, idx, i)
+            _.fillAttach(value, thead, tbody, col, idx)
           }
-
-          i++
         } catch (e) {
           log.err(e, 'fillKv')
         }
@@ -1272,22 +1277,30 @@ export default class EditTable extends Event {
 
   /**
    * fill attach file
-   * @param {*} value
-   * @param {*} thead
-   * @param {*} tbody
-   * @param {*} col
-   * @param {*} idx
-   * @param {*} i
+   * @param {{_idx: number, id: number, cat:string, name:string, url:string, status?:string, type:string, ext?:string}[]} value - 数据卡 值，对象数组
+   * @param {*} thead - 表头
+   * @param {*} tbody - 表body
+   * @param {*} col - 表总列数
+   * @param {*} idx - 数据数组索引
    */
-  fillAttach(value, thead, tbody, col, idx, i) {
+  fillAttach(value, thead, tbody, col, idx) {
     const _ = this
     try {
+      if (!value?.length) return
+
+      let i = -1
+      for (const v of value) {
+        i++
+        v._idx = i
+      }
+
       const row = thead.lastChild().clone()
+      row.dom.data = value // 保存数据，用于点击浏览
       const td = document.createElement('td')
       td.colSpan = col * 2
 
       const $td = $(td)
-      $td.data('idx', idx + i) // td 保存 数据索引
+      $td.data('idx', idx) // td 保存 数据索引
 
       const att = $(<div class="etAttach" />)
       att.appendTo($td)
@@ -1305,11 +1318,11 @@ export default class EditTable extends Event {
       for (const k of Object.keys(cats)) {
         att.append(<div class="attach-cat">{k}</div>)
         for (const d of cats[k].data) {
-          const {id, cat, name, url, status, type} = d
+          const {_idx, cat, name, url, status, type} = d
           let {ext} = d
           if (type === 'img') {
             att.append(
-              <div class="attach-item" data-id={id}>
+              <div class="attach-item" data-idx={_idx}>
                 <img src={url} alt={name} loading="lazy" />
                 <p>{name}</p>
               </div>
@@ -1317,7 +1330,7 @@ export default class EditTable extends Event {
           } else if (type === 'video') {
             ext = ext ?? 'mp4'
             att.append(
-              <div class="attach-item" data-id={id}>
+              <div class="attach-item" data-idx={_idx}>
                 <video controls preload="none">
                   <source src={url} type={`${type}/${ext}`} />
                 </video>
@@ -1334,7 +1347,7 @@ export default class EditTable extends Event {
             else src = 'https://cos.wia.pub/wiajs/img/uploader/raw.png'
 
             att.append(
-              <div class="attach-item" data-id={id}>
+              <div class="attach-item" data-idx={_idx}>
                 <img src={src} alt={name} loading="lazy" />
                 <p>{name}</p>
               </div>
@@ -1348,8 +1361,65 @@ export default class EditTable extends Event {
       tbody.dom.insertBefore(row.dom, null)
       row.show()
       setTimeout(() => _.attachLast(row), 1000)
+      row.click(ev => _.attachClick(ev)) // 点击浏览大图
     } catch (e) {
       log.err(e, 'fillAttach')
+    }
+  }
+
+  /**
+   * 点击浏览大图
+   * @param {*} ev
+   */
+  async attachClick(ev) {
+    const _ = this
+
+    const row = $(ev).upper('tr')
+    const att = $(ev).upper('.attach-item')
+    const idx = att.data('idx')
+    // 浏览图片附件
+    if (att.dom && row.dom) {
+      const {data} = row.dom
+      const v = data.find(v => v._idx === idx)
+      const {type, ext} = v || {}
+      let {url} = v || {}
+      if (type === 'doc') {
+        if (['doc', 'docx', 'xls', 'xlsx', 'ppt'].includes(ext)) url = `https://view.officeapps.live.com/op/view.aspx?src=${url}&wdOrigin=BROWSELINK`
+
+        window.open(url, '_blank')
+      } else if (type === 'img' || type === 'video') {
+        if (!g.lightbox) {
+          // @ts-ignore
+          // if (!g.anime) g.anime = await import('https://cdn.jsdelivr.net/npm/animejs@4/+esm')
+
+          // @ts-ignore
+          // const m = await import('https://cdn.jsdelivr.net/npm/glightbox@3/+esm')
+          const m = await import('https://cos.wia.pub/wiajs/glightbox.mjs')
+          g.lightbox = m.default
+          setTimeout(() => _.showImg(data, idx), 1000)
+        } else _.showImg(data, idx)
+      }
+    }
+  }
+
+  /**
+   * 图片浏览
+   * @param {*[]} data
+   * @param {number} idx
+   */
+  showImg(data, idx) {
+    if (g.lightbox) {
+      // window.dispatchEvent(new CustomEvent('animeReady'))
+      const lbox = g.lightbox({selector: null})
+      let id = 0
+      let i = -1
+      for (const v of data) {
+        i++
+        if (v._idx === idx) id = i
+        if (v.type === 'img' || v.type === 'video') lbox.insertSlide({href: v.url})
+      }
+      // lbox.open()
+      lbox.openAt(id)
     }
   }
 
