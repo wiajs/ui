@@ -1,6 +1,6 @@
 {
   "name": "@wiajs/ui",
-  "version": "1.2.16",
+  "version": "1.2.28",
   "description": "wia app ui packages",
   "main": "",
   "scripts": {
@@ -13,8 +13,14 @@
     "./actions": "./dist/actions/index.js",
     "./cropper/*": "./dist/cropper/*",
     "./cropper": "./dist/cropper/index.js",
+    "./card/*": "./dist/card/*",
+    "./card": "./dist/card/index.js",
+    "./table/*": "./dist/table/*",
+    "./table": "./dist/table/index.js",
     "./dataTable/*": "./dist/dataTable/*",
     "./dataTable": "./dist/dataTable/index.js",
+    "./editTable/*": "./dist/editTable/*",
+    "./editTable": "./dist/editTable/index.js",
     "./dataView/*": "./dist/dataView/*",
     "./dataView": "./dist/dataView/appbar.js",
     "./list-nav/*": "./dist/list-nav/*",
@@ -45,7 +51,7 @@
     "name": "Sibyl Yu",
     "email": "sibyl@wia.pub"
   },
-  "license": "MIT",
+  "license": "",
   "bugs": {
     "url": "https://github.com/wiajs/ui/issues"
   },

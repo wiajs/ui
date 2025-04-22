@@ -25,7 +25,6 @@
  * };
  */
 
-/** @jsx-x jsx */
 /** @jsxImportSource @wiajs/core */
 import {Event} from '@wiajs/core'
 

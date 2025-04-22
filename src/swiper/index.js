@@ -14,7 +14,7 @@ import {Event} from '@wiajs/core'
 // import * as styles from './index.less' // ???
 
 /**
- * @typedef {Object} OptType
+ * @typedef {Object} Opt
  * @prop {string} el
  * @prop {number} startSlide
  * @prop {number} speed
@@ -22,6 +22,7 @@ import {Event} from '@wiajs/core'
  * @prop {number} WHR
  * @prop {number} width - 指定宽度，默认满屏
  * @prop {number} height - 指定高度，通过宽高比确定宽度
+ * @prop {boolean} auto - 自动播放
  * @prop {boolean} loop - 循环
  * @prop {boolean} disableScroll
  * @prop {boolean} stopPropagation
@@ -31,10 +32,11 @@ import {Event} from '@wiajs/core'
  */
 
 const def = {
-  el: '.swiper', // 容器
+  el: '.wia-swiper', // 容器
   startSlide: 0, // index position Swipe should start at
-  speed: 300, // speed of prev and next transitions in milliseconds.
+  speed: 500, // speed of prev and next transitions in milliseconds.
   delay: 3000, // begin with auto slideshow (time in milliseconds between slides)
+  auto: true, // auto slideshow
   loop: true, // create an infinite feel with no endpoints
   disableScroll: true, //  stop any touches on this container from scrolling the page
   WHR: 2, // 宽高比
@@ -56,14 +58,14 @@ export default class Swiper extends Event {
   /** @type {number} */
   index = 0
 
-  /** @type {OptType} */
+  /** @type {Opt} */
   opt
 
   /** @type {*} */
-  wrap
+  root
 
   /** @type {HTMLElement} */
-  el
+  wrap
 
   // Evnets
   onTouch = {
@@ -113,19 +115,19 @@ export default class Swiper extends Event {
     super(opts, page ? [page] : page)
     const _ = this
 
-    /** @type {OptType} */
+    /** @type {Opt} */
     _.opt = {...def, ...opts}
 
-    _.wrap = $(_.opt.el)
+    _.root = $(_.opt.el) // 容器层
     // 样式为 class='swiper' ??? 内置样式已改名，页面调试时需屏蔽
-    // _.wrap.removeClass('swiper').addClass(`${styles.swiper} swiper`)
+    // _.root.removeClass('swiper').addClass(`${styles.swiper} swiper`)
 
-    // 容器里的图片层
+    // 容器里的图片层的封装层
     /** @type {HTMLElement} */
-    const el = _.wrap.dom.children[0]
-    _.el = el
+    const wrap = _.root.dom.children[0]
+    _.wrap = wrap
     // ??? 内置样式已改名，页面调试时需屏蔽
-    // $(el).removeClass('swipe-wrap').addClass(`${styles['swipe-wrap']} swipe-wrap`)
+    // $(el).removeClass('swiper-wrap').addClass(`${styles['swiper-wrap']} swiper-wrap`)
 
     _.index = _.opt.startSlide
 
@@ -133,10 +135,18 @@ export default class Swiper extends Event {
 
     // add event listeners
     // set touchstart event on element
-    el.addEventListener('touchstart', _.onTouch.start, false)
-    el.addEventListener('transitionend', _.onTransEnd, false)
+    wrap.addEventListener('touchstart', _.onTouch.start, false)
+    wrap.addEventListener('transitionend', _.onTransEnd, false)
     // set resize event on window
     window.addEventListener('resize', _.onResize, false)
+    // 左右点击切换
+    _.root.click(ev => {
+      const divWidth = _.root.dom.clientWidth
+      const clickX = ev.offsetX
+      // 相对于 div 的点击位置 X 坐标
+      if (clickX < divWidth / 2) _.prev()
+      else _.next()
+    })
   }
 
   /**
@@ -145,7 +155,7 @@ export default class Swiper extends Event {
    */
   init() {
     const _ = this
-    const {opt, el} = _
+    const {opt, wrap} = _
     _.stop()
 
     // 默认宽度满屏，可指定宽度、高度
@@ -155,7 +165,7 @@ export default class Swiper extends Event {
     const imgs = opt.imgs || []
     const cnt = imgs.length
     // 清除原有图层!!!
-    el.innerHTML = ''
+    wrap.innerHTML = ''
 
     // static swipe!
     if (!cnt) {
@@ -166,8 +176,9 @@ export default class Swiper extends Event {
       const dvs = []
       for (let i = 0; i < cnt; i++) {
         const div = document.createElement('div')
+        $(div).addClass('swiper-slide')
         dvs.push(div)
-        el.appendChild(div)
+        wrap.appendChild(div)
       }
 
       // load first img!
@@ -221,7 +232,7 @@ export default class Swiper extends Event {
    */
   setup() {
     const _ = this
-    const {opt, wrap, el, index} = _
+    const {opt, root, wrap, index} = _
     const {WHR} = opt
 
     // 默认宽度满屏
@@ -229,12 +240,12 @@ export default class Swiper extends Event {
     const h = WHR ? w / WHR : opt.height
     // const WHR = options.WHR || 2;
 
-    wrap.dom.style.width = `${w}px`
-    wrap.dom.style.height = `${h}px`
-    wrap.css('visibility', 'visible')
+    root.dom.style.width = `${w}px`
+    root.dom.style.height = `${h}px`
+    root.css('visibility', 'visible')
 
     // cache slides，所有图片层
-    _.slides = el.children
+    _.slides = wrap.children
     // create an array to store current positions of each slide
     _.dists = new Array(_.slides.length)
 
@@ -242,11 +253,11 @@ export default class Swiper extends Event {
     // dom加载后无法获取，好像使用 setTimeout 可以！
     // width = container.getBoundingClientRect().width || container.offsetWidth;
     // 容器的宽度
-    const width = Number.parseInt(getComputedStyle(wrap.dom).width) // container.style.width ||
+    const width = Number.parseInt(getComputedStyle(root.dom).width) // container.style.width ||
     _.width = width
 
     // 设置容器里图片层宽度为图片数量 * 容器宽度
-    el.style.width = `${_.slides.length * width}px`
+    wrap.style.width = `${_.slides.length * width}px`
 
     // alert('dvImg width:' + element.style.width + ' swipe: '
     // + container.getBoundingClientRect().width + '/' + container.offsetWidth
@@ -271,10 +282,10 @@ export default class Swiper extends Event {
       _.move(_.circle(index - 1), -width, 0)
       _.move(_.circle(index + 1), width, 0)
     }
-    wrap.css('visibility', 'visible')
+    root.css('visibility', 'visible')
 
     // start auto slideshow if applicable
-    if (opt.delay && _.slides && _.slides.length > 1) _.start()
+    if (opt.auto && _.slides && _.slides.length > 1) _.start()
   }
 
   /**
@@ -383,14 +394,14 @@ export default class Swiper extends Event {
 
   kill() {
     const _ = this
-    const {el} = _
+    const {wrap} = _
 
     // cancel slideshow
     _.stop()
 
     // reset element
-    el.style.width = 'auto'
-    el.style.left = '0'
+    wrap.style.width = 'auto'
+    wrap.style.left = '0'
 
     // reset slides
     let pos = _.slides.length || 0
@@ -402,9 +413,9 @@ export default class Swiper extends Event {
     }
 
     // remove current event listeners
-    el.removeEventListener('touchstart', _.onTouch.start, false)
+    wrap.removeEventListener('touchstart', _.onTouch.start, false)
     window.removeEventListener('resize', _.onResize, false)
-    el.removeEventListener('transitionend', _.onTransEnd, false)
+    wrap.removeEventListener('transitionend', _.onTransEnd, false)
   }
 
   getIndex() {
@@ -418,7 +429,7 @@ export default class Swiper extends Event {
    */
   touchStart(ev) {
     const _ = this
-    const {el, opt} = _
+    const {wrap, opt} = _
     const touches = ev.touches[0]
     // stop slideshow
     _.stop()
@@ -437,8 +448,8 @@ export default class Swiper extends Event {
     // reset delta and end measurements
     _.touch.delta = {}
     // attach touchmove and touchend listeners
-    el.addEventListener('touchmove', _.onTouch.move, false)
-    el.addEventListener('touchend', _.onTouch.end, false)
+    wrap.addEventListener('touchmove', _.onTouch.move, false)
+    wrap.addEventListener('touchend', _.onTouch.end, false)
 
     if (opt.stopPropagation) ev.stopPropagation()
   }
@@ -511,7 +522,7 @@ export default class Swiper extends Event {
    */
   touchEnd(event) {
     const _ = this
-    const {el, opt, touch, slides, dists, width} = _
+    const {wrap, opt, touch, slides, dists, width} = _
     let {index} = _
     const {speed} = opt
     const {start, delta, isScrolling} = touch
@@ -575,8 +586,8 @@ export default class Swiper extends Event {
     }
 
     // kill touchmove and touchend event listeners until touchstart called again
-    el.removeEventListener('touchmove', _.onTouch.move, false)
-    el.removeEventListener('touchend', _.onTouch.end, false)
+    wrap.removeEventListener('touchmove', _.onTouch.move, false)
+    wrap.removeEventListener('touchend', _.onTouch.end, false)
 
     if (opt.stopPropagation) event.stopPropagation()
   }
@@ -589,7 +600,7 @@ export default class Swiper extends Event {
     const _ = this
     const {opt, index, slides} = _
     if (Number.parseInt(event.target.getAttribute('data-index')) == index) {
-      if (opt.delay) _.start()
+      if (opt.auto) _.start()
 
       opt.onEnd && opt.onEnd(index, slides[index])
     }

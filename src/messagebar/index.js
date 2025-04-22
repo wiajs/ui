@@ -18,15 +18,18 @@ export default class Messagebar extends Event {
 
     const m = this;
 
-    m.params = Utils.extend(def, opt);
+    m.params = {...def, ...opt};
 
     // El
-    const $el = opt.el || page.view.def.selector;
+    const $el = opt.el || page.view.find(def.selector);
     if ($el.length === 0) return m;
 
-    if ($el[0].wiaMessagebar) return $el[0].wiaMessagebar;
+    m.$el = $el;
+    m.el = $el[0];
 
-    $el[0].wiaMessagebar = m;
+    if (m.el.wiaMessagebar) return m.el.wiaMessagebar;
+
+    m.el.wiaMessagebar = m;
 
     // Page and PageContent
     const $pageEl = $el.parents('.page').eq(0);
@@ -108,7 +111,7 @@ export default class Messagebar extends Event {
       m.emit('local::blur messagebarBlur', m);
     }
 
-    m.attachEvents = function attachEvents() {
+    m.attachEvents = function () {
       $el.on('textarea:resize', onAppResize);
       $el.on('submit', onSubmit);
       $el.on('click', '.messagebar-attachment', onAttachmentClick);
@@ -117,7 +120,7 @@ export default class Messagebar extends Event {
       $textareaEl.on('blur', onTextareaBlur);
       page.on('resize', onAppResize);
     };
-    m.detachEvents = function detachEvents() {
+    m.detachEvents = function () {
       $el.off('textarea:resize', onAppResize);
       $el.off('submit', onSubmit);
       $el.off('click', '.messagebar-attachment', onAttachmentClick);
@@ -129,8 +132,6 @@ export default class Messagebar extends Event {
 
     // Init
     m.init();
-
-    return m;
   }
 
   focus() {
@@ -182,7 +183,7 @@ export default class Messagebar extends Event {
       $attachmentsEl,
     } = m;
     const elHeight = $el[0].offsetHeight;
-    let maxHeight = params.maxHeight;
+    let {maxHeight} = {params};
     if (top) {
       /*
       Disable at the moment

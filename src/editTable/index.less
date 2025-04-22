@@ -1,0 +1,431 @@
+/*
+ * Edit Table, 类似 listView
+ * 编辑表table的 class 请设置为 edit-table
+ */
+.edit-table {
+  --edit-table-img-heicht: 70px;
+  --edit-table-attach-gap: 8px;
+
+  // 字体、颜色、文本对齐可继承,无需每级定义
+  // 表样式
+  width: 100%;
+  border-collapse: collapse;
+  border: none; // 1px solid #CCCCCC;
+  table-layout: fixed; /*确保td 不被内容撑开，有第一行或colgroup 设置列宽*/
+  // background: white; // WhiteSmoke
+  // background: WhiteSmoke; // WhiteSmoke  245 245 245
+  // background: rgb(247, 248, 250); // WhiteSmoke
+  margin: 1rem 0 0 0;
+  font-size: 14px; // 17
+  // color: #828282;
+  color: #4b4b4b;
+
+  h1 {
+    font-size: 0.9rem; // 18
+    font-weight: 400;
+    margin-bottom: 0.75rem;
+  }
+  h2 {
+    font-size: 0.85rem; // 17
+    font-weight: 400;
+    margin-bottom: 0.3rem;
+  }
+  h3 {
+    font-size: 0.8rem; // 16
+    font-weight: 400;
+  }
+  p {
+    margin: 10px 0;
+  }
+
+  /* 跟 listView th 一致 */
+  th {
+    font-weight: bold;
+    font-size: 0.85rem;
+    padding: 4px 5px 2px;
+    border-bottom: 1px solid #dce0e0; /*#666;*/
+    //border-top: 1px solid #f1f1f1;
+    //border-left: 1px solid #cccccc;
+    //border-right: 1px solid #cccccc;
+    // background-color: white; //#396799; /*#396799; lightsteelblue; *#cedce9; #ebebed;*/
+    white-space: nowrap;
+    text-align: center; /*text-align: left;*/
+    height: 1rem;
+  }
+
+  .imgTitle {
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  tbody {
+    // background-color: white;
+  }
+
+  /* 跟 listView odd tr 一致 */
+  tr {
+    // min-height: 2.2rem;
+    //background-color: lavender;
+    input {
+      min-height: 32px;
+    }
+
+    span {
+      // min-height: 2.2rem;
+      min-height: 32px;
+      //background: lavender;
+      // padding: 10px 0 10px 0.75rem;
+    }
+  }
+
+  /* mobile no use odd even!
+  .etRowOdd {
+    min-height: 2.2rem;
+    //background-color: lavender;
+    input, span {
+      min-height: 2.2rem;
+      //background: lavender;
+      padding: 5px 0.75rem;
+    }
+  }
+
+  .etRowEven {
+    min-height: 2.2rem;
+    //background-color: whitesmoke;
+    input, span {
+      min-height: 2.2rem;
+      //background: whitesmoke;
+      padding: 5px 0.75rem;
+    }
+  }
+  */
+
+  /* 默认所有 td 带下划线 */
+  td {
+    // border-bottom: 1px solid #ccc; /* 灰色下划线 */
+    // border: none;
+    border-collapse: collapse;
+    // padding: 5px;
+    vertical-align: bottom;
+    // vertical-align: top;
+    // padding: 2px; /* 可选内边距 */\
+    // display: flex;
+    // justify-content: stretch; // 充满
+  }
+  .data-table td {
+    vertical-align: middle;
+  }
+
+  /* 包含 etLabel 的 td 不带下划线 */
+  td:has(> .etLabel) {
+    border-bottom: none;
+    padding-left: 8px;
+  }
+
+  /* 包含 etLabel 的 td 带下划线 */
+  td:has(> .etValue) {
+    border-bottom: 1px solid #ccc; /* 灰色下划线 */
+  }
+
+  /* 包含 etLabel 的 td 取消下划线 */
+  td:has(> .etChange) {
+    border-bottom: 1px solid rgb(255, 193, 7); /* 灰色下划线 */
+  }
+
+  /* editTable 独有的，跟 行 底色一致,与TD类似 */
+  input {
+    // --dy-input-color: red;
+    --dy-input-color: #80bdff;
+    --dy-size: 32px;
+  }
+
+  input-x {
+    /* 移除边框和背景 */
+    border: none; // 移除边框
+    // border: none;
+    // background: transparent;
+    // outline: none;
+
+    vertical-align: bottom;
+    padding: 2px;
+    cursor: pointer;
+    // cursor: default; // 普通文本光标
+
+    /*height: 22px;*/
+    width: 100%;
+    //text-align: center;
+  }
+
+  select {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* 对 input不起作用,对span起作用
+  .specN:after {
+    content: ':';
+    display: inline-block;
+  }
+  */
+
+  span {
+    //float: left;
+    display: flex;
+    align-items: center;
+    // justify-content: start;
+    // text-align: left;
+    word-break: break-all;
+    width: 100%;
+    height: 100%;
+
+    padding: 5px;
+    // background: white;
+    // color: rgb(29, 33, 41);
+    color: rgb(134, 144, 156);
+
+    outline: none;
+
+    &.etValue {
+      color: rgb(78, 89, 105);
+    }
+
+    &.vertical {
+      writing-mode: vertical-rl; /* 从右到左垂直排列 */
+      /* writing-mode: vertical-lr;  从左到右垂直排列 */
+      text-orientation: upright; /* 保持文字直立（中文/日文适用） */
+    }
+  }
+
+  // span 可编辑
+  span.edit {
+    display: block;
+    // contenteditable = plaintext-only"; // 编辑，但是无法获得光标位置,插入图片需要光标位置!
+    -webkit-user-modify: read-write-plaintext-only;
+    user-modify: read-write-plaintext-only;
+    // border: 1px solid #2563eb !important; // rgb(0, 123, 255)
+    border: 1px solid #80bdff !important;
+  }
+
+  textarea {
+    // background: white;
+    //border: 1px red;
+    padding: 3px;
+    width: 100%; /*100%-10px会撑开页面超出10px*/
+    height: 1rem;
+    text-align: left;
+  }
+
+  // view 视图
+  .etView input,
+  .etView textarea {
+    color: rgb(29, 33, 41);
+    /* 解决 textarea 的特殊样式 */
+    resize: none;
+    overflow: hidden;
+    white-space: normal;
+
+    // user-select: none; /* 禁止选择和编辑 */
+    user-select: text; /* 允许选择文本 */
+    pointer-events: none;
+
+    /* 可选：hover时保持普通光标 */
+    &:hover {
+      cursor: default;
+    }
+  }
+
+  /*编辑样式*/
+  .etEdit input,
+  .etEdit textarea {
+    text-align: left !important;
+    // padding: 5px; /*5px 0px 3px;*/
+    padding: 0 5px; /*5px 0px 3px;*/
+    width: 100%;
+    word-break: break-all; // 换行
+  }
+
+  /* editTable编辑时的式样,有个虚线边框 */
+  .etCellEdit {
+    //background: LightSteelBlue !important; /*#d0e0ff;*/
+    // border: 1px dotted black !important;
+    border: 1px solid #2563eb !important; // rgb(0, 123, 255)
+    //text-align: left !important;
+    //padding: 0; /*5px 0px 3px;*/
+    /*height: 22px;*/
+    //width: 98%;
+  }
+
+  /* 移除 span 黑色边框 */
+  span-x:focus-visible {
+    outline: none;
+    caret-color: transparent; /* 隐藏输入光标 */
+  }
+
+  span-x {
+    // user-select: none; /* 禁止文本选中 */
+    cursor: default; /* 使用默认箭头光标 */
+  }
+
+  /* 出入的图片样式,用于手机*/
+  .etImg {
+    padding: 0;
+    width: 100%;
+    height: auto;
+  }
+
+  /* editTable 独有，选择行，跟 鼠标移动时的 背景色一致 */
+  .etRowSelOdd,
+  .etRowSelEven {
+    background: LightSteelBlue;
+
+    input,
+    span {
+      background: LightSteelBlue;
+    }
+  }
+
+  /* 行号,注意字体 */
+  .etCellSel {
+    background: White;
+    cursor: pointer;
+    color: Navy;
+  }
+
+  /* 行号 鼠标 移动 变色*/
+  .etCellSelMouseOver {
+    background: LightSteelBlue;
+    cursor: pointer;
+  }
+
+  /*用于输入组件所在 层的外框*/
+  .etInputBox {
+    position: absolute;
+    border: 1px solid #7f9db9;
+    width: 182px;
+    height: 100px;
+    overflow: hidden;
+  }
+
+  .etInputSel {
+    position: relative;
+    margin: -3px;
+    width: 500px;
+    height: 500px;
+    line-height: 14px;
+    /*color:#909993;*/
+  }
+
+  // 表格带格线
+  .etBorder {
+    td {
+      border-bottom: 1px solid #cccccc;
+    }
+  }
+
+  // 附件
+  .etAttach {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    overflow: hidden;
+    /* #e0e0e0; */
+    border-top: 1px solid rgba(0, 0, 0, 0.125);
+    border-left: 1px solid rgba(0, 0, 0, 0.125);
+    border-right: 1px solid rgba(0, 0, 0, 0.125);
+    /* #e0e0e0; */
+    background-color: rgb(248, 249, 250);
+
+    .attach-cat {
+      font-size: 14px;
+      color: rgb(134, 144, 156);
+
+      /* font-weight: 600; */
+      padding: var(--edit-table-attach-gap);
+      /* margin-bottom: 10px; */
+      // width: 22px;
+      writing-mode: vertical-rl; /* 从右到左垂直排列 */
+      /* writing-mode: vertical-lr;  从左到右垂直排列 */
+      text-orientation: upright; /* 保持文字直立（中文/日文适用） */
+
+      border-right: 1px solid rgba(0, 0, 0, 0.125);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+
+      /* 使用flexbox实现居中 */
+      display: flex;
+      justify-content: center; /* 水平居中（在竖向排列中实际上是垂直居中） */
+      align-items: center; /* 垂直居中（在竖向排列中实际上是水平居中） */
+
+      min-height: 100px;
+      /* border: 1px solid #ccc;
+          background-color: #f5f5f5;           */
+    }
+
+    .attach-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      /* border-right: 1px solid rgba(0, 0, 0, 0.125); */
+      padding: var(--edit-table-attach-gap);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+      position: relative;
+      cursor: pointer;
+
+      & + .attach-cat {
+        border-left: 1px solid rgba(0, 0, 0, 0.125);
+      }
+
+      & + .attach-item {
+        padding-left: 0;
+      }
+
+      img {
+        height: var(--edit-table-img-heicht);
+        width: auto;
+        object-fit: contain;
+        border: 1px solid #f0f0f0;
+      }
+
+      video {
+        height: var(--edit-table-img-heicht);
+        width: auto;
+        background-color: #000;
+      }
+
+      p {
+        margin: 5px 0 0;
+        color: rgb(29, 33, 41);
+        font-size: 12px;
+        /* color: (75, 75, 75); */
+        text-align: center;
+        /* word-break: break-word; */
+        // max-width: 100px;
+        // min-width: 80px;
+      }
+    }
+
+    .attach-last {
+      border-bottom: 0px;
+
+      & + .attach-item {
+        padding-left: var(--edit-table-attach-gap);
+      }
+
+      &::after {
+        /* 关键技巧：在子项底部添加分隔线 */
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        width: 100vw;
+        height: 1px;
+        background-color: rgba(0, 0, 0, 0.125);
+        /* #ccc; */
+        bottom: 0px;
+        transform-origin: 50% 0;
+        transform: scaleY(calc(1 / var(--f7-device-pixel-ratio)));
+        /* 10px gap + 1px 分隔线 */
+      }
+    }
+  }
+}

@@ -422,6 +422,7 @@ export default class Uploader {
   }
 
   /**
+   * 加载文件图标
    * 从文件系统加载文件到上传容器，非图形文件用文件后缀图标表示，图片用缩略图表示
    */
   async load() {
@@ -461,10 +462,7 @@ export default class Uploader {
             // 指定宽高比
             if (opt.aspectRatio) {
               const img = await loadImg(src)
-              if (
-                Math.round((img.naturalWidth * 100) / img.naturalHeight) / 100 !==
-                this.opt.aspectRatio
-              ) {
+              if (Math.round((img.naturalWidth * 100) / img.naturalHeight) / 100 !== this.opt.aspectRatio) {
                 f.status = 'crop'
                 f.img = img
                 f.url = src
@@ -747,8 +745,7 @@ export default class Uploader {
 
               // 上传成功，更新图片缩略图
               if (opt.img) opt.img.attr('src', file.file)
-              else if (/\.(?:jpeg|jpg|png|gif)$/i.test(r.name))
-                opt.el.name(`img${id}`).css('background-image', `url(${file.file})`)
+              else if (/\.(?:jpeg|jpg|png|gif)$/i.test(r.name)) opt.el.name(`img${id}`).css('background-image', `url(${file.file})`)
             }
 
             // 填入 input，方便客户读取

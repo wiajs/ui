@@ -59,7 +59,6 @@ const Status = {
 
 /**
  * 滑动条验证
-
  */
 export default class Verify extends Event {
   status = Status.null

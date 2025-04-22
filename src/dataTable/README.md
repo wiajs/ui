@@ -10,22 +10,31 @@
 
 通过表头数据传入选项参数。
 
-- checkbox: true/false，是否带 checkbox 勾选框。
-- id: Number，数据列中第几列为列 id，一般用于选择后按 id 操作行数据。
-  数组格式，第几列为 id 字段，从 0 开始，作为唯一标记，作为模板标识。
+- checkbox: Array，是否带 checkbox 勾选框，对应数据列，空数组或 index 对应数组索引。
+  主要用于选择后按 对应值（一般为 id） 操作行数据。
+- id: Array，数组第几列为 id 字段，从 0 开始，作为行唯一标记，防止重复添加。
+  id 与 checkbox 有类似功能，没有 checkbox 时，id 也能起到数据对应作用。
 - hide: Array，隐藏数据列，数组格式，不显示的列，从 0 开始。
   超出 head 中显示的列，可不列入，自动不显示。
-- link: Array，显示列中，第几列为可点击跳转的链接
-  数组格式，从 1 开始，点击触发 onlink 事件，参数中带被点击的数据。
+- link: Array，从 1 开始，显示列中，第几列为可点击跳转的链接，checkbox 不纳入列数计算。
+  点击触发 `on('link', (no, val) => )` 事件，参数中带被点击列数和列值。
 - sort: 字符串，空，不填，表示不排序，名称表示缺省按哪列名称排序。
 - page: 不填，或填 0，不分页，填数字，比如 10，表示分页，每页 10 行数据。默认不分页。
 - pageLink: 分页条页码数，比如 10，表示分页页码 10 页。
+
+### 事件
+
+- link：点击链接列触发，参数为链接显示的数据值。
+- select：选择行后触发，参数为选择行 Dom 对象，仅当前分页，全选时，触发一次。
+  可通过行 data-id 获取行数据。
+- check：点击 checkbox 时触发，参数为已选择 Set 集，包含所有分页，全选时，每行均触发。
+  可通过 checkbox 的 data-val 获取数据。
 
 ### 测试数据
 
 ```js
 const _head = [
-  {checkbox: true, id: 0, hide: [0], link: [1], page: 3, pageLink: 10, sort: '贷款时间'},
+  {checkbox: [0], id: [0], hide: [0], link: [1], page: 3, pageLink: 10, sort: '贷款时间'},
   {name: '贷款编号', type: 'string', sort: false},
   {name: '贷款金额', type: 'number', sort: true},
   {name: '订单数量', type: 'number', sort: false},
@@ -35,7 +44,7 @@ const _head = [
   {name: '核对状态', type: 'string', sort: false},
 ];
 
-// 测试数据
+// 测试数据，第一列不显示，用于id和checkbox
 const _data = [
   [1, '1234566', 3115.0, 4, '2021/6/12 16:30:25', '2021/7/12 13:28:25', '已提款', '已核对'],
   [2, '1234567', 2005.0, 4, '2021/6/5 16:30:25', '2021/7/5 13:28:25', '已提款', '已核对'],
