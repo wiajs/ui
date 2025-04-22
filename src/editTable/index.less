@@ -128,6 +128,10 @@
     border-bottom: 1px solid #ccc; /* 灰色下划线 */
   }
 
+  td:has(> .etNumber) {
+    border-bottom: 1px solid #ccc; /* 灰色下划线 */
+  }
+
   /* 包含 etLabel 的 td 取消下划线 */
   td:has(> .etChange) {
     border-bottom: 1px solid rgb(255, 193, 7); /* 灰色下划线 */
@@ -190,10 +194,53 @@
       color: rgb(78, 89, 105);
     }
 
+    &.etLabel {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis; /* 显示省略号 */
+      min-width: 40px; // 最小列宽
+      max-width: 100px; // 最大列宽
+      // 鼠标移动显示
+      &:hover {
+        overflow: visible;
+        white-space: normal;
+        // z-index: 1;
+        position: relative;
+        // background: white;
+        // box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+      }
+    }
+
     &.vertical {
       writing-mode: vertical-rl; /* 从右到左垂直排列 */
       /* writing-mode: vertical-lr;  从左到右垂直排列 */
       text-orientation: upright; /* 保持文字直立（中文/日文适用） */
+    }
+  }
+
+  .etNumber {
+    display: inline-flex;
+    // flex-direction: row-reverse;
+    width: 100%;
+    white-space: nowrap; /* 防止内容换行 */
+
+    span {
+      white-space: nowrap;
+      display: inline-block;
+    }
+
+    span.etValue {
+      flex: auto;
+      text-align: right;
+      padding-right: 4px; /* 可选：添加一点右边距 */
+      font-family: 'Helvetica Neue', sans-serif;
+      font-size: 15px;
+    }
+
+    span.etSuffix {
+      flex: none; /* 不伸缩 */
+      width: fit-content; /* 基于内容宽度 */
+      color: #a8abb2;
     }
   }
 

@@ -184,10 +184,11 @@ export default class EditTable extends Event {
               // _.viewCell()
               const val = tx.val()
               tx.hide()
-              span.html(val).show()
+              span.eq(0).html(val)
+              span.show()
             })
           }
-          tx.val(span.html())
+          tx.val(span.eq(0).html())
           tx.show()
           tx.focus()
         } else if (type === DataType.texts) {
@@ -403,8 +404,12 @@ export default class EditTable extends Event {
       for (const td of tds.get()) {
         const $td = $(td)
         const idx = $td.data('idx')
-        const span = $td.find('span')
-        span?.html(_.data[idx].value)
+        const d = _.data[idx]
+        const {type} = d
+        if (type !== DataType.attach && type !== DataType.table && type !== DataType.view) {
+          const span = $td.findNode('span')
+          span?.html(_.data[idx].value)
+        }
       }
     }
   }
@@ -1196,11 +1201,11 @@ export default class EditTable extends Event {
       const tbody = _.tb.tag('TBODY')
       let row = thead.lastChild().clone()
       let {idx} = rs // 数据数组索引
-      let i = -1 // 行索引
+      idx -= 1
       // 行赋值
       for (const r of rs) {
-        i++
-        idx += i
+        idx++
+
         try {
           const {name} = r
           if (!name) continue
@@ -1225,7 +1230,17 @@ export default class EditTable extends Event {
 
           // 换行
           if (type === DataType.table || type === DataType.attach) td.innerHTML = `<span name="tx"/>`
-          else {
+          else if (type === DataType.number) {
+            let {unit, qian, decimal} = r
+            decimal = decimal ?? 2
+            qian = qian ?? true
+            unit = unit ?? ''
+            const val = formatNum(value, decimal)
+            if (unit) td.innerHTML = `<div class=etNumber><span name="tx" class="etValue">${val}</span><span class="etSuffix">${unit}</span></div>`
+            else td.innerHTML = `<span name="tx" class="etValue">${val}</span>`
+            //  txs[i].setAttribute('idx', '') // 每行编辑节点设置idx属性，对应名称与数据索引，方便获取、设置节点数据
+            $td.data('idx', idx) // td 保存 数据索引
+          } else {
             td.innerHTML = `<span name="tx" class="etValue">${value}</span>`
             //  txs[i].setAttribute('idx', '') // 每行编辑节点设置idx属性，对应名称与数据索引，方便获取、设置节点数据
             $td.data('idx', idx) // td 保存 数据索引
@@ -1322,7 +1337,7 @@ export default class EditTable extends Event {
           let {ext} = d
           if (type === 'img') {
             att.append(
-              <div class="attach-item" data-idx={_idx}>
+              <div class="attach-item" data-id={_idx}>
                 <img src={url} alt={name} loading="lazy" />
                 <p>{name}</p>
               </div>
@@ -1330,7 +1345,7 @@ export default class EditTable extends Event {
           } else if (type === 'video') {
             ext = ext ?? 'mp4'
             att.append(
-              <div class="attach-item" data-idx={_idx}>
+              <div class="attach-item" data-id={_idx}>
                 <video controls preload="none">
                   <source src={url} type={`${type}/${ext}`} />
                 </video>
@@ -1347,7 +1362,7 @@ export default class EditTable extends Event {
             else src = 'https://cos.wia.pub/wiajs/img/uploader/raw.png'
 
             att.append(
-              <div class="attach-item" data-idx={_idx}>
+              <div class="attach-item" data-id={_idx}>
                 <img src={src} alt={name} loading="lazy" />
                 <p>{name}</p>
               </div>
@@ -1376,7 +1391,7 @@ export default class EditTable extends Event {
 
     const row = $(ev).upper('tr')
     const att = $(ev).upper('.attach-item')
-    const idx = att.data('idx')
+    const idx = att.data('id')
     // 浏览图片附件
     if (att.dom && row.dom) {
       const {data} = row.dom
@@ -2091,4 +2106,26 @@ export default class EditTable extends Event {
     }
     return rs
   }
+}
+
+/**
+ * 格式化数字：保留 cnt 位小数并添加千位分隔符
+ * @param {number} val - 需要格式化的数字
+ * @param {number} [cnt] - 小数位数
+ * @returns {string} 格式化后的字符串
+ */
+function formatNum(val, cnt = 2) {
+  let R
+  if (typeof val !== 'number' || Number.isNaN(val)) {
+    return val // 如果不是数字，返回默认值
+  }
+
+  R = val
+    .toLocaleString('en-US', {
+      minimumFractionDigits: cnt, // 最少保留 2 位小数
+      maximumFractionDigits: cnt, // 最多保留 2 位小数
+    })
+    .replace(/\.0+$/, '')
+    .replace(/(\.\d+)0+$/, '$1')
+  return R
 }
