@@ -32,7 +32,6 @@ const CLASS_NAME_WAS_COLLAPSED = 'was-collapsed'
 const CLASS_NAME_MAXIMIZED = 'maximized-card'
 
 const SELECTOR_DATA_REMOVE = '[data-card-widget="remove"]'
-const SELECTOR_DATA_COLLAPSE = '[data-card-widget="collapse"]'
 const SELECTOR_DATA_MAXIMIZE = '[data-card-widget="maximize"]'
 
 const SELECTOR_CARD = `.${CLASS_NAME_CARD}`
@@ -43,6 +42,10 @@ const SELECTOR_CARD_FOOTER = '.card-footer'
 /**
  * @typedef {Object} Opts
  * @prop {string} [el] 容器
+ * @prop {string} [collapseIcon] 图标
+ * @prop {string} [expandIcon] 图标
+ * @prop {string} [maximizeIcon] 图标
+ * @prop {string} [minimizeIcon] 图标
  * @prop {()=>*} [onSuccess]
  * @prop {()=>*} [onFail]
  * @prop {()=>*} [onRefresh]
@@ -51,13 +54,13 @@ const SELECTOR_CARD_FOOTER = '.card-footer'
 const def = {
   // el: '.card', // 容器
   animationSpeed: 300,
-  collapseTrigger: SELECTOR_DATA_COLLAPSE,
+  collapseTrigger: '[data-card-widget="collapse"]',
   removeTrigger: SELECTOR_DATA_REMOVE,
   maximizeTrigger: SELECTOR_DATA_MAXIMIZE,
-  collapseIcon: 'fa-minus',
-  expandIcon: 'fa-plus',
-  maximizeIcon: 'fa-expand',
-  minimizeIcon: 'fa-compress',
+  collapseIcon: 'wiaicon:&#xe9eb;',
+  expandIcon: 'wiaicon:&#xea63;',
+  maximizeIcon: 'wiaicon:&#xe62f;',
+  minimizeIcon: 'wiaicon:&#xe7d6;',
 }
 
 // .bianjiqianbi:before {
@@ -94,7 +97,7 @@ export default class Card extends Event {
     // collapse|expand|remove|toggle|maximize|minimize|toggleMaximize
     for (const fn of ['toggle', 'remove', 'toggleMaximize']) {
       let btns
-      if (fn === 'toggle') btns = el.find(SELECTOR_DATA_COLLAPSE)
+      if (fn === 'toggle') btns = el.find(def.collapseTrigger)
       else if (fn === 'remove') btns = el.find(SELECTOR_DATA_REMOVE)
       else if (fn === 'toggleMaximize') btns = el.find(SELECTOR_DATA_MAXIMIZE)
 
@@ -123,10 +126,11 @@ export default class Card extends Event {
       })
     // this.el.addClass(CLASS_NAME_COLLAPSED).removeClass(CLASS_NAME_COLLAPSING)
 
-    const sel = `${SELECTOR_CARD_HEADER} ${this.opt.collapseTrigger} .${this.opt.collapseIcon}`
-    const el = this.el.find(sel)
+    const icon = this.el.find(`${SELECTOR_CARD_HEADER} ${this.opt.collapseTrigger} .icon`)
+    const expand = this.opt.expandIcon.split(':') //   : 'wiaicon:&#xe9eb;',
+    const collapse = this.opt.collapseIcon.split(':') //   : 'wiaicon:&#xe9eb;',
 
-    el.addClass(this.opt.expandIcon).removeClass(this.opt.collapseIcon)
+    icon.removeClass(collapse[0]).addClass(expand[0]).html(expand[1])
 
     this.emit(`local::${EVENT_COLLAPSED}`, this.el)
     // this._element.trigger($.Event(EVENT_COLLAPSED), this._parent)
@@ -140,9 +144,11 @@ export default class Card extends Event {
         this.el.removeClass(CLASS_NAME_COLLAPSED).removeClass(CLASS_NAME_EXPANDING)
       })
 
-    const sel = `${SELECTOR_CARD_HEADER} ${this.opt.collapseTrigger} .${this.opt.expandIcon}`
-    const el = this.el.find(sel)
-    el.addClass(this.opt.collapseIcon).removeClass(this.opt.expandIcon)
+    const icon = this.el.find(`${SELECTOR_CARD_HEADER} ${this.opt.collapseTrigger} .icon`)
+    const expand = this.opt.expandIcon.split(':') //   : 'wiaicon:&#xe9eb;',
+    const collapse = this.opt.collapseIcon.split(':') //   : 'wiaicon:&#xe9eb;',
+
+    icon.removeClass(expand[0]).addClass(collapse[0]).html(collapse[1])
 
     this.emit(`local::${EVENT_EXPANDED}`, this.el)
   }
@@ -162,8 +168,12 @@ export default class Card extends Event {
   }
 
   maximize() {
-    const sel = `${this.opt.maximizeTrigger} .${this.opt.maximizeIcon}`
-    const el = this.el.find(sel).addClass(this.opt.minimizeIcon).removeClass(this.opt.maximizeIcon)
+    const icon = this.el.find(`${this.opt.maximizeTrigger} .icon`)
+
+    const minimize = this.opt.minimizeIcon.split(':') //   : 'wiaicon:&#xe9eb;',
+    const maximize = this.opt.maximizeIcon.split(':') //   : 'wiaicon:&#xe9eb;',
+
+    icon.removeClass(maximize[0]).addClass(minimize[0]).html(minimize[1])
 
     this.el.css({
       height: this.el.height(),
@@ -185,7 +195,12 @@ export default class Card extends Event {
   }
 
   minimize() {
-    this.el.find(`${this.opt.maximizeTrigger} .${this.opt.minimizeIcon}`).addClass(this.opt.maximizeIcon).removeClass(this.opt.minimizeIcon)
+    const icon = this.el.find(`${this.opt.maximizeTrigger} .icon`)
+
+    const minimize = this.opt.minimizeIcon.split(':') //   : 'wiaicon:&#xe9eb;',
+    const maximize = this.opt.maximizeIcon.split(':') //   : 'wiaicon:&#xe9eb;',
+
+    icon.removeClass(minimize[0]).addClass(maximize[0]).html(maximize[1])
 
     this.el.css('cssText', `height: ${this.el[0].style.height} !important; width: ${this.el[0].style.width} !important; transition: all .15s;`)
 

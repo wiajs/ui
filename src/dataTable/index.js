@@ -3,7 +3,7 @@
  * 数据表组件
  */
 import {compareObj} from '@wiajs/core/util/tool'
-import {Utils, Event, jsx} from '@wiajs/core'
+import {Utils, Event} from '@wiajs/core'
 import Table from '../table'
 // import * as view from '../../lib/view'
 import {log as Log} from '@wiajs/util'
@@ -45,7 +45,9 @@ export default class DataTable extends Event {
   /** @type {*} */
   el = null // 整体容器，包括header
   /** @type {*} */
-  tb = null // 表格
+  tb = null // html 表格
+  _lastW = 0 // resize
+  _lastH = 0 // resize
 
   /**
    * 表构造
@@ -58,9 +60,12 @@ export default class DataTable extends Event {
     const cfg = {..._cfg, ...(opt.head[0] || {})}
     const _ = this
     _.page = page
+    _.view = page.view
     _.opt = opt
     _.cfg = cfg
     _.head = opt.head
+    _.lastW = window.innerWidth
+    _.lastH = window.innerHeight
 
     // 容器
     const $el = opt.el || page.view.findNode(opt.selector)
@@ -340,7 +345,7 @@ export default class DataTable extends Event {
       const cls = 'label-cell'
       const col = head.length - 1
       rs.push(
-        <td colspan={col} class={cls}>
+        <td colspan="3" class={cls}>
           <label class="checkbox">
             <input type="checkbox" data-group={`${i}-${value}`} />
             <i class="icon-checkbox" />
@@ -570,6 +575,10 @@ export default class DataTable extends Event {
       const cfg = {..._cfg, ...(head[0] || {})}
       // checkbox
       let {checkbox: ck, layout, sum, fix} = cfg
+
+      if (fix.includes('table')) el.append(<div class="data-table-content overflow-auto" />)
+      else el.append(<div class="data-table-content" />)
+
       let ckv = ''
       // checkbox
       if (ck) {
@@ -581,19 +590,21 @@ export default class DataTable extends Event {
 
       const {name} = opt
 
-      const clas = []
-      if (fix.includes('right')) clas.push('fix-r')
+      const clas = ['fix-h', 'fix-b'] // 固定表头 表尾
+      if (fix.includes('right1')) clas.push('fix-r1')
       if (fix.includes('right2')) clas.push('fix-r2')
-      if (fix.includes('left')) clas.push('fix-l')
+      if (fix.includes('left1')) clas.push('fix-l1')
       if (fix.includes('left2')) clas.push('fix-l2')
       if (fix.includes('left3')) clas.push('fix-l3')
+      if (fix.includes('left4')) clas.push('fix-l4')
+      if (fix.includes('left5')) clas.push('fix-l5')
 
       const style = [`table-layout: ${layout}`]
       let v = <table name={name} class={clas.join(' ')} style={style.join(';')} />
 
       // 加入到容器
-      const tbEl = el.findNode('.data-table-content')
-      tbEl.append(v)
+      const tbWrap = el.findNode('.data-table-content')
+      tbWrap.append(v)
       const tb = el.name(name)
       // 保存tb
       _.tb = tb
@@ -639,14 +650,14 @@ export default class DataTable extends Event {
         tb.append(v)
       }
 
-      if (cfg.page) {
+      if (cfg.page && !fix.includes('table')) {
         v = (
           <div class="data-table-footer">
             <div class="dataTables_paginate paging_simple_numbers" />
           </div>
         )
         // 加入到容器，而非表格
-        tbEl.after(v)
+        tbWrap.after(v)
       }
 
       _.header = el.findNode('.data-table-header')
@@ -654,8 +665,9 @@ export default class DataTable extends Event {
 
       // F7表格生成
       _._tb = new Table(_.page, {el, name})
+
       // 绑定事件，如点击head排序
-      _.bind()
+      _.bind(fix?.length)
       // 数据显示
       if (_.data?.length) _.setView(_.data)
     } catch (ex) {
@@ -690,7 +702,10 @@ export default class DataTable extends Event {
     // }
   }
 
-  bind() {
+  /** 绑定表格事件
+   * @param {boolean} fix - 固定表、列
+   */
+  bind(fix) {
     const _ = this
     try {
       const {el, head, cfg} = _
@@ -699,7 +714,7 @@ export default class DataTable extends Event {
       idx = Array.isArray(idx) && idx?.length ? idx[0] : undefined
 
       // link 字段
-      el.name('tbBody').click('td[data-link]', (ev, sender) => {
+      el.findNode('tbody').click('td[data-link]', (ev, sender) => {
         const n = $(sender)
         if (n.length) {
           const no = n.data('link')
@@ -709,7 +724,7 @@ export default class DataTable extends Event {
       })
 
       // checkbox 变化
-      el.name('tbBody').on('change', '.checkbox-cell input[type="checkbox"]', this.checkEvent)
+      el.findNode('tbody').on('change', '.checkbox-cell input[type="checkbox"]', this.checkEvent)
 
       // 选择行，按跨页选择重新处理表头选择区样式
       this._tb.on('select', rs => {
@@ -760,13 +775,108 @@ export default class DataTable extends Event {
           }
         }
       })
+
+      if (fix) {
+        _.bindFix()
+        // setTimeout(() => _.bindFix(), 1000)
+      }
     } catch (e) {
       log.err(e, 'bind')
     }
   }
 
+  /**
+   * 固定表格动态设置表格高度
+   */
+  bindFix() {
+    const _ = this
+
+    try {
+      const {el} = _
+      // 监听 DOM 变化
+      const observer = new MutationObserver(() => _.resize())
+      observer.observe(el.dom, {childList: true, subtree: true})
+
+      // 监听窗口缩放
+      window.addEventListener(
+        'resize',
+        debounce(() => {
+          // 获取新值
+          const newWidth = window.innerWidth
+          const newHeight = window.innerHeight
+
+          // 计算变化值
+          const widthDiff = newWidth - _.lastW
+          const heightDiff = newHeight - _.lastH
+
+          // console.log(
+          //   `窗口尺寸变化：\n宽度 ${lastWidth} → ${newWidth} (差值: ${widthDiff}px)\n高度 ${lastHeight} → ${newHeight} (差值: ${heightDiff}px)`
+          // )
+
+          // 更新旧值
+          _.lastW = newWidth
+          _.lastH = newHeight
+
+          _.resize(heightDiff)
+        }, 500)
+      ) // 200ms内仅触发一次
+    } catch (e) {
+      log.err(e, 'prebind')
+    }
+  }
+
   unbind() {
     this.el.off('change', '.checkbox-cell input[type="checkbox"]', this.checkEvent)
+  }
+
+  /**
+   * 判断是否有滚动条
+   * data-table-content overflow-auto
+   * @param {number} [ch] - change h
+   * @returns
+   */
+  resize(ch) {
+    const _ = this
+    const {view, el, tb, cfg} = _
+    let R = 0
+    const pg = view.find('.page-content').dom
+    const sh = pg.scrollHeight - pg.clientHeight
+
+    log({ch, sh}, 'resize')
+
+    let h = 0
+    const tbWrap = el.findNode('.data-table-content')
+
+    if (sh > 0) h = tbWrap.height() - sh
+    if (h <= 0 && ch > 0) h = tbWrap.height() + ch
+    // 设置表格高度
+    if (h > 0) tbWrap.css('max-height', `${h}px`)
+    R = h
+
+    const {fix} = cfg
+
+    // 获取表格相对于视口的位置
+    const tbLeft = tb.rect().left
+    tb.dom.style.setProperty('--dt-col1-width', '0px')
+    tb.dom.style.setProperty('--dt-col2-width', '0px')
+    tb.dom.style.setProperty('--dt-col3-width', '0px')
+    tb.dom.style.setProperty('--dt-col4-width', '0px')
+
+    const th2 = tb.findNode('th:nth-of-type(2)')
+    const th3 = tb.findNode('th:nth-of-type(3)')
+    const th4 = tb.findNode('th:nth-of-type(4)')
+    const th5 = tb.findNode('th:nth-of-type(5)')
+    const w1 = th2.rect().left - tbLeft
+    const w2 = th3.rect().left - tbLeft - w1
+    const w3 = th4.rect().left - tbLeft - w2 - w1
+    const w4 = th5.rect().left - tbLeft - w3 - w2 - w1
+
+    if (fix.includes('left1')) tb.dom.style.setProperty('--dt-col1-width', `${w1}px`)
+    if (fix.includes('left2')) tb.dom.style.setProperty('--dt-col2-width', `${w2}px`)
+    if (fix.includes('left3')) tb.dom.style.setProperty('--dt-col3-width', `${w3}px`)
+    if (fix.includes('left4')) tb.dom.style.setProperty('--dt-col4-width', `${w4}px`)
+
+    return R
   }
 
   /**
@@ -1026,4 +1136,24 @@ function getCol(head, name) {
   }
 
   return R
+}
+
+/**
+ *
+ * @param {*} fun
+ * @param {number} [delay]
+ * @returns
+ */
+function debounce(fun, delay = 300) {
+  let timer
+
+  return function (...args) {
+    // 清除之前的计时器
+    clearTimeout(timer)
+
+    // 设置新的计时器，tm 毫秒后执行 fun
+    timer = setTimeout(() => {
+      fun.apply(this, args)
+    }, delay)
+  }
 }

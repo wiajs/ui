@@ -21,39 +21,18 @@
     .rtl({ text-align: right; });
   }
 
+  // fix
   thead {
     th,
     td {
       font-size: var(--f7-table-head-font-size);
       font-weight: var(--f7-table-head-font-weight);
-      // overflow: hidden;
-      // white-space: nowrap;
-      // text-overflow: ellipsis;
       line-height: 16px;
       height: var(--f7-table-head-cell-height);
       background-color: var(--f7-table-head-bg-color);
       &:not(.sortable-cell-active) {
         color: var(--f7-table-head-text-color);
       }
-
-      // 新增，可换行
-      white-space: normal; /* 允许换行（覆盖浏览器默认的 nowrap） */
-      overflow-wrap: break-word; /* 更现代的属性，效果类似 */
-
-      vertical-align: middle;
-      text-align: center; /* 水平居中 */
-      word-wrap: break-word; /* 允许单词断行 */
-      // word-break: break-all; // 激进的长单词断行
-      // display:  flex; /* 启用flex布局 */
-      // justify-content: center; /* 内容水平居中 */
-      // align-items: center; /* 内容垂直居中 */
-      // height: 100%; /* 确保th有高度 */
-      // padding: 8px 8px; /* 适当内边距 */
-      // fix
-      position: sticky;
-      top: 0;
-      z-index: 30;
-      background-color: #fcfcfc; // #f2f2f2;  #f7f7f7
     }
 
     i.icon,
@@ -77,16 +56,6 @@
     td,
     th {
       .hairline(top, var(--f7-table-cell-border-color));
-    }
-  }
-
-  // fix
-  tfoot {
-    td {
-      position: sticky;
-      bottom: 0;
-      z-index: 30;
-      background-color: #f8f8f8;
     }
   }
 
@@ -177,6 +146,7 @@
       }
     }
   }
+
   // Sortable
   .sortable-cell:not(.input-cell) {
     cursor: pointer;
@@ -229,6 +199,7 @@
       transform: rotate(180deg) !important;
     }
   }
+
   &.card,
   .card & {
     .card-header,
@@ -247,6 +218,7 @@
       min-height: var(--f7-table-footer-height);
     }
   }
+
   .data-table-title {
     font-size: var(--f7-table-title-font-size);
     font-weight: var(--f7-table-title-font-weight);
@@ -281,6 +253,7 @@
     align-items: center;
     width: 100%;
   }
+
   .card-header {
     > .data-table-header,
     > .data-table-header-selected {
@@ -304,6 +277,7 @@
       });
     }
   }
+
   .data-table-header-selected {
     background: rgba(var(--f7-theme-color-rgb), 0.1);
     display: none;
@@ -461,9 +435,43 @@
     }
   });
 
-  // 新增样式
+  // 新增样式，表头、表尾 固定
   // 超出列宽默认隐藏
   table {
+    thead {
+      th,
+      td {
+        // overflow: hidden;
+        // white-space: nowrap;
+        // text-overflow: ellipsis;
+        // 新增，可换行
+        white-space: normal; /* 允许换行（覆盖浏览器默认的 nowrap） */
+        overflow-wrap: break-word; /* 更现代的属性，效果类似 */
+
+        vertical-align: middle;
+        text-align: center; /* 水平居中 */
+        word-wrap: break-word; /* 允许单词断行 */
+        // word-break: break-all; // 激进的长单词断行
+        // display:  flex; /* 启用flex布局 */
+        // justify-content: center; /* 内容水平居中 */
+        // align-items: center; /* 内容垂直居中 */
+        // height: 100%; /* 确保th有高度 */
+        // padding: 8px 8px; /* 适当内边距 */
+
+        // fix
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        background-color: #fcfcfc; // #f2f2f2;  #f7f7f7
+
+        // Sortable
+        &.sortable-cell:not(.input-cell) {
+          cursor: pointer;
+          position: sticky;
+        }
+      }
+    }
+
     tbody {
       td {
         white-space: nowrap;
@@ -493,6 +501,16 @@
       }
     }
 
+    // fix
+    tfoot {
+      td {
+        position: sticky;
+        bottom: 0;
+        z-index: 40;
+        background-color: #f8f8f8;
+      }
+    }
+
     // 固定列
     &.fix-r {
       thead tr {
@@ -519,7 +537,7 @@
       }
     }
 
-    &.fix-l {
+    &.fix-l1 {
       thead tr {
         th:first-of-type {
           left: 0;
@@ -546,27 +564,24 @@
 
     &.fix-l2 {
       thead tr {
-        th:first-of-type,
         th:nth-of-type(2) {
-          left: 0;
+          left: var(--dt-col1-width);
           z-index: 50;
         }
       }
 
       tbody tr {
-        td:first-of-type,
         td:nth-of-type(2) {
           position: sticky;
-          left: 0;
+          left: var(--dt-col1-width);
           z-index: 30;
           background-color: #fcfcfc;
         }
       }
 
       tfoot tr {
-        th:first-of-type,
         th:nth-of-type(2) {
-          left: 0;
+          left: var(--dt-col1-width);
           z-index: 50;
         }
       }
@@ -574,22 +589,21 @@
 
     &.fix-l3 {
       thead tr {
-        th:first-of-type,
-        th:nth-of-type(2),
         th:nth-of-type(3) {
-          left: 0;
+          left: calc(var(--dt-col1-width) + var(--dt-col2-width));
           z-index: 50;
         }
       }
 
       tbody tr {
-        td:first-of-type,
-        td:nth-of-type(2),
         td:nth-of-type(3) {
           position: sticky;
-          left: 0;
+          left: var(--col1-width);
           z-index: 30;
           background-color: #fcfcfc;
+        }
+        td:nth-of-type(3) {
+          left: calc(var(--dt-col1-width) + var(--dt-col2-width));
         }
       }
 
@@ -597,7 +611,7 @@
         td:first-of-type,
         td:nth-of-type(2),
         td:nth-of-type(3) {
-          left: 0;
+          left: calc(var(--dt-col1-width) + var(--dt-col2-width));
           z-index: 50;
         }
       }
