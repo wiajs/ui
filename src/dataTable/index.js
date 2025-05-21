@@ -836,24 +836,27 @@ export default class DataTable extends Event {
    * @returns
    */
   resize(ch) {
+    let R = 0
     const _ = this
     const {view, el, tb, cfg} = _
-    let R = 0
+    const {fix, height, width} = cfg
+    const tbWrap = el.findNode('.data-table-content')
+    if (width) tbWrap.css('max-width', `${width}px`)
+    if (height) tbWrap.css('max-height', `${height}px`)
+    else {
     const pg = view.find('.page-content').dom
     const sh = pg.scrollHeight - pg.clientHeight
 
     log({ch, sh}, 'resize')
 
     let h = 0
-    const tbWrap = el.findNode('.data-table-content')
 
     if (sh > 0) h = tbWrap.height() - sh
     if (h <= 0 && ch > 0) h = tbWrap.height() + ch
     // 设置表格高度
     if (h > 0) tbWrap.css('max-height', `${h}px`)
     R = h
-
-    const {fix} = cfg
+    }
 
     // 获取表格相对于视口的位置
     const tbLeft = tb.rect().left
