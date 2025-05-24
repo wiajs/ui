@@ -93,7 +93,7 @@ export default class DataTable extends Event {
 
     const {checkbox: ck} = cfg
     // 空数组作为 index
-    if ($.isArray(ck) && ck.length === 0) cfg.checkbox = 'index'
+    if (Array.isArray(ck) && ck.length === 0) cfg.checkbox = 'index'
 
     // index 需对数组添加index属性
     if (_.data && cfg.checkbox === 'index') _.data.forEach((v, x) => (v.index = x))
@@ -153,32 +153,106 @@ export default class DataTable extends Event {
 
   /**
    * 按数据生成tbHead
+        // <tr>
+        //   <th colspan="2" rowspan="1">合并的前两列</th>
+        //   <th rowspan="2">第三列</th>
+        //   <th rowspan="2">第四列</th>
+        //   <th rowspan="2">第五列</th>
+        // </tr>
+        // <tr>
+        //   <th>第一列</th>
+        //   <th>第二列</th>
+        // </tr>
    * @param {*} head 表头数据
    * @returns
    */
   th(head) {
-    const R = []
-    if (head[0].checkbox)
-      R.push(
-        <th class="checkbox-cell">
-          <label class="checkbox">
-            <input type="checkbox" />
-            <i class="icon-checkbox" />
-          </label>
-        </th>
-      )
+    let R
+    try {
+      // 表头分组
+      const cat = head.some(v => v.cat)
+      if (cat) {
+        const hs1 = [] // 第一行
+        const hs2 = []
 
-    for (let i = 1; i < head.length; i++) {
-      const d = head[i]
-      const cls = [d.type === 'number' ? 'numeric-cell' : 'label-cell']
-      if (d.sort) cls.push('sortable-cell')
-      R.push(<th class={cls.join(' ')}>{d.name}</th>)
+        if (head[0].checkbox)
+          // 第二行
+
+          hs1.push(
+            <th rowspan="2" class="checkbox-cell">
+              <label class="checkbox">
+                <input type="checkbox" />
+                <i class="icon-checkbox" />
+              </label>
+            </th>
+          )
+
+        let lastCat = ['', 0]
+        for (let i = 1; i < head.length; i++) {
+          const d = head[i]
+          const cls = [d.type === 'number' ? 'numeric-cell' : 'label-cell']
+          if (d.sort) cls.push('sortable-cell')
+          if (d.cat || lastCat[1]) {
+            if (d.cat) {
+              lastCat = d.cat
+              hs1.push(
+                <th colspan={d.cat[1]} rowspan="1">
+                  {d.cat[0]}
+                </th>
+              )
+            }
+            hs2.push(<th class={cls.join(' ')}>{d.name}</th>)
+
+            // @ts-ignore
+            lastCat[1]--
+          } else {
+            hs1.push(
+              <th rowspan="2" class={cls.join(' ')}>
+                {d.name}
+              </th>
+            )
+          }
+        }
+        R = (
+          <thead name="tbHead">
+            <tr>{hs1}</tr>
+            <tr>{hs2}</tr>
+          </thead>
+        )
+      } else {
+        const hs = []
+        if (head[0].checkbox)
+          hs.push(
+            <th class="checkbox-cell">
+              <label class="checkbox">
+                <input type="checkbox" />
+                <i class="icon-checkbox" />
+              </label>
+            </th>
+          )
+
+        for (let i = 1; i < head.length; i++) {
+          const d = head[i]
+          const cls = [d.type === 'number' ? 'numeric-cell' : 'label-cell']
+          if (d.sort) cls.push('sortable-cell')
+          hs.push(<th class={cls.join(' ')}>{d.name}</th>)
+        }
+
+        R = (
+          <thead name="tbHead">
+            <tr>{hs}</tr>
+          </thead>
+        )
+      }
+    } catch (e) {
+      log.err(e, 'th')
     }
+
     return R
   }
 
   /**
-   * 按数据生成tr td
+   * 按标头配置生成tr td数据模板
    * 支持link、hide参数
    * @param {*} head 表头数据
    * @returns
@@ -193,18 +267,29 @@ export default class DataTable extends Event {
       // 跳过隐藏列，隐藏列不显示
       while (hide?.includes(col)) col++
 
-      const d = head[i]
-      d.idx = col // 对应数据列
+      const h = head[i]
       // TODO 跳转链接，需触发页面事件，方便页面类执行跳转
-      if (link?.includes(i))
+      if (h.value)
+        R.push(
+          <td class="label-cell" data-link={i}>
+            {h.value}
+          </td>
+        )
+      else if (link?.includes(i)) {
+        h.idx = col // 对应数据列
         R.push(
           <td class="label-cell" data-link={i}>
             <a>{`$\{r[${col}]}`}</a>
           </td>
         )
-      else {
-        const cls = d.type === 'number' ? 'numeric-cell' : 'label-cell'
-        R.push(<td class={cls}>{`$\{r[${col}]}`}</td>)
+      } else {
+        h.idx = col // 对应数据列
+        const cls = h.type === 'number' ? 'numeric-cell' : 'label-cell'
+        if (h.type === 'number')
+          R.push(
+            <td class={cls}>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : r[${col}].toLocaleString('en-US')}`}</td>
+          )
+        else R.push(<td class={cls}>{`$\{r[${col}] === 'null' ? '' : r[${col}]}`}</td>)
       }
     }
     return R
@@ -258,104 +343,170 @@ export default class DataTable extends Event {
   /**
    * 按数据生成tfoot的汇总行
    * 支持hide参数
-   * @param {*[]} r - 汇总数组
-   * @param {Number} count - 总行数
+   * @param {*[]} [r] - 汇总数组，接口返回传入，不传则前端计算
    * @returns
    */
-  setSum(r, count) {
+  setSum(r) {
     const _ = this
-    if (!r?.length) return
-
     try {
-      const {tb, opt, cfg, head} = _
+      const {tb, cfg, head, data} = _
+      if (!cfg.sum) return
+
       if (!head) {
         console.log('param is null.')
         return
       }
 
-      const {hide, sum} = cfg
-      if (sum) {
-        const rs = []
-        let col = -1 // 隐藏字段需跳过
-        for (let i = cfg.checkbox ? 0 : 1, len = head.length; i < len; i++) {
-          col++ // 数据索引从 0 开始
-          // 跳过隐藏列，隐藏列不显示
-          while (hide?.includes(col)) col++
+      const count = data.length
+      const cls = 'numeric-cell'
 
-          const d = head[i]
-          const {name, type, sum, avg} = d
+      // 汇总计算
+      if (!r?.length) r = _.getSum(data)
 
-          if (sum) {
-            if (sum === true || sum === 'avg') {
-              const cls = 'numeric-cell'
-              rs.push(<td class={cls}>{r[col]}</td>)
-            } else if (sum.includes('${count}')) {
-              const cls = type === 'numeric-cell'
-              const val = sum.replace('${count}', count)
-              rs.push(<td class={cls}>{val}</td>)
-            } else if (sum === 'count') {
-              const cls = type === 'numeric-cell'
-              rs.push(<td class={cls}>{count}</td>)
-            } else if (typeof sum === 'string') {
-              const cls = type === 'numeric-cell'
-              rs.push(<td class={cls}>{sum}</td>)
-            }
-          } else rs.push(<td />)
-        }
+      const rs = []
+      for (let i = cfg.checkbox ? 0 : 1, len = head.length; i < len; i++) {
+        const h = head[i]
+        const {type, sum, idx} = h
 
-        const foot = tb.find('tfoot')
-        if (rs.length) foot.html(<tr>{rs}</tr>)
-        else foot.empty()
+        if (sum) {
+          if (sum === true || sum === 'avg') rs.push(<td class={cls}>{r[idx]}</td>)
+          else if (sum.includes('${count}')) {
+            const val = sum.replace('${count}', count)
+            rs.push(<td class="label-cell">{val}</td>)
+          } else if (sum === 'count') rs.push(<td class={cls}>{count}</td>)
+          else if (typeof sum === 'string') rs.push(<td class="label-cell">{sum}</td>)
+        } else rs.push(<td />)
       }
+
+      const foot = tb.find('tfoot')
+      if (rs.length) foot.html(<tr>{rs}</tr>)
+      else foot.empty()
     } catch (e) {}
   }
 
   /**
-   * 添加一行，用于分组
-   * @param {string} value - 行数据
-   * @param {number} i - 分组列，对应 head 数组，作为分组值前缀，避免分组值重复
-   * @param {number} count - 分组行数
+   * 对带sum属性的字段汇总或平均
+   * 空值跳过，不参与汇总或平均
+   * @param {*[]} data - 二维数组
+   */
+  getSum(data) {
+    const _ = this
+
+    if (!data?.length) return
+
+    const R = Array(data[0].length).fill(0)
+    const cnt = Array(data[0].length).fill(0)
+    try {
+      const {head} = _
+      // 遍历数据行，汇总数据
+      for (const d of data) {
+        for (const h of head) {
+          try {
+            const {idx} = h // 表头对应的数据列
+            // 空字符不参与统计
+            if (idx >= 0 && (h.sum === true || h.sum === 'avg') && d[idx] !== '' && d[idx] !== null && d[idx] !== 'null') {
+              cnt[idx]++
+              R[idx] += Number(d[idx])
+            }
+          } catch (e) {
+            log.err(e, 'getSum:sum')
+          }
+        }
+      }
+
+      for (const h of head) {
+        const {idx} = h
+        if (idx >= 0 && h.sum === true) R[idx] = formatNum(R[idx])
+        else if (idx >= 0 && h.sum === 'avg' && cnt[idx]) R[idx] = formatNum(R[idx] / cnt[idx])
+      }
+    } catch (e) {}
+
+    return R
+  }
+
+  /**
+   * 添加分组行
+   * @param {*} r - 分组值
+   * @param {number} i - 分组列，对应 head 数组
    * @param {string} no - 编号
-   * @param {*} opts
+   * @param {*} opts - 选项，如 prop 属性
    * @returns
    */
-  addGroup(value, i, count, no, opts) {
+  addGroup(r, i, no, opts) {
     const _ = this
 
     try {
       const {tb, cfg, head} = _
       const opt = {prop: [], ...opts}
-      const {prop} = opt
+      const {level, prop} = opt
 
       if (!head[i]) return
 
       const {name} = head[i]
+      const {name: value, sum: d, count} = r
+
+      const cls = 'numeric-cell'
 
       const {checkbox: ck} = cfg
 
       const rs = []
+      // 展开、折叠图标
+      if (level === 1)
       rs.push(
-        <td class="checkbox-cell">
+        <td class="group-cell" data-group={value}>
           <a class="text-blue-400">
             <i class="icon f7icon text-[16] font-[600] transition-transform duration-300">chevron_down</i>
           </a>
         </td>
       )
+      else if (level === 2)
+        rs.push(
+          <td class="group-cell" data-group2={value}>
+            <a class="text-blue-400">
+              <i class="icon f7icon text-[16] font-[600] transition-transform duration-300">chevron_down</i>
+            </a>
+          </td>
+        )
 
-      const cls = 'label-cell'
-      const col = head.length - 1
-      rs.push(
-        <td colspan="3" class={cls}>
-          <label class="checkbox">
-            <input type="checkbox" data-group={`${i}-${value}`} />
-            <i class="icon-checkbox" />
-          </label>
-          {`${no}、${name}: ${value} 共${count}条`}
-        </td>
-      )
+      // 分组名称
+      // const cls = 'label-cell'
+      // const col = head.length - 1
+      if (cfg.checkbox) {
+        rs.push(
+          <td colspan={cfg.groupCol} class="label-cell">
+            <label class="checkbox">
+              <input type="checkbox" data-group={`${value}`} />
+              <i class="icon-checkbox" />
+            </label>
+            {`${no}、${name}: ${value} 共${count}条`}
+          </td>
+        )
+      } else {
+        rs.push(
+          <td colspan={cfg.groupCol} class="label-cell">
+            {`${no}、${name}: ${value} 共${count}条`}
+          </td>
+        )
+      }
+
+      const start = (cfg.checkbox ? 1 : 2) + cfg.groupCol
+      for (let i = start, len = head.length; i < len; i++) {
+        const h = head[i]
+        const {type, sum, idx} = h
+
+        if (sum) {
+          if (sum === true || sum === 'avg') rs.push(<td class={cls}>{d[idx]}</td>)
+          else if (sum.includes('${count}')) {
+            const val = sum.replace('${count}', count)
+            rs.push(<td class="label-cell">{val}</td>)
+          } else if (sum === 'count') rs.push(<td class={cls}>{count}</td>)
+          else if (typeof sum === 'string') rs.push(<td class="label-cell">{sum}</td>)
+        } else rs.push(<td />)
+      }
 
       const p = $(<tr class="data-table-group">{rs}</tr>)
 
+      // 设置属性
       if (prop?.length) {
         for (const v of prop) {
           const ps = v.split('=')
@@ -369,7 +520,7 @@ export default class DataTable extends Event {
   }
 
   /**
-   * 设施分组
+   * 分组显示
    * @param {*} [data]
    * @param {number} [c1] - head 列数
    * @param {number} [c2] - head 列数
@@ -386,7 +537,9 @@ export default class DataTable extends Event {
 
       if (!data?.length) return
 
-      const {head} = _
+      const {head, cfg} = _
+
+      // 表列对应的数据列
       let id1
       let id2
       let id3
@@ -408,27 +561,33 @@ export default class DataTable extends Event {
           const r1 = rs1[k1]
 
           if (Array.isArray(r1.data)) {
+            // 一级分组
             no1++
-            _.addGroup(r1.name, c1, r1.count, `${no1}`, {prop: [`data-group=${c1}-${r1.name}`]})
-            _.addView(r1.data, {prop: [`group=${c1}-${r1.name}`]})
+            // 分组汇总行
+            _.addGroup(r1, c1, `${no1}`, {level: 1, prop: [`data-group=${r1.name}`]})
+            // 数据行
+            _.addView(r1.data, {prop: [`group=${r1.name}`]})
             _.group = rs1
           } else {
-            no1++
-            _.addGroup(r1.name, c1, r1.count, `${no1}`, {prop: [`data-group=${c1}-${r1.name}`]})
-            const rs2 = r1.data
             // 二级分组
+            no1++
+            _.addGroup(r1, c1, `${no1}`, {level: 1, prop: [`data-group=${r1.name}`]})
+            const rs2 = r1.data
+            // 二级分组编号
             let no2 = 0
             for (const k2 of Object.keys(rs2)) {
               const r2 = rs2[k2]
               if (Array.isArray(r2.data)) {
                 no2++
-                _.addGroup(r2.name, c2, r2.count, `${no1}.${no2}`, {prop: [`group=${c1}-${r1.name}`, `data-group2=${c2}-${r2.name}`]})
-                _.addView(r2.data, {prop: [`group=${c1}-${r1.name}`, `group2=${c2}-${r2.name}`]})
+                _.addGroup(r2, c2, `${no1}.${no2}`, {level: 2, prop: [`group=${r1.name}`, `data-group2=${r2.name}`]})
+                _.addView(r2.data, {prop: [`group=${r1.name}`, `group2=${r2.name}`]})
               }
             }
           }
         }
       }
+
+      if (cfg.sum) _.setSum()
 
       log({R}, 'setGroup')
     } catch (e) {
@@ -439,11 +598,12 @@ export default class DataTable extends Event {
 
   /**
    * 对二维数组进行三级分组
-   * @param {Array} array - 二维数组
-   * @param {number} lv1Col - 一级分组的列索引
-   * @param {number} lv2Col - 二级分组的列索引
-   * @param {number} lv3Col - 三级分组的列索引
-   * @returns {Array} 分组后的对象数组，结构为：
+   * @param {number} id1 - 一级分组的列索引
+   * @param {number} [id2] - 二级分组的列索引
+   * @param {number} [id3] - 三级分组的列索引
+   * @param {boolean} [sort]
+   * @returns {*[]}
+        分组后的对象数组，结构为：
    *   [{
    *     name: "一级分组名",
    *     count: 一级分组总行数,
@@ -456,21 +616,15 @@ export default class DataTable extends Event {
    *         data: [...] // 三级分组的数据
    *       }]
    *     }]
-   *   }]
-   * @param {number} id1 - 一级数据列
-   * @param {number} [id2] - 二级数据列
-   * @param {number} [id3] - 三级数据列
-   * @param {boolean} [sort]
-   * @returns {*[]}
-   */
+   *   }]   */
   groupByCol(id1, id2, id3, sort = false) {
     let R
     const _ = this
     try {
-      const {data} = _
+      const {data, cfg} = _
       const rs1 = data.reduce((acc, r) => {
-        const v = r[id1]
-        const gp = acc[v]
+        const v = `${id1}-${r[id1]}` // 分组列名称
+        const gp = acc[v] // 分组
 
         if (gp) {
           gp.data.push(r)
@@ -487,12 +641,20 @@ export default class DataTable extends Event {
         return acc
       }, {})
 
+      // 汇总计算
+      if (cfg.sum) {
+        for (const k of Object.keys(rs1)) {
+          const r = rs1[k]
+          r.sum = _.getSum(r.data)
+        }
+      }
+
       // 二级分组
       if (id2) {
         // 2. 二级分组（遍历一级分组，对每个一级分组的 data 进行二级分组）
         for (const k1 of Object.keys(rs1)) {
           const rs2 = rs1[k1].data.reduce((acc, r) => {
-            const v = r[id2]
+            const v = `${id2}-${r[id2]}` // 分组列名称
             const gp = acc[v]
 
             if (gp) {
@@ -509,11 +671,19 @@ export default class DataTable extends Event {
             return acc
           }, {})
 
+          // 汇总计算
+          if (cfg.sum) {
+            for (const k of Object.keys(rs2)) {
+              const r = rs2[k]
+              r.sum = _.getSum(r.data)
+            }
+          }
+
           // 3. 三级分组（遍历二级分组，对每个二级分组的 data 进行三级分组）
           if (id3) {
             for (const k2 of Object.keys(rs2)) {
               const rs3 = rs2[k2].data.reduce((acc, r) => {
-                const v = r[id3]
+                const v = `${id3}-${r[id3]}` // 分组列名称
                 const gp = acc[v]
 
                 if (gp) {
@@ -530,6 +700,14 @@ export default class DataTable extends Event {
 
                 return acc
               }, {})
+
+              // 汇总计算
+              if (cfg.sum) {
+                for (const k of Object.keys(rs3)) {
+                  const r = rs3[k]
+                  r.sum = _.getSum(r.data)
+                }
+              }
 
               // 替换二级分组的 data 为三级分组
               rs2[k2].data = rs3
@@ -573,6 +751,7 @@ export default class DataTable extends Event {
       }
 
       const cfg = {..._cfg, ...(head[0] || {})}
+
       // checkbox
       let {checkbox: ck, layout, sum, fix} = cfg
 
@@ -617,11 +796,8 @@ export default class DataTable extends Event {
 
       // <table name="tbLoan">
       // jsx 通过函数调用，实现html生成。
-      v = (
-        <thead name="tbHead">
-          <tr>{this.th(head)}</tr>
-        </thead>
-      )
+      v = this.th(head)
+
       // 加入到表格
       tb.append(v)
 
@@ -702,7 +878,8 @@ export default class DataTable extends Event {
     // }
   }
 
-  /** 绑定表格事件
+  /**
+   * 绑定表格事件
    * @param {boolean} fix - 固定表、列
    */
   bind(fix) {
@@ -780,6 +957,46 @@ export default class DataTable extends Event {
         _.bindFix()
         // setTimeout(() => _.bindFix(), 1000)
       }
+
+      el.click(ev => {
+        // 分组 展开、折叠
+        const td = $(ev).upper('td.group-cell')
+        if (td.dom) {
+          const group = td.data('group')
+          if (group) {
+            const es = el.find(`[group="${group}"]`)
+            const icon = td.find('i.f7icon')
+            if (td.data('tag') === 1) {
+              td.data('tag', 0)
+              // el.removeClass('rotate-90').addClass('rotate-0')
+              icon.dom.textContent = 'chevron_down' // .removeClass('rotate-90').addClass('rotate-0')
+
+              es.show()
+            } else {
+              td.data('tag', 1)
+              // el.removeClass('rotate-0').addClass('rotate-45')
+              icon.dom.textContent = 'chevron_right' // .removeClass('rotate-90').addClass('rotate-0')
+
+              es.hide()
+            }
+          }
+          const group2 = td.data('group2')
+          if (group2) {
+            const es = el.find(`[group2="${group2}"]`)
+            const icon = td.find('i.f7icon')
+            if (td.data('tag') === 1) {
+              td.data('tag', 0)
+              icon.dom.textContent = 'chevron_down' // .removeClass('rotate-90').addClass('rotate-0')
+              es.show()
+            } else {
+              td.data('tag', 1)
+              icon.dom.textContent = 'chevron_right' // .removeClass('rotate-90').addClass('rotate-0')
+              // el.removeClass('rotate-0').addClass('rotate-45')
+              es.hide()
+            }
+          }
+        }
+      })
     } catch (e) {
       log.err(e, 'bind')
     }
@@ -844,18 +1061,18 @@ export default class DataTable extends Event {
     if (width) tbWrap.css('max-width', `${width}px`)
     if (height) tbWrap.css('max-height', `${height}px`)
     else {
-    const pg = view.find('.page-content').dom
-    const sh = pg.scrollHeight - pg.clientHeight
+      const pg = view.find('.page-content').dom
+      const sh = pg.scrollHeight - pg.clientHeight
 
-    log({ch, sh}, 'resize')
+      log({ch, sh}, 'resize')
 
-    let h = 0
+      let h = 0
 
-    if (sh > 0) h = tbWrap.height() - sh
-    if (h <= 0 && ch > 0) h = tbWrap.height() + ch
-    // 设置表格高度
-    if (h > 0) tbWrap.css('max-height', `${h}px`)
-    R = h
+      if (sh > 0) h = tbWrap.height() - sh
+      if (h <= 0 && ch > 0) h = tbWrap.height() + ch
+      // 设置表格高度
+      if (h > 0) tbWrap.css('max-height', `${h}px`)
+      R = h
     }
 
     // 获取表格相对于视口的位置
@@ -926,6 +1143,8 @@ export default class DataTable extends Event {
       if (!_.group && _.pageBar()) _.paging()
       else _.tb.setView(data, {idx, ...opts})
       // view.setView.bind(_.tb)(data, {idx, ...opts})
+
+      if (cfg.sum) _.setSum()
     } catch (ex) {
       console.error('setView exp:', ex.message)
     }
@@ -951,19 +1170,23 @@ export default class DataTable extends Event {
       // 合并数组（浅拷贝，子数组还是原子数组），用于排序、分页，不改变原数据
       _.data = [...(_.data || []), ...data]
 
+      if (_.data && cfg.checkbox === 'index')
       // index 需对数组添加index属性
-      if (_.data && cfg.checkbox === 'index') _.data.forEach((v, x) => (v.index = x))
+        _.data.forEach((v, x) => (v.index = x))
 
-      // 缺省排序
       if (hsort) {
+        // 缺省排序
         const c = getCol(head, hsort)
         if (c) _.sort(_.data, c.col, c.type)
       }
 
+      if (!_.group && _.pageBar())
       // view.addView.bind(_.tb)(data, {idx, ...opts})
       // 数据与模板结合，生成数据视图
-      if (!_.group && _.pageBar()) _.paging(1, true)
+        _.paging(1, true)
       else _.tb.addView(data, {idx, ...opts})
+
+      if (cfg.sum) _.setSum()
     } catch (ex) {
       console.error('addView exp:', ex.message)
     }
@@ -1159,4 +1382,26 @@ function debounce(fun, delay = 300) {
       fun.apply(this, args)
     }, delay)
   }
+}
+
+/**
+ * 格式化数字：保留 cnt 位小数并添加千位分隔符
+ * @param {number} val - 需要格式化的数字
+ * @param {number} [cnt] - 小数位数
+ * @returns {string} 格式化后的字符串
+ */
+function formatNum(val, cnt = 2) {
+  let R
+  if (typeof val !== 'number' || Number.isNaN(val)) {
+    return val // 如果不是数字，返回默认值
+  }
+
+  R = val
+    .toLocaleString('en-US', {
+      minimumFractionDigits: cnt, // 最少保留 2 位小数
+      maximumFractionDigits: cnt, // 最多保留 2 位小数
+    })
+    .replace(/\.0+$/, '')
+    .replace(/(\.\d+)0+$/, '$1')
+  return R
 }
