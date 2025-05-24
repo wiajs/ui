@@ -5,7 +5,7 @@
 import {compareObj} from '@wiajs/core/util/tool'
 import {Utils, Event} from '@wiajs/core'
 import Table from '../table'
-// import * as view from '../../lib/view'
+// import * as view from './view'
 import {log as Log} from '@wiajs/util'
 
 const log = Log({m: 'dataTable'}) // 创建日志实例
@@ -71,7 +71,7 @@ export default class DataTable extends Event {
     const $el = opt.el || page.view.findNode(opt.selector)
     if ($el.length === 0) return undefined
 
-    this.el = $el
+    _.el = $el
 
     // 已创建，直接返回
     if (_.el.dom[opt.domProp]) {
@@ -364,12 +364,16 @@ export default class DataTable extends Event {
       if (!r?.length) r = _.getSum(data)
 
       const rs = []
-      for (let i = cfg.checkbox ? 0 : 1, len = head.length; i < len; i++) {
+
+      if (cfg.checkbox || cfg.group) rs.push(<td colspan="2" class="label-cell">{`合计：${count}条`}</td>)
+      else rs.push(<td class="label-cell">{`合计：${count}条`}</td>)
+
+      for (let i = 2, len = head.length; i < len; i++) {
         const h = head[i]
         const {type, sum, idx} = h
-
         if (sum) {
-          if (sum === true || sum === 'avg') rs.push(<td class={cls}>{r[idx]}</td>)
+          if (sum === 'value') rs.push(<td />)
+          else if (sum === true || sum === 'avg') rs.push(<td class={cls}>{r[idx]}</td>)
           else if (sum.includes('${count}')) {
             const val = sum.replace('${count}', count)
             rs.push(<td class="label-cell">{val}</td>)
@@ -407,7 +411,7 @@ export default class DataTable extends Event {
             if (idx >= 0 && (h.sum === true || h.sum === 'avg') && d[idx] !== '' && d[idx] !== null && d[idx] !== 'null') {
               cnt[idx]++
               R[idx] += Number(d[idx])
-            }
+            } else if (idx >= 0 && h.sum === 'value' && !R[idx]) R[idx] = d[idx]
           } catch (e) {
             log.err(e, 'getSum:sum')
           }
@@ -427,12 +431,12 @@ export default class DataTable extends Event {
   /**
    * 添加分组行
    * @param {*} r - 分组值
-   * @param {number} i - 分组列，对应 head 数组
+   * @param {number} col - 分组列，对应 head 数组
    * @param {string} no - 编号
    * @param {*} opts - 选项，如 prop 属性
    * @returns
    */
-  addGroup(r, i, no, opts) {
+  addGroup(r, col, no, opts) {
     const _ = this
 
     try {
@@ -440,9 +444,9 @@ export default class DataTable extends Event {
       const opt = {prop: [], ...opts}
       const {level, prop} = opt
 
-      if (!head[i]) return
+      if (!head[col]) return
 
-      const {name} = head[i]
+      const {name} = head[col]
       const {name: value, sum: d, count} = r
 
       const cls = 'numeric-cell'
@@ -451,60 +455,75 @@ export default class DataTable extends Event {
 
       const rs = []
       // 展开、折叠图标
+      // <i class="icon f7icon text-[16] font-[600] transition-transform duration-300">chevron_down</i>
       if (level === 1)
       rs.push(
-        <td class="group-cell" data-group={value}>
+          <td class="group-icon" data-group={value}>
           <a class="text-blue-400">
-            <i class="icon f7icon text-[16] font-[600] transition-transform duration-300">chevron_down</i>
+              <i class="icon f7icon text-[16] font-[600]">chevron_down</i>
           </a>
         </td>
       )
       else if (level === 2)
         rs.push(
-          <td class="group-cell" data-group2={value}>
-            <a class="text-blue-400">
-              <i class="icon f7icon text-[16] font-[600] transition-transform duration-300">chevron_down</i>
+          <td class="group-icon" data-group2={value}>
+            <a class="text-blue-400 transition-transform duration-300">
+              <i class="icon wiaicon text-[16] font-[300]" style="font-size:16px">
+                &#xe680;
+              </i>
             </a>
           </td>
         )
+      // <i class="icon f7icon text-[16] font-[600] transition-transform duration-300">chevron_down</i>
+      // {`${no}、${value.replace(/\d+-/, '')}：${count}条`}
+      // {`${no}、${value.replace(/\d+-/, '')}：${count}条`}
 
       // 分组名称
       // const cls = 'label-cell'
       // const col = head.length - 1
-      if (cfg.checkbox) {
-        rs.push(
-          <td colspan={cfg.groupCol} class="label-cell">
-            <label class="checkbox">
-              <input type="checkbox" data-group={`${value}`} />
-              <i class="icon-checkbox" />
-            </label>
-            {`${no}、${name}: ${value} 共${count}条`}
-          </td>
-        )
-      } else {
-        rs.push(
-          <td colspan={cfg.groupCol} class="label-cell">
-            {`${no}、${name}: ${value} 共${count}条`}
-          </td>
-        )
-      }
 
-      const start = (cfg.checkbox ? 1 : 2) + cfg.groupCol
+      // if (cfg.checkbox) {
+      //   rs.push(
+      //     <td colspan={cfg.groupCol} class="label-cell">
+      //       <label class="checkbox">
+      //         <input type="checkbox" data-group={`${value}`} />
+      //         <i class="icon-checkbox" />
+      //       </label>
+      //       {`合计：${count}条`}
+      //     </td>
+      //   )
+      // } else {
+      //   rs.push(
+      //     <td colspan={cfg.groupCol} class="label-cell">
+      //       {`合计：${count}条`}
+      //     </td>
+      //   )
+      // }
+
+      // const start = (cfg.checkbox ? 1 : 2) + cfg.groupCol
+      const start = 1 //  + (cfg.groupCol ?? 0)
       for (let i = start, len = head.length; i < len; i++) {
         const h = head[i]
         const {type, sum, idx} = h
 
-        if (sum) {
+        // 分组列
+        if (i === col) rs.push(<td class="label-cell group-cell">{`${value.replace(/\d+-/, '')}(${count})`}</td>)
+        else if (sum) {
           if (sum === true || sum === 'avg') rs.push(<td class={cls}>{d[idx]}</td>)
           else if (sum.includes('${count}')) {
             const val = sum.replace('${count}', count)
             rs.push(<td class="label-cell">{val}</td>)
           } else if (sum === 'count') rs.push(<td class={cls}>{count}</td>)
+          else if (sum === 'value') rs.push(<td class="label-cell">{d[idx]}</td>)
           else if (typeof sum === 'string') rs.push(<td class="label-cell">{sum}</td>)
         } else rs.push(<td />)
       }
 
-      const p = $(<tr class="data-table-group">{rs}</tr>)
+      const p = $(
+        <tr name={`${name}-data`} class="data-table-group">
+          {rs}
+        </tr>
+      )
 
       // 设置属性
       if (prop?.length) {
@@ -530,14 +549,28 @@ export default class DataTable extends Event {
   setGroup(data, c1, c2, c3) {
     let R
     const _ = this
-    try {
-      // 浅拷贝数组数据（子数组与原数组一致），用于排序、分页，不改变原数据
-      if (!data && _.data) data = _.data
-      else _.data = [...data]
 
       if (!data?.length) return
 
-      const {head, cfg} = _
+    try {
+      const {tb, head, cfg, opt} = _
+      cfg.group = true
+      // view.clearView.bind(tb)() // 清除view
+      _.clear() // 清除view 和数据
+      _.group = undefined
+
+      // 增加一列，用于折叠图标
+      if (!cfg.checkbox) {
+        let el = tb.find('th.group-icon')
+        if (!el.dom) {
+          el = tb.findNode('th')
+          el.before(<th class="group-icon"></th>)
+          el = tb.findNode('colgroup')
+          el.dom.insertAdjacentHTML('afterbegin', '<col style="width: 40px">')
+          el = tb.findNode(`tr[name=${opt.name}-tp]`)
+          el.dom.insertAdjacentHTML('afterbegin', '<td class="intend-cell"/>')
+        }
+      }
 
       // 表列对应的数据列
       let id1
@@ -547,12 +580,8 @@ export default class DataTable extends Event {
       if (c2) id2 = head[c2].idx
       if (c3) id3 = head[c3].idx
 
-      const {tb} = _
-      // view.clearView.bind(tb)() // 清除view
-      tb.clearView() // 清除view
-      _.group = undefined
       // tb.clearView()
-      const rs1 = _.groupByCol(id1, id2, id3, true)
+      const rs1 = _.groupByCol(data, id1, id2, id3, true)
 
       if (rs1) {
         _.group = rs1
@@ -560,13 +589,14 @@ export default class DataTable extends Event {
         for (const k1 of Object.keys(rs1)) {
           const r1 = rs1[k1]
 
-          if (Array.isArray(r1.data)) {
             // 一级分组
+          if (Array.isArray(r1.data)) {
             no1++
             // 分组汇总行
             _.addGroup(r1, c1, `${no1}`, {level: 1, prop: [`data-group=${r1.name}`]})
             // 数据行
             _.addView(r1.data, {prop: [`group=${r1.name}`]})
+
             _.group = rs1
           } else {
             // 二级分组
@@ -597,6 +627,26 @@ export default class DataTable extends Event {
   }
 
   /**
+   * 清除view 和数据
+   */
+  clear() {
+    const _ = this
+    try {
+      const {tb, opt} = _
+      const {name} = opt
+      _.data = []
+      const body = tb.find('tbody')
+      const tp = body.find(`tr[name=${name}-tp]`)
+      body.html('')
+      body.append(tp)
+      const foot = tb.find('tfoot')
+      foot.html('')
+    } catch (e) {
+      log.err(e, 'clear')
+    }
+  }
+
+  /**
    * 对二维数组进行三级分组
    * @param {number} id1 - 一级分组的列索引
    * @param {number} [id2] - 二级分组的列索引
@@ -617,11 +667,11 @@ export default class DataTable extends Event {
    *       }]
    *     }]
    *   }]   */
-  groupByCol(id1, id2, id3, sort = false) {
+  groupByCol(data, id1, id2, id3, sort = false) {
     let R
     const _ = this
     try {
-      const {data, cfg} = _
+      const {cfg} = _
       const rs1 = data.reduce((acc, r) => {
         const v = `${id1}-${r[id1]}` // 分组列名称
         const gp = acc[v] // 分组
@@ -779,24 +829,20 @@ export default class DataTable extends Event {
       if (fix.includes('left5')) clas.push('fix-l5')
 
       const style = [`table-layout: ${layout}`]
-      let v = <table name={name} class={clas.join(' ')} style={style.join(';')} />
-
-      // 加入到容器
-      const tbWrap = el.findNode('.data-table-content')
-      tbWrap.append(v)
-      const tb = el.name(name)
+      const tb = $(<table name={name} class={clas.join(' ')} style={style.join(';')} />)
       // 保存tb
       _.tb = tb
 
+      // 加入到容器
+      const tbWrap = el.findNode('.data-table-content')
+      tbWrap.append(tb)
+
       // 列宽
-      if (layout === 'fixed') {
-        v = <colgroup>{_.col(head)}</colgroup>
-        tb.append(v)
-      }
+      if (layout === 'fixed') tb.append(<colgroup>{_.col(head)}</colgroup>)
 
       // <table name="tbLoan">
       // jsx 通过函数调用，实现html生成。
-      v = this.th(head)
+      let v = this.th(head)
 
       // 加入到表格
       tb.append(v)
@@ -960,7 +1006,7 @@ export default class DataTable extends Event {
 
       el.click(ev => {
         // 分组 展开、折叠
-        const td = $(ev).upper('td.group-cell')
+        const td = $(ev).upper('td.group-icon')
         if (td.dom) {
           const group = td.data('group')
           if (group) {
@@ -969,30 +1015,30 @@ export default class DataTable extends Event {
             if (td.data('tag') === 1) {
               td.data('tag', 0)
               // el.removeClass('rotate-90').addClass('rotate-0')
-              icon.dom.textContent = 'chevron_down' // .removeClass('rotate-90').addClass('rotate-0')
+              if (icon.dom) icon.dom.textContent = 'chevron_down' // .removeClass('rotate-90').addClass('rotate-0')
 
-              es.show()
+              $.nextTick(() => es.show())
             } else {
               td.data('tag', 1)
               // el.removeClass('rotate-0').addClass('rotate-45')
-              icon.dom.textContent = 'chevron_right' // .removeClass('rotate-90').addClass('rotate-0')
+              if (icon.dom) icon.dom.textContent = 'chevron_right' // .removeClass('rotate-90').addClass('rotate-0')
 
-              es.hide()
+              $.nextTick(() => es.hide())
             }
           }
           const group2 = td.data('group2')
           if (group2) {
             const es = el.find(`[group2="${group2}"]`)
-            const icon = td.find('i.f7icon')
+            const icon = td.find('i.wiaicon')
             if (td.data('tag') === 1) {
               td.data('tag', 0)
-              icon.dom.textContent = 'chevron_down' // .removeClass('rotate-90').addClass('rotate-0')
-              es.show()
+              if (icon) icon.removeClass('rotate-270')
+
+              $.nextTick(() => es.show())
             } else {
               td.data('tag', 1)
-              icon.dom.textContent = 'chevron_right' // .removeClass('rotate-90').addClass('rotate-0')
-              // el.removeClass('rotate-0').addClass('rotate-45')
-              es.hide()
+              if (icon) icon.addClass('rotate-270')
+              $.nextTick(() => es.hide())
             }
           }
         }
@@ -1123,7 +1169,6 @@ export default class DataTable extends Event {
       const {page: hpage, sort: hsort} = head[0]
       let {id: idx} = cfg
       idx = Array.isArray(idx) && idx?.length ? idx[0] : undefined
-
       _.clearSel()
 
       // 浅拷贝数组数据（子数组与原数组一致），用于排序、分页，不改变原数据
@@ -1138,7 +1183,6 @@ export default class DataTable extends Event {
         if (c) _.sort(_.data, c.col, c.type)
       }
 
-      // view.setView.bind(_.tb)(data, {idx, ...opts})
       // 数据与模板结合，生成数据视图
       if (!_.group && _.pageBar()) _.paging()
       else _.tb.setView(data, {idx, ...opts})
@@ -1167,24 +1211,23 @@ export default class DataTable extends Event {
 
       _.clearSel()
 
+      if (data && cfg.checkbox === 'index')
+        // index 需对数组添加index属性
+        data.forEach((v, x) => (v.index = x))
+
       // 合并数组（浅拷贝，子数组还是原子数组），用于排序、分页，不改变原数据
       _.data = [...(_.data || []), ...data]
-
-      if (_.data && cfg.checkbox === 'index')
-      // index 需对数组添加index属性
-        _.data.forEach((v, x) => (v.index = x))
 
       if (hsort) {
         // 缺省排序
         const c = getCol(head, hsort)
-        if (c) _.sort(_.data, c.col, c.type)
+        if (c) _.sort(data, c.col, c.type)
       }
 
-      if (!_.group && _.pageBar())
-      // view.addView.bind(_.tb)(data, {idx, ...opts})
       // 数据与模板结合，生成数据视图
-        _.paging(1, true)
+      if (!_.group && _.pageBar()) _.paging(1, true)
       else _.tb.addView(data, {idx, ...opts})
+      // view.addView.bind(_.tb)(data, {idx, ...opts})
 
       if (cfg.sum) _.setSum()
     } catch (ex) {
