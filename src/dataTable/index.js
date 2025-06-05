@@ -2,7 +2,6 @@
 /**
  * 数据表组件
  */
-import {compareObj} from '@wiajs/core/util/tool'
 import {Utils, Event} from '@wiajs/core'
 import Table from '../table'
 // import * as view from './view'
@@ -84,11 +83,9 @@ export default class DataTable extends Event {
 
     // 表数据
     if (opt.data && opt.data.length > 0) {
-      if (cfg.page || cfg.sort) {
         // 克隆数组数据，用于排序、分页，不改变原数据
         _.data = [...opt.data]
         if (cfg.page && !cfg.pageLink) cfg.pageLink = 10
-      } else _.data = opt.data
     }
 
     const {checkbox: ck} = cfg
@@ -365,7 +362,7 @@ export default class DataTable extends Event {
 
       const rs = []
 
-      if (cfg.checkbox || cfg.group) rs.push(<td colspan="2" class="label-cell">{`合计：${count}条`}</td>)
+      if (cfg.checkbox || _.group) rs.push(<td colspan="2" class="label-cell">{`合计：${count}条`}</td>)
       else rs.push(<td class="label-cell">{`合计：${count}条`}</td>)
 
       for (let i = 2, len = head.length; i < len; i++) {
@@ -429,7 +426,7 @@ export default class DataTable extends Event {
   }
 
   /**
-   * 添加分组行
+   * 添加分组行，取 sum 数组值
    * @param {*} r - 分组值
    * @param {number} col - 分组列，对应 head 数组
    * @param {string} no - 编号
@@ -540,24 +537,31 @@ export default class DataTable extends Event {
 
   /**
    * 分组显示
-   * @param {*} [data]
-   * @param {number} [c1] - head 列数
-   * @param {number} [c2] - head 列数
-   * @param {number} [c3] - head 列数
-   * @returns
+   * @param {*[]} [data] - 数据
+   * @param {number[]} [cols] - 分组，表头列
+   * @param {number[]} [sort] - 排序，表头列
    */
-  setGroup(data, c1, c2, c3) {
-    let R
+  setGroup(data, [c1, c2, c3] = [], sort = null) {
     const _ = this
 
-      if (!data?.length) return
+    if (!data?.length && !_.data?.length) return
 
     try {
       const {tb, head, cfg, opt} = _
-      cfg.group = true
+
+      if (!sort) sort = cfg.sort
+
       // view.clearView.bind(tb)() // 清除view
       _.clear() // 清除view 和数据
-      _.group = undefined
+
+      // 浅拷贝数组数据（子数组与原数组一致），用于排序、分页，不改变原数据
+      if (data?.length) {
+        _.group = [c1, c2, c3] // 点击表头排序需要
+        _.data = [...data]
+        if (cfg.checkbox === 'index')
+          // index 需对数组添加index属性，替代 idx
+          _.data.forEach((v, x) => (v.index = x))
+      }
 
       // 增加一列，用于折叠图标
       if (!cfg.checkbox) {
@@ -581,23 +585,23 @@ export default class DataTable extends Event {
       if (c3) id3 = head[c3].idx
 
       // tb.clearView()
-      const rs1 = _.groupByCol(data, id1, id2, id3, true)
+      const rs1 = _.groupByCol(_.data, id1, id2, id3, sort)
+
+      // 唯一id，避免重复添加
+      let {id: idx} = cfg
+      idx = Array.isArray(idx) && idx?.length ? idx[0] : undefined
 
       if (rs1) {
-        _.group = rs1
         let no1 = 0
-        for (const k1 of Object.keys(rs1)) {
-          const r1 = rs1[k1]
-
+        for (const r1 of rs1) {
             // 一级分组
-          if (Array.isArray(r1.data)) {
+          if (!r1.data[0].name) {
             no1++
             // 分组汇总行
             _.addGroup(r1, c1, `${no1}`, {level: 1, prop: [`data-group=${r1.name}`]})
             // 数据行
-            _.addView(r1.data, {prop: [`group=${r1.name}`]})
-
-            _.group = rs1
+            _.tb.addView(r1.data, {idx, prop: [`group=${r1.name}`]})
+            // _.addView(r1.data, {idx, prop: [`group=${r1.name}`]})
           } else {
             // 二级分组
             no1++
@@ -605,12 +609,12 @@ export default class DataTable extends Event {
             const rs2 = r1.data
             // 二级分组编号
             let no2 = 0
-            for (const k2 of Object.keys(rs2)) {
-              const r2 = rs2[k2]
-              if (Array.isArray(r2.data)) {
+            for (const r2 of rs2) {
+              if (!r2.data[0].name) {
                 no2++
                 _.addGroup(r2, c2, `${no1}.${no2}`, {level: 2, prop: [`group=${r1.name}`, `data-group2=${r2.name}`]})
-                _.addView(r2.data, {prop: [`group=${r1.name}`, `group2=${r2.name}`]})
+                _.tb.addView(r2.data, {idx, prop: [`group=${r1.name}`, `group2=${r2.name}`]})
+                // _.addView(r2.data, {prop: [`group=${r1.name}`, `group2=${r2.name}`]})
               }
             }
           }
@@ -618,12 +622,9 @@ export default class DataTable extends Event {
       }
 
       if (cfg.sum) _.setSum()
-
-      log({R}, 'setGroup')
     } catch (e) {
       log.err(e, 'setGroup')
     }
-    return R
   }
 
   /**
@@ -634,13 +635,14 @@ export default class DataTable extends Event {
     try {
       const {tb, opt} = _
       const {name} = opt
-      _.data = []
+      // _.data = []
       const body = tb.find('tbody')
       const tp = body.find(`tr[name=${name}-tp]`)
       body.html('')
       body.append(tp)
       const foot = tb.find('tfoot')
       foot.html('')
+      _.clearSel()
     } catch (e) {
       log.err(e, 'clear')
     }
@@ -648,10 +650,11 @@ export default class DataTable extends Event {
 
   /**
    * 对二维数组进行三级分组
+   * @param {*[]} data - 数据
    * @param {number} id1 - 一级分组的列索引
    * @param {number} [id2] - 二级分组的列索引
    * @param {number} [id3] - 三级分组的列索引
-   * @param {boolean} [sort]
+   * @param {number[]} [sort]
    * @returns {*[]}
         分组后的对象数组，结构为：
    *   [{
@@ -667,13 +670,13 @@ export default class DataTable extends Event {
    *       }]
    *     }]
    *   }]   */
-  groupByCol(data, id1, id2, id3, sort = false) {
+  groupByCol(data, id1, id2, id3, sort) {
     let R
     const _ = this
     try {
-      const {cfg} = _
-      const rs1 = data.reduce((acc, r) => {
-        const v = `${id1}-${r[id1]}` // 分组列名称
+      const {head, cfg} = _
+      const r1 = data.reduce((acc, r) => {
+        const v = `${id1}-${r[id1]}` // 分组列名称，加列序号，避免重复
         const gp = acc[v] // 分组
 
         if (gp) {
@@ -691,19 +694,21 @@ export default class DataTable extends Event {
         return acc
       }, {})
 
-      // 汇总计算
-      if (cfg.sum) {
-        for (const k of Object.keys(rs1)) {
-          const r = rs1[k]
-          r.sum = _.getSum(r.data)
-        }
+      const rs1 = []
+      // 对象转换为数组，方便排序
+      for (const k of Object.keys(r1)) {
+        const r = r1[k]
+        if (cfg.sum) r.sum = _.getSum(r.data) // 汇总计算
+        if (!id2 && sort.length) sortData(r.data, sort, head)
+
+        rs1.push(r)
       }
 
       // 二级分组
       if (id2) {
         // 2. 二级分组（遍历一级分组，对每个一级分组的 data 进行二级分组）
-        for (const k1 of Object.keys(rs1)) {
-          const rs2 = rs1[k1].data.reduce((acc, r) => {
+        for (const r1 of rs1) {
+          const r2 = r1.data.reduce((acc, r) => {
             const v = `${id2}-${r[id2]}` // 分组列名称
             const gp = acc[v]
 
@@ -722,17 +727,18 @@ export default class DataTable extends Event {
           }, {})
 
           // 汇总计算
-          if (cfg.sum) {
-            for (const k of Object.keys(rs2)) {
-              const r = rs2[k]
-              r.sum = _.getSum(r.data)
-            }
+          const rs2 = []
+          for (const k of Object.keys(r2)) {
+            const r = r2[k]
+            if (cfg.sum) r.sum = _.getSum(r.data)
+            if (!id3 && sort.length) sortData(r.data, sort, head)
+            rs2.push(r)
           }
 
           // 3. 三级分组（遍历二级分组，对每个二级分组的 data 进行三级分组）
           if (id3) {
-            for (const k2 of Object.keys(rs2)) {
-              const rs3 = rs2[k2].data.reduce((acc, r) => {
+            for (const r2 of rs2) {
+              const r3 = r2.data.reduce((acc, r) => {
                 const v = `${id3}-${r[id3]}` // 分组列名称
                 const gp = acc[v]
 
@@ -752,25 +758,28 @@ export default class DataTable extends Event {
               }, {})
 
               // 汇总计算
-              if (cfg.sum) {
-                for (const k of Object.keys(rs3)) {
-                  const r = rs3[k]
-                  r.sum = _.getSum(r.data)
-                }
+              const rs3 = []
+              for (const k of Object.keys(r3)) {
+                const r = r3[k]
+                if (cfg.sum) r.sum = _.getSum(r.data)
+                rs3.push(r)
               }
 
               // 替换二级分组的 data 为三级分组
-              rs2[k2].data = rs3
+              r2.data = rs3
             }
           }
 
+          // 对分组进行排序
+          if (sort.length) sortSum(rs2, sort, head)
+
           // 替换一级分组的 data 为二级分组
-          rs1[k1].data = rs2
+          r1.data = rs2
         }
       }
 
       // 对分组进行排序
-      // if (sort) rs1.sort((a, b) => (a.name > b.name ? 1 : -1))
+      if (sort.length) sortSum(rs1, sort, head, true)
 
       R = rs1
 
@@ -891,7 +900,7 @@ export default class DataTable extends Event {
       // 绑定事件，如点击head排序
       _.bind(fix?.length)
       // 数据显示
-      if (_.data?.length) _.setView(_.data)
+      if (_.data?.length) _.setView()
     } catch (ex) {
       console.log('render', {ex: ex.message})
     }
@@ -968,13 +977,20 @@ export default class DataTable extends Event {
       // 表格排序
       _._tb.on('sort', (cell, desc) => {
         if (cell.length > 0) {
-          const c = getCol(head, cell.html())
+          const i = head.findIndex(v => v.name === cell.html())
+          const c = head[i]
           if (c) {
-            _.clearSel()
-
-            _.sort(_.data, c.col, c.type, desc)
-            if (_.pageBar()) _.paging(1)
-            else _.tb.setView(_.data, {idx})
+            if (_.group) {
+              const sort = desc ? [i] : [-i]
+              _.setGroup(null, _.group, sort)
+            } else {
+              const sort = desc ? [i] : [-i]
+              _.setView(null, _.viewOpts, sort)
+              // _.clearSel()
+              // _.sort(_.data, c.idx, c.type, desc)
+              // if (_.pageBar()) _.paging(1)
+              // else _.tb.setView(_.data, {idx})
+            }
           }
         }
       })
@@ -1008,7 +1024,7 @@ export default class DataTable extends Event {
         // 分组 展开、折叠
         const td = $(ev).upper('td.group-icon')
         if (td.dom) {
-          const group = td.data('group')
+          let group = td.data('group')
           if (group) {
             const es = el.find(`[group="${group}"]`)
             const icon = td.find('i.f7icon')
@@ -1028,17 +1044,18 @@ export default class DataTable extends Event {
           }
           const group2 = td.data('group2')
           if (group2) {
-            const es = el.find(`[group2="${group2}"]`)
+            group = td.upper('tr').attr('group')
+            const es = el.find(`[group="${group}"][group2="${group2}"]`)
             const icon = td.find('i.wiaicon')
             if (td.data('tag') === 1) {
               td.data('tag', 0)
-              if (icon) icon.removeClass('rotate-270')
+              if (icon) icon.removeClass('rot-270')
 
-              $.nextTick(() => es.show())
+              es.show()
             } else {
               td.data('tag', 1)
-              if (icon) icon.addClass('rotate-270')
-              $.nextTick(() => es.hide())
+              if (icon) icon.addClass('rot-270')
+              es.hide()
             }
           }
         }
@@ -1157,35 +1174,47 @@ export default class DataTable extends Event {
 
   /**
    * 数据与模板结合，生成数据视图
-   * @param {*} data 外部传入数据，重置表数据
+   * @param {*[]} [data] 外部传入数据，重置表数据
    * @param {SetViewOpts} [opts] - 选项
+   * @param {number[]} [sort] - 排序
    */
-  setView(data, opts) {
+  setView(data, opts, sort) {
     const _ = this
     try {
-      if (!data?.length) return
+      if (!data?.length && !_.data?.length) return
 
       const {head, cfg} = _
-      const {page: hpage, sort: hsort} = head[0]
-      let {id: idx} = cfg
+      if (!sort) sort = cfg.sort
+
+      let {id: idx, page: hpage} = cfg
       idx = Array.isArray(idx) && idx?.length ? idx[0] : undefined
-      _.clearSel()
+      // _.clearSel()
+      _.clear()
 
       // 浅拷贝数组数据（子数组与原数组一致），用于排序、分页，不改变原数据
+      if (data?.length) {
+        _.viewOpts = opts // 点击表头排序需要
       _.data = [...data]
-
       // index 需对数组添加index属性
-      if (_.data && _.opt.head[0].checkbox === 'index') _.data.forEach((v, x) => (v.index = x))
+        if (cfg.checkbox === 'index' && !sort?.length) _.data.forEach((v, x) => (v.index = x))
+      }
 
       // 缺省排序
-      if (hsort) {
-        const c = getCol(head, hsort)
-        if (c) _.sort(_.data, c.col, c.type)
+      if (sort?.length) {
+        const i = sort[0]
+        let c
+        let desc = false
+        if (i > 0) c = head[i]
+        else {
+          c = head[0 - i]
+          desc = true
+        }
+        if (c) _.sort(_.data, c.idx, c.type, desc)
       }
 
       // 数据与模板结合，生成数据视图
-      if (!_.group && _.pageBar()) _.paging()
-      else _.tb.setView(data, {idx, ...opts})
+      if (_.pageBar()) _.paging()
+      else _.tb.setView(_.data, {idx, ...opts})
       // view.setView.bind(_.tb)(data, {idx, ...opts})
 
       if (cfg.sum) _.setSum()
@@ -1198,34 +1227,43 @@ export default class DataTable extends Event {
    * 添加数据到视图
    * @param {*[]} data 外部传入数据
    * @param {SetViewOpts}  opts - 选项
+   * @param {number[]}  sort - 选项
    */
-  addView(data, opts) {
+  addView(data, opts, sort) {
     const _ = this
     try {
       if (!data?.length) return
 
       const {cfg, head} = _
-      const {page: hpage, sort: hsort} = head[0]
-      let {id: idx} = cfg
+      if (!sort) sort = cfg.sort
+
+      let {id: idx, page: hpage} = cfg
       idx = Array.isArray(idx) && idx?.length ? idx[0] : undefined
 
+      // 分组已设置 _.data 和 排序
       _.clearSel()
-
-      if (data && cfg.checkbox === 'index')
-        // index 需对数组添加index属性
-        data.forEach((v, x) => (v.index = x))
 
       // 合并数组（浅拷贝，子数组还是原子数组），用于排序、分页，不改变原数据
       _.data = [...(_.data || []), ...data]
 
-      if (hsort) {
+      // index 需对数组添加index属性
+      if (cfg.checkbox === 'index') _.data.forEach((v, x) => (v.index = x))
+
+      if (sort?.length) {
         // 缺省排序
-        const c = getCol(head, hsort)
-        if (c) _.sort(data, c.col, c.type)
+        const i = sort[0]
+        let c
+        let desc = false
+        if (i > 0) c = head[i]
+        else {
+          c = head[0 - i]
+          desc = true
+        }
+        if (c) _.sort(_.data, c.idx, c.type, desc)
       }
 
       // 数据与模板结合，生成数据视图
-      if (!_.group && _.pageBar()) _.paging(1, true)
+      if (_.pageBar()) _.paging(1, true)
       else _.tb.addView(data, {idx, ...opts})
       // view.addView.bind(_.tb)(data, {idx, ...opts})
 
@@ -1355,13 +1393,13 @@ export default class DataTable extends Event {
 
   /**
    * 排序
-   * @param {*} data 二维数组
-   * @param {*} k 数组序号，对象key
-   * @param {*} type 字段类型
-   * @param {*} desc 降序
+   * @param {*[]} data 二维数组
+   * @param {number} k 数组序号，对象key
+   * @param {string} type 字段类型
+   * @param {boolean} desc 降序
    * @returns data直接被排序，返回还是data
    */
-  sort(data, k, type, desc) {
+  sort(data, k, type, desc = false) {
     data.sort(compareObj(k, desc, type))
     // index 需对数组添加index属性
     if (data && this.opt.head[0].checkbox === 'index') data.forEach((v, x) => (v.index = x))
@@ -1380,31 +1418,6 @@ export default class DataTable extends Event {
     Utils.deleteProps(m)
     m = null
   }
-}
-
-/**
- * 获得列序号
- * @param {*} head 表头数据
- * @param {*} name 名称
- * @returns 表数据序号
- */
-function getCol(head, name) {
-  let R = null
-
-  const {hide} = head[0]
-  let col = -1 // 隐藏字段需跳过
-  for (let i = 1, len = head.length; i < len; i++) {
-    col++ // 从 0 开始
-    // 跳过隐藏列，隐藏列不显示
-    if (hide?.includes(col)) col++
-
-    if (head[i].name === name) {
-      R = {col, type: head[i].type}
-      break
-    }
-  }
-
-  return R
 }
 
 /**
@@ -1447,4 +1460,91 @@ function formatNum(val, cnt = 2) {
     .replace(/\.0+$/, '')
     .replace(/(\.\d+)0+$/, '$1')
   return R
+}
+
+/**
+ * 明细排序
+ * @param {*[]} rs
+ * @param {number[]} sort
+ * @param {*[]} head
+ */
+function sortData(rs, sort, head) {
+  if (sort.length) {
+    const i = sort[0]
+    let c
+    let desc = false
+    if (i > 0) c = head[i]
+    else {
+      c = head[0 - i]
+      desc = true
+    }
+
+    rs.sort(compareObj(c.idx, desc, c.type))
+  }
+}
+
+/**
+ * 汇总排序
+ * @param {*[]} rs
+ * @param {number[]} sort
+ * @param {*[]} head
+ */
+function sortSum(rs, sort, head, logs) {
+  if (sort.length) {
+    const i = sort[0]
+    let c
+    let desc = false
+    if (i > 0) c = head[i]
+    else {
+      c = head[0 - i]
+      desc = true
+    }
+
+    rs.sort(compareObj(c.idx, desc, c.type, 'sum'))
+  }
+}
+
+/**
+ * 比较方法，用于对象数组排序，常用于数据表排序
+ * @param {string} k 对象属性key
+ * @param {boolean} desc 升序、降序，默认升序
+ * @param {string} type 类型auto, number、date、string，缺省 auto
+ * @param {string} [sub] 子对象
+ */
+function compareObj(k, desc, type, sub) {
+  return (o1, o2) => {
+    let R = 0
+    try {
+      let v1 = sub ? o1[sub][k] : o1[k]
+      let v2 = sub ? o2[sub][k] : o2[k]
+
+      // log({v1, v2, type}, 'compareObj')
+
+      if (typeof v1 === 'string' || typeof v2 === 'string') {
+        // 数字、日期字符串，按数字、日期排序
+        // 金额可能有千字分隔符，需替换
+        if (type.toLowerCase() === 'number') {
+          if (typeof v1 === 'string') {
+            v1 = v1.replaceAll(',', '').replaceAll(/null|-|^$/g, '0')
+            v1 = Number(v1)
+          }
+          if (typeof v2 === 'string') {
+            v2 = v2.replaceAll(',', '').replaceAll(/null|-|^$/g, '0')
+            v2 = Number(v2)
+          }
+        } else if (type.toLowerCase() === 'date') {
+          v1 = Date.parse(v1)
+          v2 = Date.parse(v2)
+        }
+      }
+
+      if (v1 < v2) R = desc ? 1 : -1
+      else if (v1 > v2) R = desc ? -1 : 1
+
+      // log({v1, v2, R}, 'compareObj')
+    } catch (ex) {
+      console.log('compareObj exp:', ex.message)
+    }
+    return R
+  }
 }
