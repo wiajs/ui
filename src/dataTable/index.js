@@ -576,16 +576,8 @@ export default class DataTable extends Event {
         }
       }
 
-      // 表列对应的数据列
-      let id1
-      let id2
-      let id3
-      if (c1) id1 = head[c1].idx
-      if (c2) id2 = head[c2].idx
-      if (c3) id3 = head[c3].idx
-
       // tb.clearView()
-      const rs1 = _.groupByCol(_.data, id1, id2, id3, sort)
+      const rs1 = _.groupByCol(_.data, [c1, c2, c3], sort)
 
       // 唯一id，避免重复添加
       let {id: idx} = cfg
@@ -651,10 +643,8 @@ export default class DataTable extends Event {
   /**
    * 对二维数组进行三级分组
    * @param {*[]} data - 数据
-   * @param {number} id1 - 一级分组的列索引
-   * @param {number} [id2] - 二级分组的列索引
-   * @param {number} [id3] - 三级分组的列索引
-   * @param {number[]} [sort]
+   * @param {number[]} [cols] - 分组，表头列
+   * @param {number[]} [sort] - 排序，表头列
    * @returns {*[]}
         分组后的对象数组，结构为：
    *   [{
@@ -670,11 +660,20 @@ export default class DataTable extends Event {
    *       }]
    *     }]
    *   }]   */
-  groupByCol(data, id1, id2, id3, sort) {
+  groupByCol(data, [c1, c2, c3] = [], sort = null) {
     let R
     const _ = this
     try {
       const {head, cfg} = _
+
+      // 表列对应的数据列
+      let id1 = 0
+      let id2 = 0
+      let id3 = 0
+      if (c1) id1 = head[c1].idx
+      if (c2) id2 = head[c2].idx
+      if (c3) id3 = head[c3].idx
+
       const r1 = data.reduce((acc, r) => {
         const v = `${id1}-${r[id1]}` // 分组列名称，加列序号，避免重复
         const gp = acc[v] // 分组
@@ -685,6 +684,7 @@ export default class DataTable extends Event {
         } else {
           acc[v] = {
             name: v,
+            val: r[id1],
             id: id1,
             data: [r],
             count: 1,
@@ -698,7 +698,10 @@ export default class DataTable extends Event {
       // 对象转换为数组，方便排序
       for (const k of Object.keys(r1)) {
         const r = r1[k]
-        if (cfg.sum) r.sum = _.getSum(r.data) // 汇总计算
+        if (cfg.sum) {
+          r.sum = _.getSum(r.data) // 汇总计算
+          r.sum[id1] = r.val // 用于排序
+        }
         if (!id2 && sort.length) sortData(r.data, sort, head)
 
         rs1.push(r)
@@ -719,6 +722,7 @@ export default class DataTable extends Event {
               acc[v] = {
                 name: v,
                 id: id2,
+                val: r[id2],
                 data: [r],
                 count: 1,
               }
@@ -730,7 +734,10 @@ export default class DataTable extends Event {
           const rs2 = []
           for (const k of Object.keys(r2)) {
             const r = r2[k]
-            if (cfg.sum) r.sum = _.getSum(r.data)
+            if (cfg.sum) {
+              r.sum = _.getSum(r.data)
+              r.sum[id2] = r.val // 用于排序
+            }
             if (!id3 && sort.length) sortData(r.data, sort, head)
             rs2.push(r)
           }
@@ -779,7 +786,7 @@ export default class DataTable extends Event {
       }
 
       // 对分组进行排序
-      if (sort.length) sortSum(rs1, sort, head, true)
+      if (sort.length) sortSum(rs1, sort, head)
 
       R = rs1
 
@@ -1479,17 +1486,23 @@ function sortData(rs, sort, head) {
       desc = true
     }
 
-    rs.sort(compareObj(c.idx, desc, c.type))
+    let {idx, type} = c
+    if (c.sort?.length) {
+      idx = c.sort[0] // sort 指定排序列
+      type = c.sort[1]
+    }
+
+    rs.sort(compareObj(idx, desc, type))
   }
 }
 
 /**
  * 汇总排序
  * @param {*[]} rs
- * @param {number[]} sort
+ * @param {number[]} sort - 表头列
  * @param {*[]} head
  */
-function sortSum(rs, sort, head, logs) {
+function sortSum(rs, sort, head) {
   if (sort.length) {
     const i = sort[0]
     let c
@@ -1500,7 +1513,13 @@ function sortSum(rs, sort, head, logs) {
       desc = true
     }
 
-    rs.sort(compareObj(c.idx, desc, c.type, 'sum'))
+    let {idx, type} = c
+    if (c.sort?.length) {
+      idx = c.sort[0] // sort 指定排序列
+      type = c.sort[1]
+    }
+
+    rs.sort(compareObj(idx, desc, type, 'sum'))
   }
 }
 
@@ -1517,6 +1536,7 @@ function compareObj(k, desc, type, sub) {
     try {
       let v1 = sub ? o1[sub][k] : o1[k]
       let v2 = sub ? o2[sub][k] : o2[k]
+      type = type ?? 'string'
 
       // log({v1, v2, type}, 'compareObj')
 

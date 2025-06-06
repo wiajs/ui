@@ -61,9 +61,10 @@ pnpm add @wiajs/ui
   - width 与 minWidth、maxWidth 不可同时设置
 - minWidth: 可变动最小列宽，如：10，确保是个字符宽，同时参与剩余宽度分配。
 - maxWidth: 最大列宽，剩余空间分配后最大列宽，剩余宽度分给其他未设置width列。
-- sort: true/false，是否支持排序
+- sort: true/false 或 [8, 'number']，是否支持排序
   - 持排序鼠标移到该列，会出现排序图标（上或下箭头）
   - false 可省略
+  - [8, 'number']，表示排序时，实际按数据的第8列及类型排序，而不是自身对应的数据列
 - link: 'page/detail?no=${r[0]}'，列数据填充到模板字符串后的跳转链接。
 - type: 数据类型，'number'、'string' 或 'date'
   - 'string'可省略，左对齐，可使用 sum:'value',保留到分组汇总行。
