@@ -28,6 +28,7 @@ import * as css from './index.less'
  * @prop {()=>*} onFail
  * @prop {()=>*} onRefresh
  * @prop {string} mobile
+ * @prop {{refresh: string, slider: string, succ: string, fail: string}} icon
  */
 
 const def = {
@@ -45,6 +46,12 @@ const def = {
   len: 0,
   x: 0,
   y: 0,
+  icon: {
+    refresh: '&#xe68d;', // '&#xe614;', &#xe619;
+    slider: '&#xe68c;',
+    succ: '&#xe664;',
+    fail: '&#xe86d;',
+  },
 }
 
 /** @enum {number} */
@@ -152,14 +159,14 @@ export default class Verify extends Event {
         <div class={css.wiaui_verify} style={`width: ${cw}px`}>
           <canvas width={cw} height={ch} />
           <div class={css.refreshIcon}>
-            <i class="wiaicon">&#xe614;</i>
+            <i class="wiaicon">{opt.icon.refresh}</i>
           </div>
           <canvas class={css.piece} width={srw} height={ch} />
           <div class={css.sliderContainer} style={`width: ${cw}px`}>
             <div class={css.sliderMask}>
               <div class={css.slider}>
                 <span class={css.sliderIcon}>
-                  <i class="wiaicon rotate-90">&#xe675;</i>
+                  <i class="wiaicon rot-90">{opt.icon.slider}</i>
                 </span>
               </div>
             </div>
@@ -176,7 +183,6 @@ export default class Verify extends Event {
 
       // 所有直接子元素节点
       const child = el.dom.children
-
       ;[_.canvas, _.refreshIcon, _.block, _.sliderContainer] = child
       ;[_.sliderMask, _.text] = _.sliderContainer.children
       ;[_.slider] = _.sliderMask.children
@@ -240,7 +246,7 @@ export default class Verify extends Event {
   bind() {
     const _ = this
     const {opt} = _
-    const {cw} = opt
+    const {cw, icon} = opt
 
     // _.el.dom.onselectstart = () => false;
 
@@ -328,7 +334,7 @@ export default class Verify extends Event {
 
       switch (_.status) {
         case Status.succ:
-          $(_.sliderIcon).html(`<i class="wiaicon">&#xe664;</i>`)
+          $(_.sliderIcon).html(`<i class="wiaicon">${icon.succ}</i>`)
           // $(_.sliderIcon).html(`<i class="fas fa-check" aria-hidden="true"></i>`);
 
           $(_.sliderContainer).addClass(css.sliderContainer_success)
@@ -359,7 +365,7 @@ export default class Verify extends Event {
           break
 
         default: {
-          $(_.sliderIcon).html(`<i class="wiaicon">&#xe641;</i>`)
+          $(_.sliderIcon).html(`<i class="wiaicon">${icon.fail}</i>`)
           $(_.sliderContainer).addClass(css.sliderContainer_fail)
 
           if (_.onFail) _.onFail(Status.fail)
@@ -415,7 +421,7 @@ export default class Verify extends Event {
 
     _.sliderContainer.className = css.sliderContainer
 
-    $(_.sliderIcon).html(`<i class="wiaicon rotate-90">&#xe675;</i>`)
+    $(_.sliderIcon).html(`<i class="wiaicon rot-90">${opt.icon.slider}</i>`)
     // $(_.sliderIcon).html(`<i class="fas fa-bars fa-rotate-90" aria-hidden="true"></i>`);
 
     _.slider.style.left = '0'

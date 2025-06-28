@@ -2,6 +2,7 @@
  * Edit Table, 类似 listView
  * 编辑表table的 class 请设置为 edit-table
  */
+@import '../dataTable/index.less';
 .edit-table {
   --edit-table-img-heicht: 70px;
   --edit-table-attach-gap: 8px;
@@ -65,15 +66,11 @@
 
   /* 跟 listView odd tr 一致 */
   tr {
-    // min-height: 2.2rem;
-    //background-color: lavender;
-    input {
-      min-height: 32px;
-    }
-
+    input,
     span {
       // min-height: 2.2rem;
-      min-height: 32px;
+      // min-height: 32px;
+      min-height: 22px;
       //background: lavender;
       // padding: 10px 0 10px 0.75rem;
     }
@@ -109,7 +106,7 @@
     // padding: 5px;
     vertical-align: bottom;
     // vertical-align: top;
-    // padding: 2px; /* 可选内边距 */\
+    // padding: 2px; /* 可选内边距 */
     // display: flex;
     // justify-content: stretch; // 充满
   }
@@ -197,7 +194,7 @@
     &.etLabel {
       white-space: nowrap;
       overflow: hidden;
-      text-overflow: ellipsis; /* 显示省略号 */
+      text-overflow: ellipsis; /* 超出显示省略号 */
       min-width: 40px; // 最小列宽
       max-width: 100px; // 最大列宽
       // 鼠标移动显示
@@ -473,6 +470,23 @@
         transform: scaleY(calc(1 / var(--f7-device-pixel-ratio)));
         /* 10px gap + 1px 分隔线 */
       }
+    }
+  }
+
+  .etRadio,
+  .etCheckbox {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+
+    label {
+      // --f7-list-item-media-margin: 4px;
+      i {
+        margin-right: 4px;
+      }
+      display: flex;
+      align-items: center;
+      min-height: 32px;
     }
   }
 }

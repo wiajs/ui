@@ -1,6 +1,6 @@
 {
   "name": "@wiajs/ui",
-  "version": "1.3.3",
+  "version": "1.3.26",
   "description": "wia app ui packages",
   "main": "",
   "scripts": {
@@ -29,6 +29,8 @@
     "./messagebar": "./dist/messagebar/index.js",
     "./messages/*": "./dist/messages/*",
     "./messages": "./dist/messages/index.js",
+    "./navTab/*": "./dist/navTab/*",
+    "./navTab": "./dist/navTab/index.js",
     "./searchbar/*": "./dist/searchbar/*",
     "./searchbar": "./dist/searchbar/index.js",
     "./swipeout/*": "./dist/swipeout/*",

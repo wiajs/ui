@@ -58,6 +58,10 @@ export default class DataTable extends Event {
     super(opt, [page])
     const cfg = {..._cfg, ...(opt.head[0] || {})}
     const _ = this
+
+    // 加载函数
+    if (!$.openFileUrl) $.openFileUrl = openFileUrl
+
     _.page = page
     _.view = page.view
     _.opt = opt
@@ -258,7 +262,7 @@ export default class DataTable extends Event {
     const R = []
     const {hide, link} = head[0]
 
-    let col = -1 // 隐藏字段需跳过
+    let col = -1 // 数据列，隐藏字段需跳过
     for (let i = 1, len = head.length; i < len; i++) {
       col++ // 从 0 开始
       // 跳过隐藏列，隐藏列不显示
@@ -266,28 +270,85 @@ export default class DataTable extends Event {
 
       const h = head[i]
       // TODO 跳转链接，需触发页面事件，方便页面类执行跳转
-      if (h.value)
+      if (h.value) {
+        col-- // 自带value，不消耗数据
+        // <a data-tag="edit">编辑</a>
         R.push(
-          <td class="label-cell" data-link={i}>
+          <td class="label-cell" data-col={i}>
             {h.value}
-          </td>
-        )
-      else if (link?.includes(i)) {
-        h.idx = col // 对应数据列
-        R.push(
-          <td class="label-cell" data-link={i}>
-            <a>{`$\{r[${col}]}`}</a>
           </td>
         )
       } else {
         h.idx = col // 对应数据列
         const cls = h.type === 'number' ? 'numeric-cell' : 'label-cell'
-        if (h.type === 'number')
+
+        if (h.link || link?.includes(i)) {
+          if (!h.link) h.link = ''
+
+          if (h.type === 'number') {
+            if (h.div > 0)
+              R.push(
+                <td class={cls} data-link={h.link} data-col={i}>
+                  <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : (r[${col}]/${div}).toLocaleString('en-US')}`}</a>
+                </td>
+              )
+            else
+            R.push(
+              <td class={cls} data-link={h.link} data-col={i}>
+                <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : r[${col}].toLocaleString('en-US')}`}</a>
+              </td>
+            )
+          } else if (h.type === 'date')
+            R.push(
+              <td class={cls} data-link={h.link} data-col={i}>
+                <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('yyyy-MM-dd', r[${col}])}`}</a>
+              </td>
+            )
+          else if (h.type === 'time')
+            R.push(
+              <td class={cls} data-link={h.link} data-col={i}>
+                <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('hh:mm:ss', r[${col}])}`}</a>
+              </td>
+            )
+          else if (h.type === 'datetime')
+            R.push(
+              <td class={cls} data-link={h.link} data-col={i}>
+                <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('yyyy-MM-dd hh:mm:ss', r[${col}])}`}</a>
+              </td>
+            )
+          else
+            R.push(
+              <td class={cls} data-link={h.link} data-col={i}>
+                <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : r[${col}]}`}</a>
+              </td>
+            )
+        } else {
+          if (h.type === 'number') {
+            if (h.div > 0)
+              R.push(
+                <td
+                  class={
+                    cls
+                  }>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : (r[${col}]/${h.div}).toLocaleString('en-US')}`}</td>
+              )
+            else
           R.push(
             <td class={cls}>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : r[${col}].toLocaleString('en-US')}`}</td>
           )
-        else R.push(<td class={cls}>{`$\{r[${col}] === 'null' ? '' : r[${col}]}`}</td>)
+          } else if (h.type === 'date')
+            R.push(<td class={cls}>{`$\{r[${col}] === ''|| r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('yyyy-MM-dd', r[${col}])}`}</td>)
+          else if (h.type === 'time')
+            R.push(<td class={cls}>{`$\{r[${col}] === ''|| r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('hh:mm:ss', r[${col}])}`}</td>)
+          else if (h.type === 'datetime')
+            R.push(
+              <td
+                class={
+                  cls
+                }>{`$\{r[${col}] === ''|| r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('yyyy-MM-dd hh:mm:ss', r[${col}])}`}</td>
+            )
+          else R.push(<td class={cls}>{`$\{r[${col}] === ''|| r[${col}] === null || r[${col}] === 'null' ? '-' : r[${col}]}`}</td>)
       }
+    }
     }
     return R
   }
@@ -614,8 +675,86 @@ export default class DataTable extends Event {
       }
 
       if (cfg.sum) _.setSum()
+      if (_.foldLevel) _.fold(_.foldLevel)
     } catch (e) {
       log.err(e, 'setGroup')
+    }
+  }
+
+  /**
+   * 折叠 三种状态：0: 不折的 1：折叠所有 2：展开一级折叠二级
+   * @param {number} [level] - 默认1，折叠一级及其下分组，相当于所有 0 不折叠
+   */
+  fold(level = 1) {
+    const _ = this
+    const {tb} = _
+    try {
+      _.foldLevel = level
+      // 0 不折叠
+      if (level === 0) _.open(0)
+      else if (level === 1) {
+        // 折叠所有
+        let es = tb.find('[group]')
+        es.hide()
+        es = tb.find('.group-icon').get()
+        for (const n of es) {
+          const $n = $(n)
+          $n.data('iconTag', 1)
+          const icon = $n.find('i.f7icon')
+          const icon2 = $n.find('i.wiaicon')
+          if (icon?.dom) icon.dom.textContent = 'chevron_right' // .removeClass('rotate-90').addClass('rotate-0')
+          icon2?.addClass('rot-270')
+        }
+      } else if (level === 2) {
+        _.open(1) // 展开一级，折叠二级
+        let es = tb.find('[group2]')
+        es.hide()
+        es = tb.find('.group-icon').get()
+        for (const n of es) {
+          const $n = $(n)
+          $n.data('iconTag', 1)
+          const icon2 = $n.find('i.wiaicon')
+          icon2?.addClass('rot-270')
+        }
+      }
+    } catch (e) {
+      log.err(e, 'fold')
+    }
+  }
+
+  /**
+   * 展开分组，被fold调用
+   * @param {number} level - 展开级别 0 所有
+   */
+  open(level) {
+    const _ = this
+    const {tb} = _
+    try {
+      if (level === 0) {
+        let es = tb.find('[group]')
+        es.show()
+        es = tb.find('.group-icon').get()
+        for (const n of es) {
+          const $n = $(n)
+          $n.data('iconTag', 0)
+          const icon = $n.find('i.f7icon')
+          const icon2 = $n.find('i.wiaicon')
+          if (icon?.dom) icon.dom.textContent = 'chevron_down' // .removeClass('rotate-90').addClass('rotate-0')
+          icon2?.removeClass('rot-270')
+        }
+      } else if (level === 1) {
+        let es = tb.find('[group]:not([group2])')
+        es.show()
+        es = tb.find('.group-icon').get()
+        for (const n of es) {
+          const $n = $(n)
+          $n.data('iconTag', 0)
+          const icon = $n.find('i.f7icon')
+          if (icon?.dom) icon.dom.textContent = 'chevron_down' // .removeClass('rotate-90').addClass('rotate-0')
+        }
+      }
+    } catch (e) {
+      log.err(e, 'open')
     }
   }
 
@@ -698,11 +837,18 @@ export default class DataTable extends Event {
       // 对象转换为数组，方便排序
       for (const k of Object.keys(r1)) {
         const r = r1[k]
+        if (r.data?.length) {
         if (cfg.sum) {
           r.sum = _.getSum(r.data) // 汇总计算
-          r.sum[id1] = r.val // 用于排序
+            r.sum[id1] = r.val // 分组列写入sum 用于排序
+            // 排序映射隐藏列
+            if (head[c1].sort?.length) {
+              const j = head[c1].sort[0]
+              if (cfg.hide.includes(j)) r.sum[j] = r.data[0][j]
+            }
+          }
+          if (!id2 && sort?.length) _.sort(r.data, sort)
         }
-        if (!id2 && sort.length) sortData(r.data, sort, head)
 
         rs1.push(r)
       }
@@ -734,11 +880,20 @@ export default class DataTable extends Event {
           const rs2 = []
           for (const k of Object.keys(r2)) {
             const r = r2[k]
+            if (r.data?.length) {
             if (cfg.sum) {
               r.sum = _.getSum(r.data)
               r.sum[id2] = r.val // 用于排序
+                if (head[c2].sort?.length) {
+                  // 排序映射隐藏列
+                  const j = head[c2].sort[0]
+                  if (cfg.hide.includes(j)) r.sum[j] = r.data[0][j]
+                }
+              }
+              if (!id3 && sort?.length) _.sort(r.data, sort)
+            } else {
+              log({r}, 'groupByCol data null')
             }
-            if (!id3 && sort.length) sortData(r.data, sort, head)
             rs2.push(r)
           }
 
@@ -778,7 +933,7 @@ export default class DataTable extends Event {
           }
 
           // 对分组进行排序
-          if (sort.length) sortSum(rs2, sort, head)
+          if (sort?.length) sortSum(rs2, sort, head)
 
           // 替换一级分组的 data 为二级分组
           r1.data = rs2
@@ -786,7 +941,7 @@ export default class DataTable extends Event {
       }
 
       // 对分组进行排序
-      if (sort.length) sortSum(rs1, sort, head)
+      if (sort?.length) sortSum(rs1, sort, head)
 
       R = rs1
 
@@ -821,6 +976,7 @@ export default class DataTable extends Event {
       // checkbox
       let {checkbox: ck, layout, sum, fix} = cfg
 
+      // 固定表格，上下滚动
       if (fix.includes('table')) el.append(<div class="data-table-content overflow-auto" />)
       else el.append(<div class="data-table-content" />)
 
@@ -866,7 +1022,7 @@ export default class DataTable extends Event {
       // 表主体
       v = (
         <tbody name="tbBody">
-          <tr name={`${name}-tp`} style={{display: 'none'}}>
+          <tr name={`${name}-tp`} style="display: none">
             {ck && (
               <td class="checkbox-cell">
                 <label class="checkbox">
@@ -952,15 +1108,27 @@ export default class DataTable extends Event {
       let {id: idx} = cfg
       idx = Array.isArray(idx) && idx?.length ? idx[0] : undefined
 
-      // link 字段
+      // 字段 定义的 link，带值的，自动跳转
       el.findNode('tbody').click('td[data-link]', (ev, sender) => {
         const n = $(sender)
         if (n.length) {
-          const no = n.data('link')
+          const link = n.data('link')
+          const col = n.data('col')
           const val = n.findNode('a').html().trim()
-          if (no && val) _.emit('local::link', no, val)
+          if (link) $.go(link)
+          else _.emit('local::link', {col, val})
         }
       })
+
+      // 头部指定的 link 字段，包含在上面link中，link值为空
+      // el.findNode('tbody').click('td[data-col]', (ev, sender) => {
+      //   const n = $(sender)
+      //   if (n.length) {
+      //     const col = n.data('col')
+      //     const val = n.findNode('a').html().trim()
+      //     if (col && val) _.emit('local::link', {col, val})
+      //   }
+      // })
 
       // checkbox 变化
       el.findNode('tbody').on('change', '.checkbox-cell input[type="checkbox"]', this.checkEvent)
@@ -1035,14 +1203,14 @@ export default class DataTable extends Event {
           if (group) {
             const es = el.find(`[group="${group}"]`)
             const icon = td.find('i.f7icon')
-            if (td.data('tag') === 1) {
-              td.data('tag', 0)
+            if (td.data('iconTag') === 1) {
+              td.data('iconTag', 0)
               // el.removeClass('rotate-90').addClass('rotate-0')
               if (icon.dom) icon.dom.textContent = 'chevron_down' // .removeClass('rotate-90').addClass('rotate-0')
 
               $.nextTick(() => es.show())
             } else {
-              td.data('tag', 1)
+              td.data('iconTag', 1)
               // el.removeClass('rotate-0').addClass('rotate-45')
               if (icon.dom) icon.dom.textContent = 'chevron_right' // .removeClass('rotate-90').addClass('rotate-0')
 
@@ -1054,13 +1222,13 @@ export default class DataTable extends Event {
             group = td.upper('tr').attr('group')
             const es = el.find(`[group="${group}"][group2="${group2}"]`)
             const icon = td.find('i.wiaicon')
-            if (td.data('tag') === 1) {
-              td.data('tag', 0)
+            if (td.data('iconTag') === 1) {
+              td.data('iconTag', 0)
               if (icon) icon.removeClass('rot-270')
 
               es.show()
             } else {
-              td.data('tag', 1)
+              td.data('iconTag', 1)
               if (icon) icon.addClass('rot-270')
               es.hide()
             }
@@ -1084,10 +1252,8 @@ export default class DataTable extends Event {
       const observer = new MutationObserver(() => _.resize())
       observer.observe(el.dom, {childList: true, subtree: true})
 
-      // 监听窗口缩放
-      window.addEventListener(
-        'resize',
-        debounce(() => {
+      // 返回一个防抖函数,更新隐藏元素列表
+      const resizeHandler = debounce(() => {
           // 获取新值
           const newWidth = window.innerWidth
           const newHeight = window.innerHeight
@@ -1096,9 +1262,7 @@ export default class DataTable extends Event {
           const widthDiff = newWidth - _.lastW
           const heightDiff = newHeight - _.lastH
 
-          // console.log(
-          //   `窗口尺寸变化：\n宽度 ${lastWidth} → ${newWidth} (差值: ${widthDiff}px)\n高度 ${lastHeight} → ${newHeight} (差值: ${heightDiff}px)`
-          // )
+        // console.log(`窗口尺寸变化：\n宽度 ${_.lastW} → ${newWidth} (差值: ${widthDiff}px)\n高度 ${_.lastH} → ${newHeight} (差值: ${heightDiff}px)`)
 
           // 更新旧值
           _.lastW = newWidth
@@ -1106,7 +1270,9 @@ export default class DataTable extends Event {
 
           _.resize(heightDiff)
         }, 500)
-      ) // 200ms内仅触发一次
+
+      // 监听窗口缩放
+      window.addEventListener('resize', resizeHandler()) // 500ms内仅触发一次
     } catch (e) {
       log.err(e, 'prebind')
     }
@@ -1128,18 +1294,22 @@ export default class DataTable extends Event {
     const {view, el, tb, cfg} = _
     const {fix, height, width} = cfg
     const tbWrap = el.findNode('.data-table-content')
+
+    // 表格最大宽度、高度，设置fix table则自动适配到满屏，不设置表格不上下滚动
     if (width) tbWrap.css('max-width', `${width}px`)
+
     if (height) tbWrap.css('max-height', `${height}px`)
-    else {
+    else if (fix.includes('table')) {
       const pg = view.find('.page-content').dom
       const sh = pg.scrollHeight - pg.clientHeight
-
-      log({ch, sh}, 'resize')
 
       let h = 0
 
       if (sh > 0) h = tbWrap.height() - sh
       if (h <= 0 && ch > 0) h = tbWrap.height() + ch
+
+      // log({changeHeight: ch, scrollHeight: sh, max-height: h}, 'resize 设置表格高度')
+      log({'max-height': `${h}px`}, 'resize')
       // 设置表格高度
       if (h > 0) tbWrap.css('max-height', `${h}px`)
       R = h
@@ -1203,26 +1373,17 @@ export default class DataTable extends Event {
         _.viewOpts = opts // 点击表头排序需要
       _.data = [...data]
       // index 需对数组添加index属性
-        if (cfg.checkbox === 'index' && !sort?.length) _.data.forEach((v, x) => (v.index = x))
+        if (cfg.checkbox === 'index') _.data.forEach((v, x) => (v.index = x))
       }
 
       // 缺省排序
-      if (sort?.length) {
-        const i = sort[0]
-        let c
-        let desc = false
-        if (i > 0) c = head[i]
-        else {
-          c = head[0 - i]
-          desc = true
-        }
-        if (c) _.sort(_.data, c.idx, c.type, desc)
-      }
+      if (sort?.length) _.sort(_.data, sort)
 
       // 数据与模板结合，生成数据视图
       if (_.pageBar()) _.paging()
       else _.tb.setView(_.data, {idx, ...opts})
-      // view.setView.bind(_.tb)(data, {idx, ...opts})
+      // debugger
+      // view.setView.bind(_.tb)(_.data, {idx, ...opts})
 
       if (cfg.sum) _.setSum()
     } catch (ex) {
@@ -1256,18 +1417,7 @@ export default class DataTable extends Event {
       // index 需对数组添加index属性
       if (cfg.checkbox === 'index') _.data.forEach((v, x) => (v.index = x))
 
-      if (sort?.length) {
-        // 缺省排序
-        const i = sort[0]
-        let c
-        let desc = false
-        if (i > 0) c = head[i]
-        else {
-          c = head[0 - i]
-          desc = true
-        }
-        if (c) _.sort(_.data, c.idx, c.type, desc)
-      }
+      if (sort?.length) _.sort(_.data, sort)
 
       // 数据与模板结合，生成数据视图
       if (_.pageBar()) _.paging(1, true)
@@ -1287,8 +1437,10 @@ export default class DataTable extends Event {
    */
   pageBar(start = 1) {
     let R = false
+    const _ = this
 
-    const {head, data, el} = this
+    try {
+      const {head, data, el} = _
 
     if (!head) {
       console.log('param is null.')
@@ -1327,6 +1479,9 @@ export default class DataTable extends Event {
       el.class('dataTables_paginate').empty()
       el.class('data-table-footer').hide()
     }
+    } catch (e) {
+      log.err(e, 'pageBar')
+    }
 
     return R
   }
@@ -1354,7 +1509,7 @@ export default class DataTable extends Event {
   /**
    * 分页跳转，自动还原选择行
    * @param {*} i 分页序数，从1开始，默认第一页
-   * @param {boolean} add 新增
+   * @param {boolean} [add] 新增
    */
   paging(i = 1, add = false) {
     const _ = this
@@ -1400,16 +1555,41 @@ export default class DataTable extends Event {
 
   /**
    * 排序
-   * @param {*[]} data 二维数组
-   * @param {number} k 数组序号，对象key
-   * @param {string} type 字段类型
-   * @param {boolean} desc 降序
-   * @returns data直接被排序，返回还是data
+   * @param {*[]} rs 二维数组
+   * @param {number[]} sort - 表头列
    */
-  sort(data, k, type, desc = false) {
-    data.sort(compareObj(k, desc, type))
+  sort(rs, sort) {
+    const _ = this
+
+    if (!rs?.length || !sort?.length) return
+
+    try {
+      const {head} = _
+
+      const i = sort[0]
+      let c
+      let desc = false
+      if (i > 0) c = head[i]
+      else {
+        c = head[0 - i]
+        desc = true
+      }
+
+      if (c) {
+        let {idx, type} = c
+        if (c.sort?.length) {
+          idx = c.sort[0] // sort 指定排序列
+          type = c.sort[1]
+        }
+
+        rs.sort(compareObj(idx, desc, type))
+      }
+
     // index 需对数组添加index属性
-    if (data && this.opt.head[0].checkbox === 'index') data.forEach((v, x) => (v.index = x))
+      // if (cfg.checkbox === 'index') rs.forEach((v, x) => (v.index = x))
+    } catch (e) {
+      log.err(e, 'sort')
+    }
   }
 
   destroy() {
@@ -1428,12 +1608,13 @@ export default class DataTable extends Event {
 }
 
 /**
- *
- * @param {*} fun
- * @param {number} [delay]
+ * 防抖
+ * @param {*} func
+ * @param {number} [wait]
  * @returns
  */
-function debounce(fun, delay = 300) {
+function debounce(func, wait = 300) {
+  /** @type {NodeJS.Timeout} */
   let timer
 
   return function (...args) {
@@ -1442,8 +1623,8 @@ function debounce(fun, delay = 300) {
 
     // 设置新的计时器，tm 毫秒后执行 fun
     timer = setTimeout(() => {
-      fun.apply(this, args)
-    }, delay)
+      func.apply(this, args)
+    }, wait)
   }
 }
 
@@ -1470,40 +1651,15 @@ function formatNum(val, cnt = 2) {
 }
 
 /**
- * 明细排序
- * @param {*[]} rs
- * @param {number[]} sort
- * @param {*[]} head
- */
-function sortData(rs, sort, head) {
-  if (sort.length) {
-    const i = sort[0]
-    let c
-    let desc = false
-    if (i > 0) c = head[i]
-    else {
-      c = head[0 - i]
-      desc = true
-    }
-
-    let {idx, type} = c
-    if (c.sort?.length) {
-      idx = c.sort[0] // sort 指定排序列
-      type = c.sort[1]
-    }
-
-    rs.sort(compareObj(idx, desc, type))
-  }
-}
-
-/**
  * 汇总排序
  * @param {*[]} rs
  * @param {number[]} sort - 表头列
  * @param {*[]} head
  */
 function sortSum(rs, sort, head) {
-  if (sort.length) {
+  if (!rs?.length || !sort?.length) return
+
+  try {
     const i = sort[0]
     let c
     let desc = false
@@ -1520,6 +1676,8 @@ function sortSum(rs, sort, head) {
     }
 
     rs.sort(compareObj(idx, desc, type, 'sum'))
+  } catch (e) {
+    log.err(e, 'sortSum')
   }
 }
 
@@ -1567,4 +1725,22 @@ function compareObj(k, desc, type, sub) {
     }
     return R
   }
+}
+
+/**
+ * 获得浏览器打开文件url
+ * @param {string} url
+ */
+function openFileUrl(url) {
+  let R = url
+  try {
+    const pos = url.lastIndexOf('.')
+    const ext = pos === -1 ? '' : url.slice(pos + 1)
+
+    if (['doc', 'docx', 'xls', 'xlsx', 'ppt'].includes(ext)) R = `https://view.officeapps.live.com/op/view.aspx?src=${url}&wdOrigin=BROWSELINK`
+  } catch (e) {
+    log.err(e, 'openFileUrl')
+  }
+
+  return R
 }

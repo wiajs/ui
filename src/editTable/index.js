@@ -22,6 +22,7 @@ const log = Log({m: 'editTable'}) // 创建日志实例
  * @prop {boolean} [add] - 新增模式
  * @prop {boolean} [kv] - key value
  * @prop {number} [col] - 最大列数
+ * @prop {number[]} [colWidth] - 列宽
  */
 
 /** @typedef {object} Opt
@@ -32,6 +33,7 @@ const log = Log({m: 'editTable'}) // 创建日志实例
  * @prop {boolean} kv - key value
  * @prop {number} labelWidth - label 宽度 百分比
  * @prop {number} col - 最大列数
+ * @prop {number[]} colWidth - 列宽
  */
 
 /** @type {Opt} */
@@ -43,6 +45,7 @@ const def = {
   kv: false,
   labelWidth: 10, // label 宽度 百分比
   col: 4, // KV 模式数量列，k、v各占一列，实际 8 列
+  // colWidth: [0.1, 0.15, 0.1, 0.15, 0.1, 0.15, 0.1, 0.15],
 }
 
 /**
@@ -75,6 +78,40 @@ const DataType = {
   attach: 23, // 附件
   table: 24, // dataTable
   view: 25, // 嵌套视图
+  page: 26, // 内嵌页
+}
+
+/**
+ * @enum {string} 数据类型-页面呈现方式
+ */
+const DataTypes = {
+  null: 'null',
+  text: 'text', // 单行文本，默认
+  texts: 'texts', //多行文本，使用 span 编辑
+  number: 'number', // range: 15, // min="0" max="100"
+  date: 'date', // 日期
+  bool: 'bool',
+  select: 'select', // 下拉选项
+  radio: 'radio', // 单选
+  checkbox: 'checkbox', // 复选框
+  chip: 'chip', // 多个标签
+  button: 'button', // 按钮
+  img: 'img', // 图片
+  file: 'file', // 文件
+  path: 'path', // hash 网址
+  url: 'url', // 网址
+  email: 'email',
+  tel: 'tel',
+  password: 'password', // password
+  time: 'time',
+  datetime: 'datetime', // datetime-local
+  month: 'month', // 年月选择器
+  week: 'week', // 年周选择器
+  color: 'color', // 颜色
+  attach: 'attach', // 附件
+  table: 'table', // dataTable
+  view: 'view', // 嵌套视图
+  page: 'page', // 内嵌页
 }
 
 const g = {
@@ -128,6 +165,8 @@ export default class EditTable extends Event {
       _.bind()
     }
 
+    _.init()
+
     // const txs = $(tr).find('input.etCellView')
     // const spans = $(tr).find('span.etLabel')
     // spans.html('hello')
@@ -143,6 +182,31 @@ export default class EditTable extends Event {
 
   static hi(msg) {
     alert(msg)
+  }
+
+  init() {
+    const _ = this
+    const {opt, tb} = _
+    const {colWidth} = opt
+
+    try {
+      if (colWidth?.length) {
+        // 列宽
+        tb.prepend(
+          <colgroup>
+            {colWidth.map(v => {
+              let width
+              if (v < 1) width = `${v * 100}%`
+              else width = `${v}px`
+
+              return <col style={`width: ${width}`} />
+            })}
+          </colgroup>
+        )
+      }
+    } catch (e) {
+      log.err(e, 'init')
+    }
   }
 
   bind() {
@@ -191,7 +255,7 @@ export default class EditTable extends Event {
           tx.val(span.eq(0).html())
           tx.show()
           tx.focus()
-        } else if (type === DataType.texts) {
+        } else if (type === DataType.texts || type === DataTypes.texts) {
           const span = td.find('span')
           if (!span.hasClass('edit')) {
             let tx = td.find('input')
@@ -219,10 +283,11 @@ export default class EditTable extends Event {
             //   span.removeClass('edit') // span 可编辑
             // })
           }
-        } else if (type === DataType.select) {
+        } else if (type === DataType.select || type === DataTypes.select) {
           const span = td.find('span')
           span.hide()
           let val = span.html()
+          let key
           let tx = td.find('select')
           if (!tx.dom) {
             tx = document.createElement('select')
@@ -232,7 +297,9 @@ export default class EditTable extends Event {
             tx.addClass('dy-select')
             const {option} = r
             // 添加选项
-            const htm = option.map(v => {
+            let htm = []
+            if (Array.isArray(option))
+              htm = option.map(v => {
               let rt
               if (v === val)
                 rt = (
@@ -243,8 +310,23 @@ export default class EditTable extends Event {
               else rt = <option value={v}>{v}</option>
               return rt
             })
+            else if (typeof option === 'object') {
+              for (const k of Object.keys(option)) {
+                const v = option[k]
+                if (v === val) {
+                  key = k
+                  htm.push(
+                    <option selected value={k}>
+                      {v}
+                    </option>
+                  )
+                } else htm.push(<option value={k}>{v}</option>)
+              }
+            }
             tx.html(htm.join(''))
-            tx.val(val)
+
+            if (key) tx.val(key)
+            else tx.val(val)
 
             tx.click(ev => ev.stopPropagation()) // 阻止事件冒泡
 
@@ -252,7 +334,66 @@ export default class EditTable extends Event {
             // tx.val(span.html())
             tx.blur(ev => {
               // _.viewCell()
-              val = tx.val()
+              key = tx.val()
+              val = option[key]
+              tx.hide()
+              span.html(val).show()
+            })
+          }
+          tx.show()
+          tx.focus()
+          setTimeout(() => {
+            // 创建并触发鼠标事件来展开下拉框
+            // const event = new MouseEvent('mousedown')
+            const event = new MouseEvent('mousedown', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+            })
+            tx.dom.dispatchEvent(event)
+          }, 100)
+
+          // tx.click()
+        } else if (type === DataType.bool || type === DataTypes.bool) {
+          const span = td.find('span')
+          span.hide()
+          let val = span.html()
+          let key
+          let tx = td.find('select')
+          if (!tx.dom) {
+            tx = document.createElement('select')
+            tx.name = r.field
+            td.append(tx)
+            tx = $(tx)
+            tx.addClass('dy-select')
+            const option = {true: '是', false: '否'}
+            // 添加选项
+            let htm = []
+            for (const k of Object.keys(option)) {
+              const v = option[k]
+              if (v === val) {
+                key = k
+                htm.push(
+                  <option selected value={k}>
+                    {v}
+                  </option>
+                )
+              } else htm.push(<option value={k}>{v}</option>)
+            }
+
+            tx.html(htm.join(''))
+
+            if (key) tx.val(key)
+            else tx.val(val)
+
+            tx.click(ev => ev.stopPropagation()) // 阻止事件冒泡
+
+            // tx.addClass('dy-input')
+            // tx.val(span.html())
+            tx.blur(ev => {
+              // _.viewCell()
+              key = tx.val()
+              val = option[key]
               tx.hide()
               span.html(val).show()
             })
@@ -289,44 +430,56 @@ export default class EditTable extends Event {
 
   /**
    * input type
-   * @param {DataType} type
+   * @param {DataType|DataTypes} type
    */
   getInputType(type) {
     let R
     switch (type) {
+      case DataTypes.text:
       case DataType.text:
         R = 'text'
         break
+      case DataTypes.number:
       case DataType.number:
         R = 'text'
         break
+      case DataTypes.date:
       case DataType.date:
         R = 'date'
         break
+      case DataTypes.url:
       case DataType.url:
         R = 'url'
         break
+      case DataTypes.email:
       case DataType.email:
         R = 'email'
         break
+      case DataTypes.tel:
       case DataType.tel:
         R = 'tel'
         break
+      case DataTypes.password:
       case DataType.password:
         R = 'password'
         break
+      case DataTypes.time:
       case DataType.time:
         R = 'time'
         break
+      case DataTypes.datetime:
       case DataType.datetime:
         R = 'datetime-local'
         break
+      case DataTypes.month:
       case DataType.month:
         R = 'month'
         break
+      case DataTypes.week:
       case DataType.week:
         R = 'week'
         break
+      case DataTypes.color:
       case DataType.color:
         R = 'color'
         break
@@ -403,12 +556,22 @@ export default class EditTable extends Event {
       const tds = _.tb.find('td[data-idx]')
       for (const td of tds.get()) {
         const $td = $(td)
-        const idx = $td.data('idx')
+        const idx = $td.data('idx') // 数据索引
         const d = _.data[idx]
-        const {type} = d
-        if (type !== DataType.attach && type !== DataType.table && type !== DataType.view) {
+        const value = $td.data('value') // 原始值
+        const {type, option} = d || {}
+        if (
+          type !== DataType.attach &&
+          type !== DataTypes.attach &&
+          type !== DataType.table &&
+          type !== DataTypes.table &&
+          type !== DataType.view &&
+          type !== DataTypes.view &&
+          type !== DataType.page &&
+          type !== DataTypes.page
+        ) {
           const span = $td.findNode('span')
-          span?.html(_.data[idx].value)
+          span?.html(value)
         }
       }
     }
@@ -825,7 +988,7 @@ export default class EditTable extends Event {
 
   /**
    * 从数据中获取一行数据，用于 kv 模式，动态生成 row  col
-   * @param {*[]} rs
+   * @param {*[]} rs - 数据
    * @param {number} idx - 数据起始索引
    * @returns {*[] & {idx: number}}
    */
@@ -834,6 +997,7 @@ export default class EditTable extends Event {
     const _ = this
     const {opt} = _
     if (!opt.kv || !rs.length) return
+
     try {
       let col = 0
       let hasCol = 0
@@ -1160,17 +1324,39 @@ export default class EditTable extends Event {
   }
 
   /**
-   * 添加kv 数据
+   * 清除数据及页面
+   */
+  clear() {
+    const _ = this
+    try {
+      _.data = []
+      const tbody = _.tb.tag('TBODY')
+      tbody.empty()
+    } catch (e) {
+      log.err(e, 'clear')
+    }
+  }
+
+  /**
+   * 设置kv 数据
+   * 清空table
    * @param {*[]} data
-   * @param {number} idx - 数据索引
+   * @param {boolean} [add] - 新增、覆盖
    * @returns {Number} - 新起始索引
    */
-  addKv(data) {
+  setKv(data, add = false) {
     let R
     const _ = this
     const {opt} = _
     try {
-      _.data = data // 用于对比修改变化
+      if (add) _.data = [...(_.data || []), ...data]
+      else {
+        _.data = [...data]
+        const tbody = _.tb.tag('TBODY')
+        tbody.empty()
+      }
+
+      // _.data = data // 用于对比修改变化
       let rs
       let idx = 0
       do {
@@ -1181,14 +1367,23 @@ export default class EditTable extends Event {
         }
       } while (rs)
     } catch (e) {
-      log.err(e, 'addKv')
+      log.err(e, 'setKv')
     }
 
     return R
   }
 
   /**
-   * 创建tr、td，填充 kv 值到 span
+   * 添加kv 数据
+   * @param {*[]} data
+   * @returns {Number} - 新起始索引
+   */
+  addKv(data) {
+    this.setKv(data, true)
+  }
+
+  /**
+   * 行填充，创建tr、td，填充 kv 值到 span
    * @param {*} rs - 行数据
    * @returns
    */
@@ -1210,9 +1405,9 @@ export default class EditTable extends Event {
           const {name} = r
           if (!name) continue
 
-          let {type, value} = r
+          let {field, type, value, unit, option} = r
           type = type ?? DataType.text
-          value = value ?? ''
+          value = _.getKv(r)
 
           // label
           let td = document.createElement('td')
@@ -1225,33 +1420,75 @@ export default class EditTable extends Event {
           td = document.createElement('td')
           const $td = $(td)
           const col = r.col ?? 1
+          // 合并列
           if (col > 1) td.colSpan = col * 2 - 1
           // td.style.width = `${((r.col ?? 1) * 100) / opt.col - opt.labelWidth}%`
 
           // 换行
-          if (type === DataType.table || type === DataType.attach) td.innerHTML = `<span name="tx"/>`
-          else if (type === DataType.number) {
-            let {unit, qian, decimal} = r
-            decimal = decimal ?? 2
-            qian = qian ?? true
-            unit = unit ?? ''
-            const val = formatNum(value, decimal)
-            if (unit) td.innerHTML = `<div class=etNumber><span name="tx" class="etValue">${val}</span><span class="etSuffix">${unit}</span></div>`
-            else td.innerHTML = `<span name="tx" class="etValue">${val}</span>`
+            if ([DataType.table, DataType.attach, DataTypes.table, DataTypes.attach].includes(type)) td.innerHTML = `<span name="tx"/>`
+          else {
+              if ([DataType.checkbox, DataTypes.checkbox].includes(type)) {
+              const htm = option.map(v => {
+                let rt
+                rt = (
+                  <label class="checkbox">
+                    <input type="checkbox" name={field} value={v} checked={`${value.includes(v) ? 'true' : 'false'}`} />
+                    <i class="icon-checkbox"></i>
+                    {v}
+                  </label>
+                )
+                  .replaceAll('checked="true"', 'checked')
+                  .replaceAll('checked="false"', '')
+
+                return rt // + v
+              })
+              td.innerHTML = `<span name="tx" class="etCheckbox">${htm.join('')}</span>`
+              } else if ([DataType.radio, DataTypes.radio].includes(type)) {
+              const htm = option.map(v => {
+                let rt
+                rt = (
+                  <label class="radio">
+                    <input type="radio" name={field} value={v} checked={`${value.includes(v) ? 'true' : 'false'}`} />
+                    <i class="icon-radio"></i>
+                    {v}
+                  </label>
+                )
+                  .replaceAll('checked="true"', 'checked')
+                  .replaceAll('checked="false"', '')
+
+                return rt // + v
+              })
+              td.innerHTML = `<span name="tx" class="etRadio">${htm.join('')}</span>`
+              } else if ([DataType.chip, DataTypes.chip].includes(type)) {
+              const htm = value.map(v => {
+                let rt
+                // <a class="chip-delete"></a>
+                rt = (
+                  <div class="chip">
+                    <div class={`chip-media bg-color-${v.color}`}>{v.media}</div>
+                    <div class="chip-label">{v.val}</div>
+                  </div>
+                )
+
+                return rt // + v
+              })
+              td.innerHTML = `<span name="tx" class="etChip">${htm.join('')}</span>`
+            } else if (unit)
+              td.innerHTML = `<div class=etNumber><span name="tx" class="etValue">${value}</span><span class="etSuffix">${unit}</span></div>`
+            else td.innerHTML = `<span name="tx" class="etValue">${value}</span>`
+
             //  txs[i].setAttribute('idx', '') // 每行编辑节点设置idx属性，对应名称与数据索引，方便获取、设置节点数据
             $td.data('idx', idx) // td 保存 数据索引
-          } else {
-            td.innerHTML = `<span name="tx" class="etValue">${value}</span>`
-            //  txs[i].setAttribute('idx', '') // 每行编辑节点设置idx属性，对应名称与数据索引，方便获取、设置节点数据
-            $td.data('idx', idx) // td 保存 数据索引
+            $td.data('value', value) // td 保存 原值
           }
+
           row.append(td)
           // 插入到空行前
           tbody.dom.insertBefore(row.dom, null)
           row.show()
 
           // 嵌套表
-          if (r.type === DataType.table && value?.head && value?.data) {
+          if ([DataType.table, DataTypes.table].includes(r.type) && value?.head && value?.data) {
             row = thead.lastChild().clone()
             td = document.createElement('td')
             td.colSpan = col * 2
@@ -1276,7 +1513,7 @@ export default class EditTable extends Event {
             // 插入到空行前
             tbody.dom.insertBefore(row.dom, null)
             row.show()
-          } else if (type === DataType.attach && value?.length) {
+          } else if ([DataType.attach, DataTypes.attach].includes(type) && value?.length) {
             _.fillAttach(value, thead, tbody, col, idx)
           }
         } catch (e) {
@@ -1288,6 +1525,148 @@ export default class EditTable extends Event {
     }
 
     return RC
+  }
+
+  /**
+   * 获得kv的val
+   * @param {*} r - 数据对象
+   * @returns {*}
+   */
+  getKv(r) {
+    let R
+    try {
+      const {div, mul, option} = r
+      let {type, value, unit, qian, decimal, zero} = r
+
+      type = type ?? DataType.text
+      value = value ?? ''
+      // option: {1: '小型', 2: '中旬', 3: '大型'
+      if (typeof option === 'object' && !Array.isArray(option)) value = option[value]
+
+      // 数据转换
+      if ([DataType.bool, DataTypes.bool].includes(type) && value) value = value ? '是' : '否'
+      else if ([DataType.date, DataTypes.date].includes(type) && value) value = getDate(value)
+      else if ([DataType.time, DataTypes.time].includes(type) && value) value = getTime(value)
+      else if ([DataType.datetime, DataTypes.datetime].includes(type) && value) value = getDateTime(value)
+
+      if (typeof value === 'string') value = value.replace(/^null$|^undefined$/, '-')
+
+      if ([DataType.number, DataTypes.number].includes(type)) {
+        decimal = decimal ?? 2
+        qian = qian ?? true
+        unit = unit ?? ''
+        zero = zero ?? true
+
+        if (typeof value === 'string') value = value.replaceAll(',', '')
+
+        if (isNumber(value)) {
+          value = Number(value)
+          if (div && div > 0) value = value / div
+          if (mul && mul > 0) value = value * mul
+          value = formatNum(value, decimal, zero)
+        }
+      }
+      R = value
+    } catch (e) {
+      log.err(e, 'getKv')
+    }
+
+    return R
+  }
+
+  /**
+   * 获得输入值
+   * @returns
+   */
+  getVal() {
+    let R
+    const _ = this
+
+    try {
+      const {tb} = _
+
+      // 将data存入 value，方便FormData读取
+      const rs = []
+      const ck = []
+
+      let els = tb.find('input')
+      for (const el of els.get()) {
+        const r = _.getCellVal(el)
+        if (r !== undefined) {
+          if (r.checked) ck.push(r.data)
+          else rs.push(r.data)
+        }
+      }
+
+      els = tb.find('select')
+      for (const el of els.get()) {
+        const r = _.getCellVal(el)
+        if (r !== undefined) rs.push(r.data)
+      }
+
+      // 合并checkbox多选值
+      const vs = ck.reduce((acc, r) => {
+        const {idx, field, value, val} = r
+        const v = `${idx}-${field}`
+        const o = acc[v]
+        if (o) o.val.push(r.val)
+        else acc[v] = {idx, field, value, val: [r.val]}
+
+        return acc
+      }, {})
+
+      for (const k of Object.keys(vs)) {
+        const v = vs[k]
+        rs.push(v)
+      }
+
+      R = rs
+
+      log({R}, 'getVal')
+    } catch (e) {
+      log.err(e, 'getVal')
+    }
+    return R
+  }
+
+  /**
+   * 获得输入值
+   * @param {HTMLElement} el
+   * @returns
+   */
+  getCellVal(el) {
+    let R
+    const _ = this
+
+    try {
+      const $el = $(el)
+      const field = $el.attr('name')
+      const td = $el.upper('td')
+      const idx = td.data('idx')
+      const d = _.data[idx]
+      const {value, type, div, mul} = d
+      let val = $el.val()
+
+      let skip
+      let checked
+      if ([DataType.number, DataTypes.number].includes(type)) {
+        val = Number(val)
+        if (div) val = val * div
+        else if (mul) val = val / mul
+      } else if ([DataType.bool, DataTypes.bool].includes(type)) val = val === 'true' || val === '是'
+      else if ([DataType.radio, DataTypes.radio].includes(type)) skip = !el.checked
+      else if ([DataType.checkbox, DataTypes.checkbox].includes(type)) {
+        checked = el.checked
+        skip = !checked
+      }
+
+      if (!skip) R = {data: {idx, field, value, val}, checked}
+
+      log({R}, 'getCellVal')
+    } catch (e) {
+      log.err(e, 'getCellVal')
+    }
+    return R
   }
 
   /**
@@ -1333,13 +1712,13 @@ export default class EditTable extends Event {
       for (const k of Object.keys(cats)) {
         att.append(<div class="attach-cat">{k}</div>)
         for (const d of cats[k].data) {
-          const {_idx, cat, name, url, status, type} = d
+          const {_idx, cat, name, abb, url, status, type} = d
           let {ext} = d
           if (type === 'img') {
             att.append(
               <div class="attach-item" data-id={_idx}>
-                <img src={url} alt={name} loading="lazy" />
-                <p>{name}</p>
+                <img src={url} alt={abb} loading="lazy" />
+                <p>{abb}</p>
               </div>
             )
           } else if (type === 'video') {
@@ -1349,7 +1728,7 @@ export default class EditTable extends Event {
                 <video controls preload="none">
                   <source src={url} type={`${type}/${ext}`} />
                 </video>
-                <p>{name}</p>
+                <p>{abb}</p>
               </div>
             )
           } else if (type === 'doc') {
@@ -1363,8 +1742,8 @@ export default class EditTable extends Event {
 
             att.append(
               <div class="attach-item" data-id={_idx}>
-                <img src={src} alt={name} loading="lazy" />
-                <p>{name}</p>
+                <img src={src} alt={abb} loading="lazy" />
+                <p>{abb}</p>
               </div>
             )
           }
@@ -2114,18 +2493,76 @@ export default class EditTable extends Event {
  * @param {number} [cnt] - 小数位数
  * @returns {string} 格式化后的字符串
  */
-function formatNum(val, cnt = 2) {
+function formatNum(val, cnt = 2, zero = true) {
   let R
-  if (typeof val !== 'number' || Number.isNaN(val)) {
-    return val // 如果不是数字，返回默认值
+  try {
+  if (typeof val === 'string') {
+    if (!isNumber(val)) return val // 如果不是数字，返回默认值
+
+    val = Number(val)
   }
 
-  R = val
-    .toLocaleString('en-US', {
+    R = val.toLocaleString('en-US', {
       minimumFractionDigits: cnt, // 最少保留 2 位小数
       maximumFractionDigits: cnt, // 最多保留 2 位小数
     })
-    .replace(/\.0+$/, '')
-    .replace(/(\.\d+)0+$/, '$1')
+
+    if (!zero) R.replace(/\.0+$/, '').replace(/(\.\d+)0+$/, '$1')
+  } catch (e) {
+    log.err(e, 'formatNum')
+  }
   return R
+}
+
+/**
+ *
+ * @param {*} value
+ * @returns {boolean}
+ */
+function isNumber(value) {
+  let R = false
+  if (typeof value === 'number') R = true
+  else R = Number.isFinite(Number(value)) && value.trim() !== ''
+
+  return R
+}
+
+/**
+ * 数据库中返回的iso字符串，转换为当地时区日期字符串
+ * @param {Date} date
+ * @returns
+ */
+function getDate(date) {
+  if (!date) return ''
+
+  if (typeof date === 'string') date = new Date(date)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * 数据库中返回的iso字符串，转换为当地时区日期时间字符串
+ * @param {Date} date
+ * @returns
+ */
+function getDateTime(date) {
+  if (!date) return ''
+  if (typeof date === 'string') date = new Date(date)
+
+  return date.toLocaleString('zh-CN').replaceAll('/', '-')
+}
+
+/**
+ * 数据库中返回的iso字符串，转换为当地时区时间字符串
+ * @param {Date} date
+ * @returns
+ */
+function getTime(date) {
+  if (!date) return ''
+  if (typeof date === 'string') date = new Date(date)
+
+  return date.toLocaleTimeString()
 }
