@@ -59,8 +59,12 @@ export default class DataTable extends Event {
     const cfg = {..._cfg, ...(opt.head[0] || {})}
     const _ = this
 
-    // 加载函数
+    // 加载全局函数
     if (!$.openFileUrl) $.openFileUrl = openFileUrl
+
+    if (!$.dataTb) $.dataTb = {}
+    if (!$.dataTb.formatVal) $.dataTb.formatVal = formatVal
+    if (!$.dataTb.number) $.dataTb.number = number
 
     _.page = page
     _.view = page.view
@@ -280,73 +284,26 @@ export default class DataTable extends Event {
         )
       } else {
         h.idx = col // 对应数据列
+        const {type, div, qian, unit, mul, decimal, format} = h
+        let opt = {type, div, qian, unit, mul, decimal, format}
+
+        opt = JSON.stringify(opt)
+
         const cls = h.type === 'number' ? 'numeric-cell' : 'label-cell'
 
         if (h.link || link?.includes(i)) {
           if (!h.link) h.link = ''
-
-          if (h.type === 'number') {
-            if (h.div > 0)
-              R.push(
-                <td class={cls} data-link={h.link} data-col={i}>
-                  <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : (r[${col}]/${div}).toLocaleString('en-US')}`}</a>
-                </td>
-              )
-            else
             R.push(
               <td class={cls} data-link={h.link} data-col={i}>
-                <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : r[${col}].toLocaleString('en-US')}`}</a>
-              </td>
-            )
-          } else if (h.type === 'date')
-            R.push(
-              <td class={cls} data-link={h.link} data-col={i}>
-                <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('yyyy-MM-dd', r[${col}])}`}</a>
-              </td>
-            )
-          else if (h.type === 'time')
-            R.push(
-              <td class={cls} data-link={h.link} data-col={i}>
-                <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('hh:mm:ss', r[${col}])}`}</a>
-              </td>
-            )
-          else if (h.type === 'datetime')
-            R.push(
-              <td class={cls} data-link={h.link} data-col={i}>
-                <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('yyyy-MM-dd hh:mm:ss', r[${col}])}`}</a>
-              </td>
-            )
-          else
-            R.push(
-              <td class={cls} data-link={h.link} data-col={i}>
-                <a>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : r[${col}]}`}</a>
+              <a>{`$\{$.dataTb.formatVal(r[${col}], ${opt})}`}</a>
               </td>
             )
         } else {
-          if (h.type === 'number') {
-            if (h.div > 0)
               R.push(
-                <td
-                  class={
-                    cls
-                  }>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : (r[${col}]/${h.div}).toLocaleString('en-US')}`}</td>
-              )
-            else
-          R.push(
-            <td class={cls}>{`$\{r[${col}] === '' || r[${col}] === null || r[${col}] === 'null' ? '-' : r[${col}].toLocaleString('en-US')}`}</td>
-          )
-          } else if (h.type === 'date')
-            R.push(<td class={cls}>{`$\{r[${col}] === ''|| r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('yyyy-MM-dd', r[${col}])}`}</td>)
-          else if (h.type === 'time')
-            R.push(<td class={cls}>{`$\{r[${col}] === ''|| r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('hh:mm:ss', r[${col}])}`}</td>)
-          else if (h.type === 'datetime')
-            R.push(
-              <td
-                class={
-                  cls
-                }>{`$\{r[${col}] === ''|| r[${col}] === null || r[${col}] === 'null' ? '-' : $.date('yyyy-MM-dd hh:mm:ss', r[${col}])}`}</td>
+            <td class={cls} data-col={i}>
+              {`$\{$.dataTb.formatVal(r[${col}], ${opt})}`}
+            </td>
             )
-          else R.push(<td class={cls}>{`$\{r[${col}] === ''|| r[${col}] === null || r[${col}] === 'null' ? '-' : r[${col}]}`}</td>)
       }
     }
     }
@@ -1629,28 +1586,6 @@ function debounce(func, wait = 300) {
 }
 
 /**
- * 格式化数字：保留 cnt 位小数并添加千位分隔符
- * @param {number} val - 需要格式化的数字
- * @param {number} [cnt] - 小数位数
- * @returns {string} 格式化后的字符串
- */
-function formatNum(val, cnt = 2) {
-  let R
-  if (typeof val !== 'number' || Number.isNaN(val)) {
-    return val // 如果不是数字，返回默认值
-  }
-
-  R = val
-    .toLocaleString('en-US', {
-      minimumFractionDigits: cnt, // 最少保留 2 位小数
-      maximumFractionDigits: cnt, // 最多保留 2 位小数
-    })
-    .replace(/\.0+$/, '')
-    .replace(/(\.\d+)0+$/, '$1')
-  return R
-}
-
-/**
  * 汇总排序
  * @param {*[]} rs
  * @param {number[]} sort - 表头列
@@ -1734,13 +1669,125 @@ function compareObj(k, desc, type, sub) {
 function openFileUrl(url) {
   let R = url
   try {
+    if (url && typeof url === 'string') {
     const pos = url.lastIndexOf('.')
     const ext = pos === -1 ? '' : url.slice(pos + 1)
 
     if (['doc', 'docx', 'xls', 'xlsx', 'ppt'].includes(ext)) R = `https://view.officeapps.live.com/op/view.aspx?src=${url}&wdOrigin=BROWSELINK`
+    }
   } catch (e) {
     log.err(e, 'openFileUrl')
   }
 
+  return R
+}
+
+/**
+ * 获得浏览器打开文件url
+ * @param {string} val
+ * @param {{type?:string, div?:number, zero?:boolean, qian?:boolean, unit?:string, mul?:boolean, decimal?:number, format: boolean}} opt
+ */
+function formatVal(val, opt) {
+  let R = val
+  try {
+    if (val === '' || val === undefined || val === null || val === 'null') return '-'
+
+    let {type, div, zero, qian, unit, mul, decimal, format} = opt || {}
+
+    type = type ?? 'string'
+
+    if (type === 'string') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : val
+    else if (type === 'date') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : $.date('yyyy-MM-dd', val)
+    else if (type === 'time') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : $.date('hh:mm:ss', val)
+    else if (type === 'datetime') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : $.date('yyyy-MM-dd hh:mm:ss', val)
+    else if (type === 'number') {
+      decimal = decimal ?? 2
+      qian = qian ?? true
+      unit = unit ?? ''
+      zero = zero ?? true
+      format = format ?? true
+
+      if (typeof val === 'string') val = val.replaceAll(',', '')
+
+      if (isNumber(val)) {
+        val = Number(val)
+        if (div && div > 0) val = val / div
+        if (mul && mul > 0) val = val * mul
+        if (format) val = formatNum(val, decimal, zero)
+      }
+    }
+
+    if (unit) val = `${val}${unit}`
+
+    R = val
+  } catch (e) {
+    log.err(e, 'formatVal')
+  }
+
+  return R
+}
+
+/**
+ * 是否为数字
+ * @param {*} value
+ * @returns {boolean}
+ */
+function isNumber(value) {
+  let R = false
+  if (typeof value === 'number') R = true
+  else R = Number.isFinite(Number(value)) && value.trim() !== ''
+
+  return R
+}
+
+/**
+ * 转换为数字，非数字 为 0，用于字段计算
+ * @param {*} val
+ * @returns {number}
+ */
+function number(val) {
+  let R = 0
+  try {
+    if (val === '' || val === undefined || val === null || val === 'null') return 0
+
+    if (typeof val === 'string') {
+      val = val.replaceAll(',', '')
+    }
+
+    if (isNumber(val)) {
+      val = Number(val)
+      R = val
+    }
+  } catch (e) {
+    console.log(`val exp: ${e.message}`)
+  }
+
+  return R
+}
+
+/**
+ * 格式化数字：保留 cnt 位小数并添加千位分隔符
+ * @param {number} val - 需要格式化的数字
+ * @param {number} [cnt] - 小数位数
+ * @returns {string} 格式化后的字符串
+ */
+function formatNum(val, cnt = 2, zero = true) {
+  let R
+  try {
+    if (typeof val === 'string') {
+      if (!isNumber(val)) return val // 如果不是数字，返回默认值
+
+      val = Number(val)
+    }
+
+    R = val.toLocaleString('en-US', {
+      minimumFractionDigits: cnt, // 最少保留 2 位小数
+      maximumFractionDigits: cnt, // 最多保留 2 位小数
+    })
+
+    if (!zero) R.replace(/\.0+$/, '').replace(/(\.\d+)0+$/, '$1')
+  } catch (e) {
+    log.err(e, 'formatNum')
+  }
   return R
 }

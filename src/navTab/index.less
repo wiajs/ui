@@ -1,0 +1,43 @@
+// 中介便签栏
+.navtab {
+  -webkit-overflow-scrolling: touch;
+  overflow-x: auto; // 水平滚动
+  overflow-y: hidden; // 垂直隐藏
+  scroll-behavior: smooth;
+  scrollbar-width: none; /* 隐藏滚动条（Firefox） */
+
+  &::-webkit-scrollbar {
+    display: none; /* 隐藏滚动条（Chrome/Safari） */
+  }
+
+  .nav-item {
+    flex: 1 0 auto;
+    display: flex;
+    // justify-content: start;
+    align-items: center;
+    // align-content: center;
+
+    .nav-link {
+      padding-right: 0px;
+      padding-left: 0px;
+      white-space: nowrap; // 不换行
+      width: 64px;
+      overflow: hidden; // 溢出隐藏
+    }
+
+    .btn {
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      i {
+        display: none;
+      }
+    }
+
+    &:hover {
+      .btn i {
+        display: block;
+      }
+    }
+  }
+}

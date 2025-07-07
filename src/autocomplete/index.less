@@ -1,0 +1,202 @@
+/* === AutoComplete === */
+.autocomplete {
+  position: relative;
+  max-width: 600px;
+  margin: 0 auto;
+
+  .ac-wrapper {
+    position: relative;
+
+    .ac-input {
+      width: 100%;
+      // padding: 16px 20px;
+      padding: 0px 10px 0px 5px;
+      font-size: 1.1rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      outline: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+      background: #fff;
+
+      height: 31px;
+      min-width: 120px;
+
+      &:focus {
+        border-color: #3498db;
+        box-shadow: 0 3px 15px rgba(52, 152, 219, 0.3);
+      }
+
+      &.composing {
+        background-color: #f8fdff;
+        border-color: #4fc3f7;
+      }
+    }
+
+    .ac-status {
+      position: absolute;
+      // right: 20px;
+      right: 30px; /* 调整位置 */
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.9rem;
+      color: #7f8c8d;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 50;
+
+      &.show {
+        opacity: 1;
+      }
+    }
+
+    .ac-clear {
+      position: absolute;
+      // right: 15px;
+      right: 30px; /* 为搜索按钮留出空间 */
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 1rem;
+      cursor: pointer;
+      opacity: 0;
+      transition: all 0.3s ease;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      z-index: 100;
+
+      &.show {
+        opacity: 1;
+      }
+
+      &:hover {
+        color: #ff6b6b;
+        background-color: #ffeeee;
+      }
+    }
+
+    .ac-search {
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      color: white;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 5px;
+      box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+      transition: all 0.3s ease;
+      width: 25px;
+      height: 25px;
+      z-index: 10;
+
+      &:hover {
+        transform: translateY(-50%) scale(1.1);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
+      }
+
+      &:active {
+        transform: translateY(-50%) scale(0.95);
+      }
+    }
+  }
+
+  .ac-list {
+    position: absolute;
+    width: 100%;
+    max-height: 320px;
+    overflow-y: auto;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
+    margin-top: 8px;
+    z-index: 1000;
+    display: none;
+
+    .ac-item {
+      padding: 6px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 1.05rem;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background-color: #f5f9ff;
+      }
+
+      &.highlighted {
+        background-color: #e3f2fd;
+      }
+
+      .ac-highlight {
+        width: fit-content;
+        background-color: #fff9c4;
+        font-weight: 600;
+        padding: 0 2px;
+        border-radius: 3px;
+      }
+    }
+  }
+
+  .loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 3px solid rgba(52, 152, 219, 0.3);
+    border-radius: 50%;
+    border-top-color: #3498db;
+    animation: spin 1s linear infinite;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .ac-input {
+      padding: 14px 50px 14px 20px;
+      font-size: 1.1rem;
+      height: 55px;
+    }
+
+    .ac-clear {
+      right: 50px;
+      font-size: 1.1rem;
+      width: 26px;
+      height: 26px;
+    }
+
+    .ac-search {
+      width: 36px;
+      height: 36px;
+      font-size: 1.2rem;
+    }
+
+    .ac-status {
+      right: 95px;
+      font-size: 0.85rem;
+    }
+  }
+}
