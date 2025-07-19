@@ -17,7 +17,6 @@ const def = {
 }
 
 const _cfg = {
-  page: 10,
   pageLink: 10,
   /** @type {string[]} */
   fix: [], //  ['head', 'foot', 'left3', 'right'], // 固定行列
@@ -723,7 +722,7 @@ export default class DataTable extends Event {
     try {
       const {tb, opt} = _
       const {name} = opt
-      // _.data = []
+      // _.data = [] // 不清除数据
       const body = tb.find('tbody')
       const tp = body.find(`tr[name=${name}-tp]`)
       body.html('')
@@ -1308,27 +1307,28 @@ export default class DataTable extends Event {
 
   /**
    * 数据与模板结合，生成数据视图
-   * @param {*[]} [data] 外部传入数据，重置表数据
+   * @param {*[]} [data] 外部传入数据，重置表数据, null 取原数据, [] 清空数据
    * @param {SetViewOpts} [opts] - 选项
    * @param {number[]} [sort] - 排序
    */
   setView(data, opts, sort) {
     const _ = this
     try {
-      if (!data?.length && !_.data?.length) return
+      // _.clearSel()
+      _.clear() // 清除页面不清除数据
+
+      if (!data && !_.data?.length) return
 
       const {head, cfg} = _
       if (!sort) sort = cfg.sort
 
       let {id: idx, page: hpage} = cfg
       idx = Array.isArray(idx) && idx?.length ? idx[0] : undefined
-      // _.clearSel()
-      _.clear()
 
       // 浅拷贝数组数据（子数组与原数组一致），用于排序、分页，不改变原数据
-      if (data?.length) {
+      if (Array.isArray(data)) {
         _.viewOpts = opts // 点击表头排序需要
-      _.data = [...data]
+        _.data = [...data] // 重置数据
       // index 需对数组添加index属性
         if (cfg.checkbox === 'index') _.data.forEach((v, x) => (v.index = x))
       }
@@ -1397,7 +1397,9 @@ export default class DataTable extends Event {
     const _ = this
 
     try {
-      const {head, data, el} = _
+      const {head, data, el, cfg} = _
+
+      if (!cfg.page) return false
 
     if (!head) {
       console.log('param is null.')

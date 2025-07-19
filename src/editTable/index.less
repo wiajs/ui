@@ -6,6 +6,7 @@
 .edit-table {
   --edit-table-img-heicht: 70px;
   --edit-table-attach-gap: 8px;
+  --edit-table-font-size: 14px;
 
   // 字体、颜色、文本对齐可继承,无需每级定义
   // 表样式
@@ -17,7 +18,7 @@
   // background: WhiteSmoke; // WhiteSmoke  245 245 245
   // background: rgb(247, 248, 250); // WhiteSmoke
   margin: 1rem 0 0 0;
-  font-size: 14px; // 17
+  font-size: var(--edit-table-font-size); // 17
   // color: #828282;
   color: #4b4b4b;
 
@@ -172,13 +173,13 @@
 
   span {
     //float: left;
-    display: flex;
+    display: inline-flex; // inline-block 和 flex 特性
     align-items: center;
     // justify-content: start;
     // text-align: left;
     word-break: break-all;
     width: 100%;
-    height: 100%;
+    // height: 100%; // 跨行时高度不正常
 
     padding: 5px;
     // background: white;
@@ -191,12 +192,14 @@
       color: rgb(78, 89, 105);
     }
 
+    // 标签
     &.etLabel {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis; /* 超出显示省略号 */
       min-width: 40px; // 最小列宽
-      max-width: 100px; // 最大列宽
+      // max-width: 100px; // 最大列宽
+      // width: fit-content; // 内容宽度
       // 鼠标移动显示
       &:hover {
         overflow: visible;
@@ -271,7 +274,7 @@
 
     // user-select: none; /* 禁止选择和编辑 */
     user-select: text; /* 允许选择文本 */
-    pointer-events: none;
+    pointer-events: none; // 禁止编辑
 
     /* 可选：hover时保持普通光标 */
     &:hover {

@@ -109,19 +109,21 @@ export default class Autocomplete extends Event {
       if (clear) {
         wrapper.append(
           <button type="button" class="ac-clear">
-            <i class="fas fa-times" />
+            <i class="icon wiaicon">&#xe9fb;</i>
           </button>
         )
         _.btnClear = el.find('.ac-clear')
       }
+
       if (search) {
         wrapper.append(
           <button type="button" class="ac-search">
-            <i class="fas fa-search" />
+            <i class="icon wiaicon">&#xeabd;</i>
           </button>
         )
         _.btnSearch = el.find('.ac-search')
       }
+
       if (status) {
         wrapper.append(<div class="ac-status" />)
         _.dvStatus = el.find('.ac-status')
@@ -171,26 +173,7 @@ export default class Autocomplete extends Event {
           return
         }
 
-        if (source) {
-          // 显示加载状态
-          _.showStatus('查询中...')
-
-          const {url, token} = source
-          const tk = $.store.get(token)
-          debugger
-          const rs = await $.post(url, {value: inputValue}, {'x-wia-token': tk})
-
-          // 输入完成后再触发查询
-          // setTimeout(() => {
-          if (rs) {
-            _.data = rs
-            // 模拟API请求（实际项目中替换为真实API）
-            const filteredData = _.filter(inputValue)
-            _.showList(filteredData, inputValue)
-            _.hideStatus()
-            // }, 500)
-          }
-        }
+        await _.search(source, inputValue)
       })
 
       // 中文输入法开始
@@ -216,24 +199,7 @@ export default class Autocomplete extends Event {
           return
         }
 
-        if (source) {
-          // 显示加载状态
-          _.showStatus('查询中...')
-          const {url, token} = source
-          const tk = $.store.get(token)
-          debugger
-          const rs = await $.post(url, {value: inputValue}, {'x-wia-token': tk})
-
-          // 输入完成后再触发查询
-          // setTimeout(() => {
-          if (rs) {
-            _.data = rs
-            const filteredData = _.filter(inputValue)
-            _.showList(filteredData, inputValue)
-            _.hideStatus()
-          }
-          // }, 300)
-        }
+        await _.search(source, inputValue)
       })
 
       // 键盘事件监听
@@ -298,6 +264,39 @@ export default class Autocomplete extends Event {
       })
     } catch (e) {
       log.err(e, 'bind')
+    }
+  }
+
+  /**
+   * 查询选项
+   * @param {*} source
+   * @param {string} inputValue
+   */
+  async search(source, inputValue) {
+    const _ = this
+    try {
+      if (!source?.url) return
+
+      // 显示加载状态
+      _.showStatus('查询中...')
+      const {url, token} = source
+      let {param} = source
+      const tk = token ? $.store.get(token) : ''
+
+      if (param) param.value = inputValue
+      else param = {value: inputValue}
+
+      const rs = await $.post(url, param, {'x-wia-token': tk})
+
+      // 输入完成后再触发查询
+      if (rs) {
+        _.data = rs
+        const filteredData = _.filter(inputValue)
+        _.showList(filteredData, inputValue)
+        _.hideStatus()
+      }
+    } catch (e) {
+      log.err(e, 'search')
     }
   }
 
@@ -466,10 +465,9 @@ export default class Autocomplete extends Event {
     }
   }
 
-  //
   /**
    * 显示状态指示器
-   * @param {String} text
+   * @param {string} text
    */
   showStatus(text) {
     const _ = this
