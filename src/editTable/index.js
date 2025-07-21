@@ -3,10 +3,11 @@
  * 在线编辑表格
  */
 import {Event} from '@wiajs/core'
-import {Page, jsx} from '@wiajs/core'
-import {log as Log} from '@wiajs/util'
-import * as tool from './tool'
+import {Page} from '@wiajs/core'
 import DataTable from '../dataTable'
+import {fillAttach, getRowCat} from './attach'
+import * as tool from './tool'
+import {log as Log} from '@wiajs/util'
 
 const log = Log({m: 'editTable'}) // 创建日志实例
 
@@ -122,11 +123,6 @@ const DataTypes = {
   json: 'json', // json
 }
 
-const g = {
-  /** @type {*} */
-  lightbox: null,
-}
-
 /**
  * EditTable
  */
@@ -154,6 +150,9 @@ class EditTable extends Event {
 
   /** @type {number} */
   dataid = 0 // 当前数据索引，用于render row
+
+  /** @type {*[]} */
+  data
 
   /**
    * 构造函数
@@ -249,7 +248,7 @@ class EditTable extends Event {
     const {opt} = _
 
     // 表格点击事件
-    // 编辑元素（input） 不能 focus，不能 onblur？
+    // 编辑元素（input） 不能 focus，不能 onblur？原因：pointer-events: none
     _.tb.click(ev => {
       if (!opt.edit) return
 
@@ -268,20 +267,24 @@ class EditTable extends Event {
       }
 
       const idx = td?.data('idx') // 数据索引
-      const value = td?.data('value') // 数据原值
+      const idv = td?.data('idv') // 数据中的value索引，多值数组模式下
+      const value = td?.attr('data-value') // 数据原值 data 会自动转换 json 字符串
 
       const r = _.data?.[idx]
       if (r) {
         if (r.read) return // 只读
 
-        // 点击时，让当前获得焦点的元素失去焦点，触发 blur 事件
-        // document.activeElement?.blur()
         // 方法2.2（更可靠）
         // document.body.setAttribute('tabindex', '-1')
         // document.body.focus()
         // document.body.removeAttribute('tabindex')
 
-        const type = r.type ?? DataType.text // 默认单行字符串
+        let type = r.type ?? DataType.text // 默认单行字符串
+        // 多值
+        if (idv && idv >= 0 && Array.isArray(type) && type[idv]) {
+          type = type[idv]
+        }
+
         const inputType = _.getInputType(type)
         if (inputType) {
           const span = td.find('span')
@@ -298,6 +301,7 @@ class EditTable extends Event {
               // _.viewCell()
               const val = tx.val()
               span.eq(0).html(val)
+              // 比较值是否被修改
               if (`${val}` === `${value}`) {
                 tx.hide()
               span.show()
@@ -331,7 +335,9 @@ class EditTable extends Event {
               // _.viewCell()
               const val = span.html()
               tx.value = val
-              if (`${val}` === `${value}`) span.removeClass('edit') // span 可编辑
+              if (`${val}` === `${value}`) {
+                span.removeClass('edit') // span 可编辑
+              }
             })
             span.focus()
 
@@ -513,8 +519,13 @@ class EditTable extends Event {
               // _.viewCell()
               key = tx.val()
               val = option[key]
+
+              span.html(val)
+
+              if (`${val}` === `${value}`) {
               tx.hide()
-              span.html(val).show()
+                span.show()
+              }
             })
           }
           tx.show()
@@ -610,6 +621,7 @@ class EditTable extends Event {
 
     return R
   }
+
   /*
    // 异步存储
    set(key, data, expires) {
@@ -668,14 +680,139 @@ class EditTable extends Event {
 
   /**
    * 浏览模式，禁止编辑
+   * 数据未保存到data，可取消
    */
   view() {
     const _ = this
     _.opt.edit = false
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
     _.unbind()
+
+    if (_.data) {
+      const tds = _.tb.find('td[data-idx]')
+      for (const td of tds.get()) {
+        const $td = $(td)
+        const idx = $td.data('idx') // 数据索引
+        const d = _.data[idx]
+        const {type, option} = d || {}
+        if ((type === DataType.search || type === DataTypes.search) && _.Autocomplete) {
+          const dvAc = $td.find('.autocomplete')
+          dvAc?.hide()
+          const span = $td.find('span')
+          span.show()
+        } else if (
+          type !== DataType.checkbox &&
+          type !== DataTypes.checkbox &&
+          type !== DataType.radio &&
+          type !== DataTypes.radio &&
+          type !== DataType.attach &&
+          type !== DataTypes.attach &&
+          type !== DataType.table &&
+          type !== DataTypes.table &&
+          type !== DataType.view &&
+          type !== DataTypes.view &&
+          type !== DataType.page &&
+          type !== DataTypes.page
+        ) {
+          const span = $td.find('span')
+          if (span) {
+            span.removeClass('edit')
+            span.show()
+          }
+          const tx = $td.find('input')
+          if (tx) tx.hide()
+        }
+      }
+    }
   }
 
+  /**
+   * 保存修改数据到data，并切换到浏览视图
+   */
+  save() {
+    const _ = this
+    _.opt.edit = false
+    _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
+    _.unbind()
+    if (_.data) {
+      const tds = _.tb.find('td[data-idx]')
+      for (const td of tds.get()) {
+        const $td = $(td)
+        const idx = $td.data('idx') // 数据索引
+        const d = _.data[idx]
+        const {type, option} = d || {}
+        if ((type === DataType.search || type === DataTypes.search) && _.Autocomplete) {
+          const span = $td.find('span')
+
+          // span.eq(0).html(value)
+          const tx = $td.find('input')
+          if (tx) {
+            const val = tx.val()
+            // 设置 原始值
+            d.value = val
+            $td.data('value', val)
+            const dvAc = $td.find('.autocomplete')
+            dvAc?.hide()
+          }
+
+          span.show()
+        } else if (type === DataType.checkbox || type === DataTypes.checkbox) {
+          const val = []
+          const ns = $td.find('input[type=checkbox]')
+          for (const n of ns.get()) {
+            if (n.checked) {
+              val.push($(n).val())
+              break
+            }
+          }
+
+          // 设置 原始值
+          d.value = val
+          $td.data('value', val)
+        } else if (type === DataType.radio || type === DataTypes.radio) {
+          let val
+          const ns = $td.find('input[type=radio]')
+          for (const n of ns.get()) {
+            if (n.checked) {
+              val = $(n).val()
+              break
+            }
+          }
+          // 设置 原始值
+          d.value = val
+          $td.data('value', val)
+        } else if (
+          type !== DataType.attach &&
+          type !== DataTypes.attach &&
+          type !== DataType.table &&
+          type !== DataTypes.table &&
+          type !== DataType.view &&
+          type !== DataTypes.view &&
+          type !== DataType.page &&
+          type !== DataTypes.page
+        ) {
+          const span = $td.find('span')
+          if (span) {
+            span.removeClass('edit')
+            span.show()
+          }
+          const tx = $td.find('input')
+          if (tx) {
+            const val = tx.val()
+            // 设置 原始值
+            d.value = val
+            $td.data('value', val)
+
+            tx.hide()
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 取消修改，还原值
+   */
   cancel() {
     const _ = this
     _.opt.edit = false
@@ -689,7 +826,25 @@ class EditTable extends Event {
         const d = _.data[idx]
         const value = $td.data('value') // 原始值
         const {type, option} = d || {}
-        if (
+        if ((type === DataType.search || type === DataTypes.search) && _.Autocomplete) {
+          const dvAc = $td.find('.autocomplete')
+          dvAc?.hide()
+          const span = $td.find('span')
+          span.eq(0).html(value)
+          span.show()
+        } else if (type === DataType.checkbox || type === DataTypes.checkbox) {
+          const ns = $td.find('input[type=checkbox]')
+          for (const n of ns.get()) {
+            const val = $(n).val()
+            n.checked = value.includes(val)
+          }
+        } else if (type === DataType.radio || type === DataTypes.radio) {
+          const ns = $td.find('input[type=radio]')
+          for (const n of ns.get()) {
+            const val = $(n).val()
+            n.checked = value === val
+          }
+        } else if (
           type !== DataType.attach &&
           type !== DataTypes.attach &&
           type !== DataType.table &&
@@ -699,8 +854,17 @@ class EditTable extends Event {
           type !== DataType.page &&
           type !== DataTypes.page
         ) {
-          const span = $td.findNode('span')
-          span?.html(value)
+          const span = $td.find('span')
+          if (span) {
+            span.html(value)
+            span.removeClass('edit')
+            span.show()
+          }
+          const tx = $td.find('input')
+          if (tx) {
+            tx.val(value)
+            tx.hide()
+          }
         }
       }
     }
@@ -1122,6 +1286,7 @@ class EditTable extends Event {
    * @returns {*[] & {idx: number}}
    */
   getRowData(rs, idx) {
+    /** @type {*[] & {idx: number}} */
     let R
     const _ = this
     const {opt} = _
@@ -1486,7 +1651,6 @@ class EditTable extends Event {
   setKv(data, add = false) {
     let R
     const _ = this
-    const {opt} = _
     try {
       if (add) _.data = [...(_.data || []), ...data]
       else {
@@ -1515,7 +1679,7 @@ class EditTable extends Event {
   }
 
   /**
-   * 补充 col、row 参数
+   * 补充 col、row 参数,缺省为1，0 不渲染
    * @param {*[]} data
    */
   repairCol(data) {
@@ -1528,7 +1692,7 @@ class EditTable extends Event {
       col = col ?? [1, 1]
 
       if (typeof col === 'number') {
-        col *= opt.colRatio // 兼容旧模式
+        col *= opt.colRatio // 兼容旧模式，2倍
         if (col > 1) {
           if (
             [
@@ -1542,7 +1706,7 @@ class EditTable extends Event {
               DataTypes.page,
             ].includes(type)
           ) {
-            col = [0, col]
+            col = [col, 0]
           } else col = [1, col - 1]
         }
       } else if (Array.isArray(col) && col.length === 1) col.push(1)
@@ -1577,6 +1741,7 @@ class EditTable extends Event {
       const thead = _.tb.tag('THEAD')
       const tbody = _.tb.tag('TBODY')
       let tr = thead.lastChild().clone()
+
       let {idx} = rs // 数据数组索引
       idx -= 1
       // 行赋值
@@ -1584,8 +1749,10 @@ class EditTable extends Event {
         idx++
 
         try {
-          const {field, vertical} = r
+          const {field, left, vertical} = r
           let {name, type, value, unit, option, row, col, align} = r
+
+          if (field === 'debug') debugger
 
           type = type ?? DataType.text
           value = _.getKv(r)
@@ -1594,8 +1761,16 @@ class EditTable extends Event {
             if (!Array.isArray(name)) name = [name]
 
             for (let nm of name) {
+              let code
+              if (nm.includes('__{')) {
+                let src
+                ;({code, src} = _.getCode(nm))
+                nm = src
+              }
+
               // 空格转换
               nm = nm.replaceAll(' ', '&emsp;')
+
               const td = document.createElement('td')
               const $td = $(td)
               if (vertical) {
@@ -1614,8 +1789,14 @@ class EditTable extends Event {
 
               // name 数组不支持列定义
               if (name.length === 1 && col[0] > 1) td.colSpan = col[0]
-              if (row[0] > 1) td.rowSpan = row[0]
-              if (align) $td.addClass(`align-${align}`)
+
+              if (code?.row > 1) td.rowSpan = code?.row
+              else if (row[0] > 1) td.rowSpan = row[0]
+
+              if (code?.align) $td.addClass(`align-${code?.align}`)
+              else if (align) $td.addClass(`align-${align}`)
+
+              if (code?.col > 0) td.colSpan = code?.col
               tr.append(td)
             }
           }
@@ -1623,26 +1804,44 @@ class EditTable extends Event {
           // value
           const vcol = col[1]
           if (vcol > 0) {
+            let types = type
+            let muti = true // 多个value
+            if (!Array.isArray(type)) {
+              types = [type]
+              muti = false
+            }
+
+            // 多值
+            let i = -1
+            for (const type of types) {
+              i++
+              let val = value
+              // 多值，取其中一个
+              if (muti) {
+                if (Array.isArray(value)) val = value?.[i] ? value[i] : ''
+              }
+
             const td = document.createElement('td')
           const $td = $(td)
           // 合并列
-            if (col[1] > 1) td.colSpan = col[1]
+              if (!muti && col[1] > 1) td.colSpan = col[1]
+
             if (row[1] > 1) td.rowSpan = row[1]
 
+              if ([DataType.html, DataTypes.html].includes(type)) {
             // if (Array.isArray(col)) td.colSpan = vcol
             // else if (col > 1) td.colSpan = col * 2 - 1
           // td.style.width = `${((r.col ?? 1) * 100) / opt.col - opt.labelWidth}%`
 
           // 换行
-            if ([DataType.html, DataTypes.html].includes(type)) {
-              td.innerHTML = `${value}`
+                td.innerHTML = `${val}`
             } else if ([DataType.table, DataType.attach, DataTypes.table, DataTypes.attach].includes(type)) td.innerHTML = `<span name="tx"/>`
           else {
               if ([DataType.checkbox, DataTypes.checkbox].includes(type)) {
-              const htm = option.map(v => {
+                  const htm = option?.map(v => {
                   const rt = (
                   <label class="checkbox">
-                    <input type="checkbox" name={field} value={v} checked={`${value.includes(v) ? 'true' : 'false'}`} />
+                        <input type="checkbox" name={field} value={v} checked={`${val.includes(v) ? 'true' : 'false'}`} />
                     <i class="icon-checkbox"></i>
                     {v}
                   </label>
@@ -1652,12 +1851,12 @@ class EditTable extends Event {
 
                 return rt // + v
               })
-              td.innerHTML = `<span name="tx" class="etCheckbox">${htm.join('')}</span>`
+                  if (htm) td.innerHTML = `<span name="tx" class="etCheckbox">${htm.join('')}</span>`
               } else if ([DataType.radio, DataTypes.radio].includes(type)) {
-              const htm = option.map(v => {
+                  const htm = option?.map(v => {
                   const rt = (
                   <label class="radio">
-                    <input type="radio" name={field} value={v} checked={`${value.includes(v) ? 'true' : 'false'}`} />
+                        <input type="radio" name={field} value={v} checked={`${val === v ? 'true' : 'false'}`} />
                     <i class="icon-radio"></i>
                     {v}
                   </label>
@@ -1667,9 +1866,10 @@ class EditTable extends Event {
 
                 return rt // + v
               })
-              td.innerHTML = `<span name="tx" class="etRadio">${htm.join('')}</span>`
+
+                  if (htm) td.innerHTML = `<span name="tx" class="etRadio">${htm.join('')}</span>`
               } else if ([DataType.chip, DataTypes.chip].includes(type)) {
-              const htm = value.map(v => {
+                  const htm = val?.map(v => {
                 // <a class="chip-delete"></a>
                   const rt = (
                   <div class="chip">
@@ -1680,29 +1880,31 @@ class EditTable extends Event {
 
                 return rt // + v
               })
-              td.innerHTML = `<span name="tx" class="etChip">${htm.join('')}</span>`
+                  if (htm) td.innerHTML = `<span name="tx" class="etChip">${htm.join('')}</span>`
             } else if (unit)
-              td.innerHTML = `<div class=etNumber><span name="tx" class="etValue">${value}</span><span class="etSuffix">${unit}</span></div>`
-            else td.innerHTML = `<span name="tx" class="etValue">${value}</span>`
-              // else td.innerHTML = `<input name="tx" class="etValue dy-input" value=${value}></input>`
+                  td.innerHTML = `<div class=etNumber><span name="tx" class="etValue">${val}</span><span class="etSuffix">${unit}</span></div>`
+                else td.innerHTML = `<span name="tx" class="etValue">${val}</span>`
+                // else td.innerHTML = `<input name="tx" class="etValue dy-input" value=${val}></input>`
 
             //  txs[i].setAttribute('idx', '') // 每行编辑节点设置idx属性，对应名称与数据索引，方便获取、设置节点数据
             $td.data('idx', idx) // td 保存 数据索引
-            $td.data('value', value) // td 保存 原值
+                if (muti) $td.data('idv', i) // td 保存 数据索引
+                $td.data('value', val) // td 保存 原值
           }
 
             tr.append(td)
+          }
           }
 
           // 插入到空行前
           tbody.dom.insertBefore(tr.dom, null)
           tr.show()
 
-          // 嵌套表
+          // 嵌套表，换行
           if ([DataType.table, DataTypes.table].includes(r.type) && value?.head && value?.data) {
             tr = thead.lastChild().clone()
             const td = document.createElement('td')
-            td.colSpan = vcol // col * 2
+            td.colSpan = col[0] // vcol // col * 2 与 label 相同
 
             const $td = $(td)
             $td.data('idx', idx) // td 保存 数据索引
@@ -1721,7 +1923,19 @@ class EditTable extends Event {
             tbody.dom.insertBefore(tr.dom, null)
             tr.show()
           } else if ([DataType.attach, DataTypes.attach].includes(type) && value?.length) {
-            _.fillAttach(value, thead, tbody, vcol, idx)
+            const {cat} = r
+            let {catCol} = r
+            catCol = catCol.map(v => v * opt.colRatio)
+            let cats
+            let catid = 0
+
+            do {
+              cats = getRowCat(cat, catCol, opt.col, catid)
+              if (cats) {
+                fillAttach(_, value, thead, tbody, cats, catCol, idx)
+                catid = cats.catid + cats.length
+              }
+            } while (cats)
           }
         } catch (e) {
           log.err(e, 'fillKv')
@@ -1730,6 +1944,60 @@ class EditTable extends Event {
     } catch (e) {
       log.err(e, 'fillKv')
     }
+  }
+
+  /**
+   * 获取文本中的指令代码
+   * @param {string} src
+   * @returns {{*, string}}
+   */
+  getCode(src) {
+    let R
+    try {
+      // 使用正则表达式匹配 __{...}__ 格式的部分
+      const regex = /__({[^}]+})__/
+      const match = src.match(regex)
+
+      if (match) {
+        // 提取匹配的部分
+        const code = match[0] // "__{align:left,row:3,col:2}__"
+        let json = match[1] // "{align:left,row:3,col:2}"
+
+        // 从原字符串中删除提取的部分
+        src = src.replace(code, '')
+
+        try {
+          // 替换单引号为双引号（处理非标准 JSON）
+          json = json.replace(/'/g, '"')
+
+          // 第一步：为键加引号
+          json = json.replace(/(\w+):/g, '"$1":')
+
+          // 第二步：处理没有引号的值
+          json = json.replace(/:([^,"}]+)([,}])/g, (match, m1, m2) => {
+            // 数字（包括小数和负数）
+            if (/^-?\d+\.?\d*$/.test(m1)) return `:${m1}${m2}`
+            // 布尔值
+            if (m1 === 'true' || m1 === 'false') return `:${m1}${m2}`
+            // null
+            if (m1 === 'null') return `:null${m2}`
+            // 其他加引号
+            return `:"${m1}"${m2}`
+          })
+
+          // 第三步：处理已经加引号的值
+          json = json.replace(/:"([^"]+)":/g, ':"$1":')
+          // 将JSON字符串转换为JavaScript对象
+          R = {code: JSON.parse(json), src}
+        } catch (e) {
+          log.err(e, 'getCode JSON解析错误')
+        }
+      }
+    } catch (e) {
+      log.err(e, 'getCode')
+    }
+
+    return R
   }
 
   /**
@@ -1882,172 +2150,6 @@ class EditTable extends Event {
       log.err(e, 'getCellVal')
     }
     return R
-  }
-
-  /**
-   * fill attach file
-   * @param {{_idx: number, id: number, cat:string, name:string, url:string, status?:string, type:string, ext?:string}[]} value - 数据卡 值，对象数组
-   * @param {*} thead - 表头
-   * @param {*} tbody - 表body
-   * @param {*} col - 表总列数
-   * @param {*} idx - 数据数组索引
-   */
-  fillAttach(value, thead, tbody, col, idx) {
-    const _ = this
-    try {
-      if (!value?.length) return
-
-      let i = -1
-      for (const v of value) {
-        i++
-        v._idx = i
-      }
-
-      const row = thead.lastChild().clone()
-      row.dom.data = value // 保存数据，用于点击浏览
-      const td = document.createElement('td')
-      td.colSpan = col // col * 2
-
-      const $td = $(td)
-      $td.data('idx', idx) // td 保存 数据索引
-
-      const att = $(<div class="etAttach" />)
-      att.appendTo($td)
-
-      // 按 cat 分组
-      const cats = value.reduce((acc, v) => {
-        const gp = acc[v.cat]
-        if (gp) {
-          gp.count++
-          gp.data.push(v)
-        } else acc[v.cat] = {data: [v], count: 1}
-        return acc
-      }, {})
-
-      for (const k of Object.keys(cats)) {
-        att.append(<div class="attach-cat">{k}</div>)
-        for (const d of cats[k].data) {
-          const {_idx, cat, name, abb, url, status, type} = d
-          let {ext} = d
-          if (type === 'img') {
-            att.append(
-              <div class="attach-item" data-id={_idx}>
-                <img src={url} alt={abb} loading="lazy" />
-                <p>{abb}</p>
-              </div>
-            )
-          } else if (type === 'video') {
-            ext = ext ?? 'mp4'
-            att.append(
-              <div class="attach-item" data-id={_idx}>
-                <video controls preload="none">
-                  <source src={url} type={`${type}/${ext}`} />
-                </video>
-                <p>{abb}</p>
-              </div>
-            )
-          } else if (type === 'doc') {
-            ext = `.${ext}`
-            if (ext === '.docx') ext = '.doc'
-            else if (ext === 'xlsx') ext = '.xls'
-
-            let src
-            if (/\.(pdf|xls|doc|csv|txt|zip|rar|ppt|avi|mov|mp3)/i.test(ext)) src = `https://cos.wia.pub/wiajs/img/uploader/${ext.substring(1)}.png`
-            else src = 'https://cos.wia.pub/wiajs/img/uploader/raw.png'
-
-            att.append(
-              <div class="attach-item" data-id={_idx}>
-                <img src={src} alt={abb} loading="lazy" />
-                <p>{abb}</p>
-              </div>
-            )
-          }
-        }
-      }
-
-      row.append(td)
-      // 插入到空行前
-      tbody.dom.insertBefore(row.dom, null)
-      row.show()
-      setTimeout(() => _.attachLast(row), 1000)
-      row.click(ev => _.attachClick(ev)) // 点击浏览大图
-    } catch (e) {
-      log.err(e, 'fillAttach')
-    }
-  }
-
-  /**
-   * 点击浏览大图
-   * @param {*} ev
-   */
-  async attachClick(ev) {
-    const _ = this
-
-    const row = $(ev).upper('tr')
-    const att = $(ev).upper('.attach-item')
-    const idx = att.data('id')
-    // 浏览图片附件
-    if (att.dom && row.dom) {
-      const {data} = row.dom
-      const v = data.find(v => v._idx === idx)
-      const {type, ext} = v || {}
-      let {url} = v || {}
-      if (type === 'doc') {
-        if (['doc', 'docx', 'xls', 'xlsx', 'ppt'].includes(ext)) url = `https://view.officeapps.live.com/op/view.aspx?src=${url}&wdOrigin=BROWSELINK`
-
-        window.open(url, '_blank')
-      } else if (type === 'img' || type === 'video') {
-        if (!g.lightbox) {
-          // @ts-ignore
-          // if (!g.anime) g.anime = await import('https://cdn.jsdelivr.net/npm/animejs@4/+esm')
-
-          // @ts-ignore
-          // const m = await import('https://cdn.jsdelivr.net/npm/glightbox@3/+esm')
-          const m = await import('https://cos.wia.pub/wiajs/glightbox.mjs')
-          g.lightbox = m.default
-          setTimeout(() => _.showImg(data, idx), 1000)
-        } else _.showImg(data, idx)
-      }
-    }
-  }
-
-  /**
-   * 图片浏览
-   * @param {*[]} data
-   * @param {number} idx
-   */
-  showImg(data, idx) {
-    if (g.lightbox) {
-      // window.dispatchEvent(new CustomEvent('animeReady'))
-      const lbox = g.lightbox({selector: null})
-      let id = 0
-      let i = -1
-      for (const v of data) {
-        i++
-        if (v._idx === idx) id = i
-        if (v.type === 'img' || v.type === 'video') lbox.insertSlide({href: v.url})
-      }
-      // lbox.open()
-      lbox.openAt(id)
-    }
-  }
-
-  /**
-   *
-   * @param {*} row
-   */
-  attachLast(row) {
-    const attach = row.find('.etAttach')
-    const rs = [...attach.dom.children]
-    rs.forEach((r, i) => {
-      r.classList.remove('attach-last')
-      const p = rs[i - 1]
-      const pre = p?.getBoundingClientRect()
-      const cur = r.getBoundingClientRect()
-      // if (prev && r.offsetTop > prev.offsetTop) {
-      if (cur.top > pre?.top) p.classList.add('attach-last')
-      if (i === rs.length - 1) r.classList.add('attach-last')
-    })
   }
 
   /**

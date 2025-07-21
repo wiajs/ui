@@ -1,9 +1,17 @@
-/** @jsx-x jsx */
 /** @jsxImportSource @wiajs/core */
-// import {jsx} from '@wiajs/core'
+// import {Event} from '@wiajs/core'
+// import {Page} from '@wiajs/core'
 import Compress from '@wiajs/lib/compress'
 // @ts-ignore
 import * as css from './index.less'
+import {log as Log} from '@wiajs/util'
+
+const log = Log({m: 'uploader'}) // 创建日志实例
+
+/**
+ * @typedef {import('jquery')} $
+ * @typedef {JQuery} Dom
+ */
 
 /** @typedef {object} FileType
  * @prop {number} id
@@ -17,10 +25,40 @@ import * as css from './index.less'
  * @prop {string} url
  */
 
+/** @typedef {object} Opts
+ * @prop {string} url - 'https://lianlian.pub/img/upload', // 图片上传服务接口
+ * @prop {string} dir - 'slcj/contract', 图片存储路径，格式: 所有者/应用名称/分类，结尾不要带/
+ *  dir: 'lianlian/esign/test', 图片存储路径，格式: 所有者/应用名称/分类
+ * @prop {Dom} el - $('.wia_uploader'), 容器
+ * @prop {boolean} [multiple] 缺省：true,  同时选择多个文件
+ * @prop {number} [limit] - 缺省：0 不限制数量
+ * @prop {boolean} [upload] - 缺省：true, 自动上传
+ * @prop {string} [accept] - 'image/jpg,image/jpeg,image/png,image/gif', // 选择文件类型
+ *  accept: '*', // 不限类型
+ * @prop {boolean} [preview] - 缺省：true, 点击图片是否预览，图片可提供大图预览，其他文件可在preview事件中提供预览功能
+ * @prop {number} [left] - 0, // 预览偏移，master page
+ * @prop {boolean} [compress] - 缺省：true,  启用压缩
+ * @prop {number} [maxSize] - 缺省：0,  压缩后最大尺寸
+ * @prop {number} [quality] - 缺省：0.6,  压缩比
+ * @prop {number} [width] - 缺省：0,  指定压缩后宽
+ * @prop {number} [height] - 缺省：0,  指定压缩后高
+ * @prop {string} [resize] - 缺省：'none',  与 width、height 一起使用，改变图像尺寸压缩 none|contain|cover'
+ * @prop {number} [aspectRatio] - 缺省：0,  设置宽高比，0 关闭
+
+ * @prop {string} [crop] - 缺省：'img/crop',  不符合比例，进入裁剪
+ * @prop {*} [img] = null, // 指定 img，对于图片，如指定img，则使用img展示图片缩略图，否则自动在上传容器中加载缩略图
+ * @prop {*} [input] - null, // 上传成功后的url填入输入框，便于表单数据提交
+ * @prop {*} [choose] - 点击触发选择文件，默认为上传容器
+
+ * @prop {*} [data] - 请求体参数
+ * @prop {*} [header] - 请求头，传 token、bucket 等
+ * @prop {boolean} [withCredentials] - 缺省：false,
+*/
+
 const def = {
   url: 'https://lianlian.pub/img/upload', // 图片上传服务接口
   // dir: 'slcj/contract', // 图片存储路径，格式: 所有者/应用名称/分类，结尾不要带/
-  el: $('.wiaui_uploader'), // 容器
+  el: $('.wia_uploader'), // 容器
   multiple: true, // 同时选择多个文件
   limit: 0, // 0 不限制数量
   upload: true, // 自动上传
@@ -91,17 +129,28 @@ const parseSuccess = rs => {
   return rs
 }
 
-export default class Uploader {
+class Uploader {
   /** @type {FileType[]} */
   files
 
   /** @type {*} */
   opt
 
-  constructor(opts = {}) {
-    this.id = 1
+  id = 1
+
+  /**
+   * 构造函数
+   * @param {Opts} opts
+   */
+  constructor(opts) {
+    // super(opts, [page])
+    const _ = this
 
     const opt = {...def, ...opts}
+    _.opt = opt
+    _.el = opt.el
+    // _.page = page
+
     if (!opt.accept.startsWith('image/')) {
       opt.compress = false // 关闭压缩
       opt.quality = 1 // 压缩比
@@ -129,19 +178,20 @@ export default class Uploader {
     _.input = this.initInput(opt)
     _.page = opt.el.parentNode('.page')
 
-    _.el.removeClass('wiaui_uploader').addClass(`${css.wiaui_uploader} wiaui_uploader`) // 内置样式已改名
+    _.el.removeClass('wia_uploader').addClass(`${css.wia_uploader} wia_uploader`) // 内置样式已改名
     _.el.class('_input').removeClass('_input').addClass(`${css._input} _input`) // 内置样式已改名
 
     this.bind()
   }
 
   /**
-   * 创建并返回 file input 组件，用于选择文件
+   * 创建并返回 file input 组件保存到input中，用于选择文件
+   * input.click 可触发文件选择
    * @param {*} opt
    */
   initInput(opt) {
     // 选择文件后返回
-    this.changeHandler = e => {
+    this.changeHandler = async e => {
       let {files} = e.target
 
       console.log('initInput', {files})
@@ -154,10 +204,9 @@ export default class Uploader {
       }
 
       // 外部可干预，返回false或者文件数组
-      const ret = this.callEvent('choose', files)
-      if (ret !== false) {
-        this.loadFiles(ret || files)
-      }
+      const ret = await this.callEvent('choose', files)
+      // const ret = this.emit('local::choose', files)
+      if (ret !== false) this.loadFiles(ret || files)
     }
 
     /** @type{*} */
@@ -183,10 +232,10 @@ export default class Uploader {
     const _ = this
     if (!this.opt.preview) return null
 
-    let gal = this.page.class(`${css.wiaui_gallery}`)
+    let gal = this.page.class(`${css.wia_gallery}`)
     if (!gal || !gal.length) {
       const tmpl = (
-        <div class={css.wiaui_gallery} style={`display: none; left: ${_.opt.left}px`}>
+        <div class={css.wia_gallery} style={`display: none; left: ${_.opt.left}px`}>
           <span class={css._img} />
           <div class={`flex-center ${css._opr}`}>
             <a href="javascript:;" name="delete">
@@ -210,12 +259,12 @@ export default class Uploader {
 
       gal.name('delete').click(
         /** @param {*}ev */ ev => {
-          const id = gal.class(`${css._img}`).data('id')
+          const id = gal.class(`${css._img}`).data('fileid')
           this.remove(id)
         }
       )
 
-      gal = this.page.class(`${css.wiaui_gallery}`)
+      gal = this.page.class(`${css.wia_gallery}`)
       this.gallery = gal
     }
     return gal
@@ -246,20 +295,20 @@ export default class Uploader {
             if (/^\{[\s\S]+\}/.test(val)) p = JSON.parse(opt.input.val())
             else {
               p = {dir: ''}
-              p.file = val.split(',')
+              p.url = val.split(',')
             }
           }
 
-          if (p && p.file) {
+          if (p?.url) {
             this.clear()
-            this.files = p.file.map(v => {
+            this.files = p.url.map(v => {
               // const {dir} = p;
               // const host = dir.replace(`/${opt.dir}`, '');
               const f = {
                 id: this.id++, // 内部计数
                 // dir 可选
                 file: p.dir ? `${p.dir}/${v}` : v,
-                status: 'upload',
+                status: 'upload', // 已上传
               }
               return f
             })
@@ -283,7 +332,7 @@ export default class Uploader {
             // el 上设置，手机可以触发选择文件，pc失效
             ev.stopPropagation() // 阻止冒泡，避免上层 choose再次触发
             ev.preventDefault() // 阻止缺省行为，可能导致层缺省行为无效
-            const f = this.getFile(file.data('id'))
+            const f = this.getFile(file.data('fileid'))
             // 进入裁剪页面
             if (f && f.status === 'crop' && opt.crop)
               $.go(opt.crop, {
@@ -306,9 +355,17 @@ export default class Uploader {
     if (opt.choose) {
       opt.choose.click(ev => {
         ev.stopPropagation() // 阻止事件冒泡
-        _.chooseFile()
+        _.chooseFile() // 触发文件选择
       })
     }
+  }
+
+  /**
+   *
+   * @param {Opts} opts
+   */
+  config(opts) {
+    this.opt = {...this.opt, ...opts}
   }
 
   /**
@@ -320,14 +377,19 @@ export default class Uploader {
       const gal = this.getGallery()
 
       if (gal.length) {
-        gal.class(`${css._img}`).attr('style', file.attr('style')).data('id', file.data('id'))
+        gal.class(`${css._img}`).attr('style', file.attr('style')).data('fileid', file.data('fileid'))
         gal.show()
       }
     }
     // $gallery.fadeIn(100);
   }
 
-  // 响应事件[choose, load, success, error, exceed, change, progress]
+  /**
+   * 响应事件[choose, load, success, error, exceed, change, progress]
+   * @param {*} evt
+   * @param {*} cb
+   * @returns
+   */
   on(evt, cb) {
     if (evt && typeof cb === 'function') {
       this['on' + evt] = cb
@@ -358,7 +420,7 @@ export default class Uploader {
   }
 
   /**
-   * 外部传入文件数组
+   * 加载文件，选择或外部传入的文件数组
    * @param {File|FileType[]} files
    * @returns {boolean}
    */
@@ -384,6 +446,8 @@ export default class Uploader {
         return {
           id: this.id++,
           rawFile: file,
+          mimeType: file.type,
+          type: getFileType(file.type),
           name: file.name,
           ext: rg && rg[1],
           size: file.size,
@@ -392,7 +456,7 @@ export default class Uploader {
       })
     )
 
-    this.callEvent('change', this.files)
+    this.callEvent('change', this.files) // 文件列表改变
     this.load()
 
     return true
@@ -430,34 +494,35 @@ export default class Uploader {
     const {opt} = _
 
     // const fs = this.files.filter(f => f.status === 'choose');
-    if (this.files && this.files.length > 0) {
-      this.files.forEach(async f => {
+    for (const f of _.files ?? []) {
         let src
         let tp
+      const {ext} = f
         if (f.status === 'choose') {
           f.status = 'load'
-
-          let {ext} = f
-          if (ext === '.docx') ext = '.doc'
-          else if (ext === 'xlsx') ext = '.xls'
 
           if (/\.(jpeg|jpg|png|gif)/i.test(ext)) {
             const URL = window.URL || window.webkitURL || window.mozURL
             src = URL && f.rawFile && URL.createObjectURL(f.rawFile)
-          } else if (/\.(pdf|xls|doc|csv|txt|zip|rar|ppt|avi|mov|mp3)/i.test(ext))
-            src = `https://cos.wia.pub/wiajs/img/uploader/${ext.substring(1)}.png`
-          else src = 'https://cos.wia.pub/wiajs/img/uploader/raw.png'
+        } else src = getThumb(ext)
 
-          if (!opt.img) {
             tp = (
               <div
                 name={`img${f.id}`}
-                data-id={f.id}
+            data-fileid={f.id}
                 class={`flex-center ${css._file} ${css._status}`}
                 style={`background-image: url(${src}); background-size: contain`}>
                 <div class={css._content}>50%</div>
               </div>
             )
+
+        if (opt.label)
+          tp = (
+            <div class="css._wrap">
+              {tp}
+              <p>上传中</p>
+            </div>
+          )
 
             // 指定宽高比
             if (opt.aspectRatio) {
@@ -469,7 +534,7 @@ export default class Uploader {
                 tp = (
                   <div
                     name={`img${f.id}`}
-                    data-id={f.id}
+                data-fileid={f.id}
                     class={`flex-center ${css._file} ${css._status}`}
                     style={`background-image: url(${src}); background-size: contain`}>
                     <div class={`flex-center ${css._content}`}>
@@ -477,7 +542,14 @@ export default class Uploader {
                     </div>
                   </div>
                 )
-              }
+
+            if (opt.label)
+              tp = (
+                <div class="css._wrap">
+                  {tp}
+                  <p>需裁剪</p>
+                </div>
+              )
             }
           }
         } else if (f.status === 'croped') {
@@ -486,41 +558,66 @@ export default class Uploader {
           f.status = 'load'
           src = f.url
 
-          if (!opt.img)
             tp = (
               <div
                 name={`img${f.id}`}
-                data-id={f.id}
+            data-fileid={f.id}
                 class={`flex-center ${css._file} ${css._status}`}
                 style={`background-image: url(${src}); background-size: contain`}>
                 <div class={css._content}>50%</div>
               </div>
             )
+
+        if (opt.label)
+          tp = (
+            <div class="css._wrap">
+              {tb}
+              <p>上传中</p>
+            </div>
+          )
         } else if (f.status === 'upload') {
-          // 待上传
+        // 已上传
           const n = opt.el.name(`img${f.id}`)
-          if (n.length === 0) src = `${f.file}`
-          if (!opt.img)
+
+        if (n.length === 0) src = `${f.url}`
+
+        if (!opt.img) {
             tp = (
               <div
                 name={`img${f.id}`}
-                data-id={f.id}
+              data-fileid={f.id}
                 class={`flex-center ${css._file}`}
                 style={`background-image: url(${src}); background-size: contain`}
               />
             )
+
+          if (opt.label)
+            tp = (
+              <div class="css._wrap">
+                {tp}
+                <p>上传成功</p>
+              </div>
+            )
+        }
         }
 
+      // 加载图标
         if (src) {
-          if (opt.img) opt.img.attr('src', src)
-          else if (tp) $(tp).insertBefore(opt.input)
+        if (tp) $(tp).insertBefore(opt.input)
+        else if (opt.img) {
+          // 上传成功
+          let {img} = opt
+          if (img.dom.tagName !== 'IMG') img = img.find('img')
+          src = getThumb(ext, src)
+          img.attr('src', src)
+          opt.img.show()
+        }
 
           _.callEvent('load', f, _.files)
           console.log({f, files: _.files}, 'load')
 
           opt.upload && _.upload()
         }
-      })
     }
   }
 
@@ -595,7 +692,7 @@ export default class Uploader {
     console.log({fs}, 'updateInput')
 
     if (fs.length > 0) {
-      let rs = fs.map(f => f.file)
+      let rs = fs.map(f => f.url)
       // 一个文件，数组转为文件
       if (rs.length === 1) {
         ;[rs] = rs
@@ -666,7 +763,7 @@ export default class Uploader {
 
     // 数据后50%用模拟进度
     function mockProgress() {
-      if (opt.img || timer) return
+      if (timer) return
 
       timer = setInterval(() => {
         percent += 5
@@ -691,28 +788,38 @@ export default class Uploader {
       }, 50)
     }
 
-    const {data, withCredentials} = this.opt
+    const {data, withCredentials, header} = opt
 
     const fd = new FormData()
     // 传入路径、文件数据和文件名称
-    const fn = `${file.id}${file.ext}` // id.文件扩展名，不可重复
-    fd.append(opt.dir, file.rawFile, fn)
+    const name = `${file.id}${file.ext}` // id.文件扩展名，不可重复
+    fd.append(opt.dir, file.rawFile, name)
 
-    Object.keys(data).forEach(key => {
-      fd.append(key, data[key])
-    })
+    if (data)
+      for (const k of Object.keys(data)) {
+        fd.append(k, data[k])
+      }
 
     const xhr = new XMLHttpRequest()
     xhr.withCredentials = !!withCredentials
 
     xhr.open('POST', this.opt.url)
+
+    // 添加自定义 header
+    if (header)
+      for (const k of Object.keys(header)) {
+        xhr.setRequestHeader(k, header[k])
+      }
+
     xhr.onreadystatechange = () => {
       if (xhr.readyState === 4)
         if (xhr.status === 200) {
+          // {code: 200, data:{}}
           const rs = parseSuccess(xhr.responseText)
           // 上传成功，返回文件名对象
-          if (rs.code === 200 && rs.data[fn]) {
+          if (rs.code === 200 && rs.data[name]) {
             file.status = 'upload' // 上传成功状态
+            // 返回数据：
             //  {
             //    '3.jpg': {
             //      dir: 'img/req/',
@@ -732,20 +839,28 @@ export default class Uploader {
             //     name: '1.pdf',
             //   },
             // };
-
-            const r = rs.data[fn]
+            const r = rs.data[name]
             // 服务器返回存储路径、文件名称
-            if (r.file) {
+            if (r.url) {
               const id = r.name.replace(/\.\w+/i, '')
               // 去掉末尾 / 字符
               r.dir = r.dir.replace(/\/$/, '')
 
               // 不支持多文件、多次不同路径上传
-              file.file = `${r.host}/${r.dir}/${r.file}`
+              file.url = r.url //`${r.host}/${r.dir}/${r.file}`
 
+              const uf = ls.name(`img${file.id}`).parent()
               // 上传成功，更新图片缩略图
-              if (opt.img) opt.img.attr('src', file.file)
-              else if (/\.(?:jpeg|jpg|png|gif)$/i.test(r.name)) opt.el.name(`img${id}`).css('background-image', `url(${file.file})`)
+              if (opt.label) uf.find('p').html('上传成功')
+
+              const src = getThumb(file.ext, file.url)
+              let {img} = opt
+              if (img) {
+                if (img.dom.tagName !== 'IMG') img = img.find('img')
+                img.attr('src', src)
+                uf.remove() // 删除上传显示
+                opt.img.show()
+              } else opt.el.name(`img${id}`).css('background-image', `url(${src})`)
             }
 
             // 填入 input，方便客户读取
@@ -753,6 +868,7 @@ export default class Uploader {
 
             // 上传成功事件
             _.callEvent('success', rs.data, file, this.files)
+            // _.emit('local::success', rs.data, file, this.files)
           }
         } else {
           file.status = 'error'
@@ -767,7 +883,7 @@ export default class Uploader {
 
     // 数据发送进度，前50%展示该进度,后50%使用模拟进度!
     xhr.upload.onprogress = e => {
-      if (opt.img || timer) return
+      if (timer) return
 
       const {total, loaded} = e
       percent = total > 0 ? (100 * loaded) / total / 2 : 0
@@ -784,11 +900,6 @@ export default class Uploader {
       e.percent = percent
       _.callEvent('progress', e, file, _.files)
     }
-
-    // const headers = getHeaders(this.opt.headers);
-    Object.keys(this.opt.headers).forEach(key => {
-      xhr.setRequestHeader(key, opt.headers[key])
-    })
 
     console.log({xhr, url: opt.url}, 'post')
     xhr.send(fd)
@@ -846,3 +957,63 @@ function getBoundary() {
 
   return R
 }
+
+/**
+ * 获得文件类型
+ * @param {*} mimeType
+ * @returns {string}
+ */
+function getFileType(mimeType) {
+  let R
+
+  try {
+    if (!mimeType || typeof mimeType !== 'string') return
+
+    if (mimeType.startsWith('image/')) R = 'img'
+    if (mimeType.startsWith('audio/')) R = 'audio'
+    if (mimeType.startsWith('video/')) R = 'video'
+
+    const docTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+      'text/plain',
+      'text/csv',
+    ]
+    if (docTypes.includes(mimeType)) R = 'doc'
+  } catch (e) {
+    log.err(e, 'getFileType')
+  }
+
+  return R
+}
+
+/**
+ * 获取上传文件缩略图标
+ * @param {string} ext
+ * @param {string} [url]
+ * @returns {string}
+ */
+function getThumb(ext, url) {
+  let R
+  try {
+    ext = `.${ext}`
+    if (ext.endsWith('.docx')) ext = '.doc'
+    else if (ext.endsWith('.xlsx')) ext = '.xls'
+
+    ext = ext.replace(/^\.+/, '.')
+
+    if (/\.(pdf|xls|doc|csv|txt|zip|rar|ppt|avi|mov|mp3)/i.test(ext)) R = `https://cos.wia.pub/wiajs/img/uploader/${ext.substring(1)}.png`
+    else R = url ?? 'https://cos.wia.pub/wiajs/img/uploader/raw.png'
+  } catch (e) {
+    log.err(e, 'getThumb')
+  }
+
+  return R
+}
+
+export {Uploader as default, getFileType, getThumb}

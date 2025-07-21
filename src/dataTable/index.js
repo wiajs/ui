@@ -264,7 +264,6 @@ export default class DataTable extends Event {
   td(head) {
     const R = []
     const {hide, link} = head[0]
-
     let col = -1 // 数据列，隐藏字段需跳过
     for (let i = 1, len = head.length; i < len; i++) {
       col++ // 从 0 开始
@@ -283,12 +282,13 @@ export default class DataTable extends Event {
         )
       } else {
         h.idx = col // 对应数据列
-        const {type, div, qian, unit, mul, decimal, format} = h
+        const {type, div, qian, unit, mul, decimal, format, align} = h
         let opt = {type, div, qian, unit, mul, decimal, format}
 
         opt = JSON.stringify(opt)
 
-        const cls = h.type === 'number' ? 'numeric-cell' : 'label-cell'
+        let cls = h.type === 'number' ? 'numeric-cell' : 'label-cell'
+        if (align) cls += `align-${align}`
 
         if (h.link || link?.includes(i)) {
           if (!h.link) h.link = ''
@@ -1319,7 +1319,7 @@ export default class DataTable extends Event {
 
       if (!data && !_.data?.length) return
 
-      const {head, cfg} = _
+      const {head, cfg, tb} = _
       if (!sort) sort = cfg.sort
 
       let {id: idx, page: hpage} = cfg
@@ -1339,8 +1339,23 @@ export default class DataTable extends Event {
       // 数据与模板结合，生成数据视图
       if (_.pageBar()) _.paging()
       else _.tb.setView(_.data, {idx, ...opts})
-      // debugger
-      // view.setView.bind(_.tb)(_.data, {idx, ...opts})
+      // view.setView.bind(tb)(_.data, {idx, ...opts})
+
+      // 识别并处理数据中的指令
+      const ns = tb.find('code.data-table')
+      for (const n of ns.get()) {
+        const $n = $(n)
+        const td = $n.upper('td')
+        let v = $n.html().replace(/row:/, '"row":').replace(/col:/, '"col":')
+
+        v = JSON.parse(v)
+        if (v.row > 0) td.dom.rowSpan = v.row
+        else if (v.row === 0) td.remove()
+
+        if (v.col > 0) td.dom.colSpan = v.col
+        else if (v.col === 0) td.remove()
+        $n.remove()
+      }
 
       if (cfg.sum) _.setSum()
     } catch (ex) {

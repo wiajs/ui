@@ -1,0 +1,127 @@
+// 附件
+.etAttach {
+  --wia-uploader-icon-size: var(--edit-table-attach-img);
+
+  width: 100%;
+  display: flex;
+  // flex-wrap: wrap;
+  // overflow: hidden;
+  /* #e0e0e0; */
+  border-top: 1px solid rgba(0, 0, 0, 0.125);
+  border-left: 1px solid rgba(0, 0, 0, 0.125);
+  border-right: 1px solid rgba(0, 0, 0, 0.125);
+  /* #e0e0e0; */
+  background-color: rgb(248, 249, 250);
+
+  .attach-cat {
+    flex: none;
+    font-size: 14px;
+    color: rgb(134, 144, 156);
+
+    /* font-weight: 600; */
+    padding: var(--edit-table-attach-gap);
+    /* margin-bottom: 10px; */
+    // width: 22px;
+    writing-mode: vertical-rl; /* 从右到左垂直排列 */
+    /* writing-mode: vertical-lr;  从左到右垂直排列 */
+    text-orientation: upright; /* 保持文字直立（中文/日文适用） */
+
+    border-right: 1px solid rgba(0, 0, 0, 0.125);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+
+    /* 使用flexbox实现居中 */
+    display: flex;
+    justify-content: center; /* 水平居中（在竖向排列中实际上是垂直居中） */
+    align-items: center; /* 垂直居中（在竖向排列中实际上是水平居中） */
+
+    min-height: 50px;
+    /* border: 1px solid #ccc;
+            background-color: #f5f5f5;           */
+  }
+
+  .attach-wrap {
+    flex: auto;
+    display: flex;
+    overflow-x: auto; // 滑动
+    flex-wrap: nowrap;
+    // width: 100%; /* 或指定具体宽度 */
+
+    .attach-item {
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      /* border-right: 1px solid rgba(0, 0, 0, 0.125); */
+      padding: var(--edit-table-attach-gap);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+      position: relative;
+      cursor: pointer;
+
+      &.wia_uploader {
+        flex-direction: row;
+        ._wrap {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+      }
+
+      & + .attach-cat {
+        border-left: 1px solid rgba(0, 0, 0, 0.125);
+      }
+
+      & + .attach-item {
+        padding-left: 0;
+      }
+
+      img {
+        height: var(--edit-table-attach-img);
+        width: auto;
+        object-fit: contain;
+        border: 1px solid #f0f0f0;
+      }
+
+      video {
+        height: var(--edit-table-attach-img);
+        width: auto;
+        background-color: #000;
+      }
+
+      p {
+        margin: 5px 0 0;
+        color: rgb(29, 33, 41);
+        font-size: 12px;
+        /* color: (75, 75, 75); */
+        text-align: center;
+        /* word-break: break-word; */
+        // max-width: 100px;
+        // min-width: 80px;
+      }
+    }
+  }
+
+  // 补全尾部格线
+  .attach-last {
+    border-bottom: 0px;
+
+    & + .attach-item {
+      padding-left: var(--edit-table-attach-gap);
+    }
+
+    &::after {
+      /* 关键技巧：在子项底部添加分隔线 */
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      width: 100vw;
+      height: 1px;
+      background-color: rgba(0, 0, 0, 0.125);
+      /* #ccc; */
+      bottom: 0px;
+      transform-origin: 50% 0;
+      transform: scaleY(calc(1 / var(--f7-device-pixel-ratio)));
+      /* 10px gap + 1px 分隔线 */
+    }
+  }
+}

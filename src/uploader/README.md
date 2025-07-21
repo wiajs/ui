@@ -103,6 +103,12 @@ uploader
 - remove(id)
 - clear()
   清除
+- config
+
+
+  --wia-uploader-icon-size: 60px; // 86px
+  --wia-uploader-height: 90px; // 120px;
+
 
 #### 加载图片
 

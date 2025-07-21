@@ -1,4 +1,4 @@
-.wiaui_gallery {
+.wia_gallery {
   display: none;
   position: fixed;
   top: 0;
@@ -36,8 +36,13 @@
   }
 }
 
-.wiaui_uploader {
-  height: 120px;
+:root {
+  --wia-uploader-icon-size: 60px; // 86px
+  --wia-uploader-height: 90px; // 120px;
+}
+
+.wia_uploader {
+  height: var(--wia-uploader-height);
   display: flex;
   justify-content: flex-start;
   align-items: center;
@@ -47,12 +52,19 @@
   //   align-items: center;
   //   padding-left: 0px;
 
+  // 带label
+  ._wrap {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+  }
+
   // 选择文件图标
   ._file {
     margin-right: 8px;
     // margin-bottom: 8px;
-    width: 86px;
-    height: 86px;
+    width: var(--wia-uploader-icon-size);
+    height: var(--wia-uploader-icon-size);
     background: no-repeat center center;
     background-size: cover;
     ._content {
@@ -84,8 +96,8 @@
     position: relative;
     margin-right: 8px;
     // margin-bottom: 8px;
-    width: 86px;
-    height: 86px;
+    width: var(--wia-uploader-icon-size); // 86px;
+    height: var(--wia-uploader-icon-size); // 86px;
     box-sizing: border-box;
     background-color: #ededed;
 
