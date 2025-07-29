@@ -17,6 +17,7 @@ const log = Log({m: 'uploader'}) // 创建日志实例
  * @prop {number} idx：数组索引
  * @prop {Blob} rawFile
  * @prop {string} name
+ * @prop {string} type
  * @prop {string} ext
  * @prop {number} size
  * @prop {string} status
@@ -337,27 +338,32 @@ class Uploader {
         /** @param {*}ev */ ev => {
           const file = $(ev.target).closest(`.${css._file}`)
           // console.log('el click', {file, ev, _file: styles._file});
-
           // 点击图片，预览或裁剪
           if (file.length > 0) {
+            const f = this.getFile(file.data('fileid'))
+            // 进入裁剪页面
+            if (f && f.status === 'crop' && opt.crop) {
             // el 上设置，手机可以触发选择文件，pc失效
             ev.stopPropagation() // 阻止冒泡，避免上层 choose再次触发
             ev.preventDefault() // 阻止缺省行为，可能导致层缺省行为无效
-            const f = this.getFile(file.data('fileid'))
-            // 进入裁剪页面
-            if (f && f.status === 'crop' && opt.crop)
               $.go(opt.crop, {
                 src: 'crop',
                 idx: f.idx,
                 url: f.url, // 图像数据
                 aspectRatio: opt.aspectRatio,
               })
-            else {
-              if (opt.preview) this.showGallery(file)
+            } else if (opt.preview) {
+              // el 上设置，手机可以触发选择文件，pc失效
+              ev.stopPropagation() // 阻止冒泡，避免上层 choose再次触发
+              ev.preventDefault() // 阻止缺省行为，可能导致层缺省行为无效
 
+              this.showGallery(file)
               this.callEvent('preview', f)
             }
-          } else if (!opt.choose) _.chooseFile()
+          } else if (!opt.choose) {
+            ev.stopPropagation() // 阻止冒泡，避免上层 choose再次触发
+            _.chooseFile()
+          }
         }
       )
     }
@@ -372,7 +378,7 @@ class Uploader {
   hideChoose() {
     const {opt} = this
     const el = opt.choose
-    const wrap = el.upper('._wrap')
+    const wrap = el.upper('._choose')
     if (wrap.dom) wrap.hide()
     else el.hide()
   }
@@ -380,7 +386,7 @@ class Uploader {
   showChoose() {
     const {opt} = this
     const el = opt.choose
-    const wrap = el.upper('._wrap')
+    const wrap = el.upper('._choose')
     if (wrap.dom) wrap.show()
     else el.show()
   }
@@ -458,7 +464,7 @@ class Uploader {
       const {opt} = _
 
       if (opt.limit > 0 && files.length && files.length + _.files.length > opt.limit) {
-        if (opt.limit === 1) this.clear()
+        if (opt.limit === 1) _.clear()
         // 单文件替换
         else {
           _.callEvent('exceed', files)
@@ -547,18 +553,24 @@ class Uploader {
         tp = (
           <div
             name={`img${f.idx}`}
+            title={f.name}
             data-fileid={f.idx}
-            class={`flex-center ${css._file} ${css._status}`}
+            class={`flex-center ${css._file} _file ${css._status}`}
             style={`background-image: url(${src}); background-size: contain`}>
             <div class={css._content}>50%</div>
           </div>
         )
 
-        if (opt.label)
+        if (opt.label || opt.delete)
           tp = (
-            <div class="css._wrap _wrap">
+            <div class={`${css._wrap} _wrap`}>
               {tp}
-              <p>上传中</p>
+              {opt.label && <p>上传中</p>}
+              {opt.delete && (
+                <div class="attach-delete">
+                  <i class="icon wiaicon">&#xe9fb;</i>
+                </div>
+              )}
             </div>
           )
 
@@ -572,8 +584,9 @@ class Uploader {
             tp = (
               <div
                 name={`img${f.idx}`}
+                title={f.name}
                 data-fileid={f.idx}
-                class={`flex-center ${css._file} ${css._status}`}
+                class={`flex-center ${css._file} _file ${css._status}`}
                 style={`background-image: url(${src}); background-size: contain`}>
                 <div class={`flex-center ${css._content}`}>
                   <i class="icon wiaicon">&#xe61c;</i>
@@ -581,11 +594,16 @@ class Uploader {
               </div>
             )
 
-            if (opt.label)
+            if (opt.label || opt.delete)
               tp = (
-                <div class="css._wrap _wrap">
+                <div class={`${css._wrap} _wrap`}>
                   {tp}
-                  <p>需裁剪</p>
+                  {opt.label && <p>需裁剪</p>}
+                  {opt.delete && (
+                    <div class="attach-delete">
+                      <i class="icon wiaicon">&#xe9fb;</i>
+                    </div>
+                  )}
                 </div>
               )
           }
@@ -600,23 +618,29 @@ class Uploader {
           <div
             name={`img${f.idx}`}
             data-fileid={f.idx}
-            class={`flex-center ${css._file} ${css._status}`}
+            title={f.name}
+            class={`flex-center ${css._file} _file ${css._status}`}
             style={`background-image: url(${src}); background-size: contain`}>
             <div class={css._content}>50%</div>
           </div>
         )
 
-        if (opt.label)
+        if (opt.label || opt.delete)
           tp = (
-            <div class="css._wrap _wrap">
-              {tb}
-              <p>上传中</p>
+            <div class={`${css._wrap} _wrap`}>
+              {tp}
+              {opt.label && <p>上传中</p>}
+              {opt.delete && (
+                <div class="attach-delete">
+                  <i class="icon wiaicon">&#xe9fb;</i>
+                </div>
+              )}
             </div>
           )
       } else if (f.status === 'upload') {
         // 已上传
         const n = opt.el.name(`img${f.idx}`)
-        // 是否在内部显示图标
+        // 是否在内部显示图标，是否已加载
         if (!n.dom && !opt.img) src = `${f.url}`
 
         // 重新加载图标
@@ -624,17 +648,24 @@ class Uploader {
           tp = (
             <div
               name={`img${f.idx}`}
+              title={f.name}
               data-fileid={f.idx}
-              class={`flex-center ${css._file}`}
+              data-src={src}
+              class={`flex-center ${css._file} _file _upload`}
               style={`background-image: url(${src}); background-size: contain`}
             />
           )
 
-          if (opt.label)
+          if (opt.label || opt.delete)
             tp = (
-              <div class="css._wrap _wrap">
+              <div class={`${css._wrap} _wrap`}>
                 {tp}
-                <p>上传成功</p>
+                {opt.label && <p>上传成功</p>}
+                {opt.delete && (
+                  <div class="attach-delete">
+                    <i class="icon wiaicon">&#xe9fb;</i>
+                  </div>
+                )}
               </div>
             )
         }
@@ -642,8 +673,9 @@ class Uploader {
 
       // 加载图标
       if (src) {
-        if (tp) $(tp).insertBefore(opt.input)
-        else if (opt.img) {
+        if (tp) {
+          $(tp).insertBefore(opt.input)
+        } else if (opt.img) {
           // 上传成功
           let {img} = opt
           if (img.dom.tagName !== 'IMG') img = img.find('img')
@@ -710,10 +742,21 @@ class Uploader {
       const fs = files.filter(f => f.status === 'upload')
       // console.log({fs}, 'updateInput')
 
+      const el = opt.input
+      el.dom.uploadData = []
+
       if (fs.length > 0) {
         const rs = fs.map(f => ({id: f.id, url: f.url}))
-        opt.input.val(JSON.stringify(rs))
+        el.val(JSON.stringify(rs))
         opt.val = rs
+        for (const f of fs) {
+          const {id, type, name, url} = f
+          let {ext} = f
+          ext = ext.replace('.', '')
+          const {abb} = opt.data || {}
+          // 方便点击浏览
+          el.dom.uploadData.push({id, url, type, ext, name, abb})
+        }
       } else this.opt.input.val('')
     } catch (e) {
       log.err(e, 'updateInput')
@@ -729,7 +772,8 @@ class Uploader {
     try {
       _.idx = 1
       _.files = []
-      _.opt.el.classes(`${css._file}`).remove()
+      _.opt.el.find(`.${css._wrap}`).remove()
+      _.opt.el.find(`.${css._file}`).remove()
       _.updateInput()
       _.callEvent('change', this.files)
     } catch (e) {
@@ -757,17 +801,24 @@ class Uploader {
       const {id, url} = opts
       if (typeof opts === 'number') idx = opts
 
-      let index
-      if (idx >= 0) index = _.files.findIndex(f => f.idx == idx)
-      else if (id >= 0) index = _.files.findIndex(f => f.id == id)
-      else if (url) index = _.files.findIndex(f => f.url == url)
+      let i
+      if (idx >= 0) i = _.files.findIndex(f => f.idx == idx)
+      else if (id >= 0) i = _.files.findIndex(f => f.id == id)
+      else if (url) i = _.files.findIndex(f => f.url === url)
+      ;({idx} = _.files[i])
 
-      if (index > -1) {
-        _.files.splice(index, 1)
+      debugger
+
+      if (i > -1) {
+        _.files.splice(i, 1)
         _.callEvent('change', _.files)
       }
 
-      _.opt.el.name(`img${idx}`).remove()
+      const el = _.opt.el.name(`img${idx}`)
+
+      el.upper(`.${css._wrap}`).remove()
+      el.remove()
+
       _.updateInput()
     } catch (e) {
       log.err(e, 'remove')
@@ -854,7 +905,8 @@ class Uploader {
 
     const fd = new FormData()
     // 传入路径、文件数据和文件名称
-    const name = `${file.idx}${file.ext}` // idx.文件扩展名，不可重复
+    // const name = `${file.idx}${file.ext}` // idx.文件扩展名，不可重复
+    const name = file.name // idx.文件扩展名，不可重复
     fd.append(opt.dir, file.rawFile, name)
 
     if (data)
@@ -896,7 +948,7 @@ class Uploader {
             const r = rs.data[name]
             // 服务器返回存储路径、文件名称
             if (r.url) {
-              const idx = r.name.replace(/\.\w+/i, '')
+              // const idx = r.name.replace(/\.\w+/i, '')
               // 去掉末尾 / 字符
               r.dir = r.dir.replace(/\/$/, '')
 
@@ -908,7 +960,10 @@ class Uploader {
               if (opt.label) uf = uf.parent()
 
               // 上传成功，更新图片缩略图
-              if (opt.label) uf.find('p').html('上传成功')
+              if (opt.label) {
+                const abb = opt.data?.abb ?? '上传成功'
+                uf.find('p').html(abb)
+              }
 
               const src = getThumb(file.ext, file.url)
               let {img} = opt
@@ -917,7 +972,12 @@ class Uploader {
                 img.attr('src', src)
                 uf.remove() // 删除上传显示
                 opt.img.show()
-              } else opt.el.name(`img${idx}`).css('background-image', `url(${src})`)
+              } else {
+                const n = opt.el.name(`img${file.idx}`)
+                n.css('background-image', `url(${src})`)
+                n.data('src', file.url)
+                n.addClass('_upload')
+              }
             }
 
             _.showChoose()

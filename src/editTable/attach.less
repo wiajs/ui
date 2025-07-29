@@ -1,11 +1,12 @@
 // 附件
 .etAttach {
+  --wia-uploader-file-gap: 2px;
+
   &:not(.etCat) {
     --wia-uploader-icon-size: 30px;
     --edit-table-attach-img: 30px;
     --wia-uploader-add-height: 15px;
     --wia-uploader-height: 34px;
-    --wia-uploader-file-gap: 2px;
   }
 
   width: 100%;
@@ -38,7 +39,7 @@
 
       &.wia_uploader {
         flex-direction: row;
-        ._wrap {
+        ._choose {
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -91,6 +92,10 @@
         i.icon.wiaicon {
           font-size: 12px;
         }
+      }
+
+      ._wrap .attach-delete {
+        top: 1px;
       }
 
       .attach-delete:hover {
@@ -265,6 +270,10 @@
           }
         }
 
+        ._wrap .attach-delete {
+          top: 3px;
+        }
+
         .attach-delete:hover {
           background: #c0392b;
           transform: scale(1.1) !important;
@@ -274,7 +283,13 @@
 }
 }
 
-.etEdit .etAttach .attach-wrap .attach-item:hover .attach-delete {
+.etEdit .etAttach .attach-wrap .attach-item:not(.wia_uploader):hover .attach-delete {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.etEdit .etAttach .attach-wrap .attach-item ._wrap:hover .attach-delete {
   opacity: 1;
   pointer-events: auto;
   transform: scale(1);

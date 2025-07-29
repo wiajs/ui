@@ -700,7 +700,7 @@ class EditTable extends Event {
     _.opt.edit = true
     _.tb.tag('tbody').addClass('etEdit').removeClass('etView')
 
-    _.tb.find('.wia_uploader').show()
+    _.tb.find('._choose').show()
 
     _.bind()
   }
@@ -716,7 +716,7 @@ class EditTable extends Event {
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
     _.unbind()
 
-      _.tb.find('.wia_uploader').hide()
+      _.tb.find('._choose').hide()
 
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
@@ -773,7 +773,7 @@ class EditTable extends Event {
     _.opt.edit = false
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
     _.unbind()
-      _.tb.find('.wia_uploader').hide()
+      _.tb.find('._choose').hide()
 
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
@@ -870,7 +870,7 @@ class EditTable extends Event {
     _.opt.edit = false
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
     _.unbind()
-      _.tb.find('.wia_uploader').hide()
+      _.tb.find('._choose').hide()
 
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
@@ -904,10 +904,6 @@ class EditTable extends Event {
               // 取消新增
               // uploader 维护 input
               $td.dom.uploader.clear() // 清空 input 和 uploader
-              // let ns = $td.find('input[name$="-attach-add"]')
-              // for (const n of ns) $(n).val('')
-              const ns = $td.find('.attach-item[data-field$="-attach-add"]')
-              for (const n of ns) $(n).remove()
         } else if (
           type !== DataType.table &&
           type !== DataTypes.table &&

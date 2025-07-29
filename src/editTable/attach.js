@@ -138,7 +138,7 @@ function fillTd(_, td, cat, cats, value, read, idx) {
       wrap.append(
         <div class="attach-item wia_uploader">
           <input name={`${field}-attach-add`} type="hidden" />
-          <div class="_wrap">
+          <div class="_choose">
             <div name="btnAdd" class="_input" />
             {cat && <p>新增</p>}
           </div>
@@ -153,8 +153,9 @@ function fillTd(_, td, cat, cats, value, read, idx) {
           url, // 图片上传网址
           el: wrap.class('wia_uploader'), // 组件容器
           input: wrap.name(`${field}-attach-add`), // 上传成功后的url填入输入框，便于提交
-          choose: wrap.name('btnAdd'), // 点击触发选择文件
+          choose: wrap.class('_choose'), // 点击触发选择文件
           label: !!cat, // 显示底部标签
+          delete: true, // 带删除图标
           accept: '*', // 选择文件类型
           // accept: 'image/jpg,image/jpeg,image/png', // 选择文件类型
           // compress: true, // 启动压缩
@@ -165,8 +166,9 @@ function fillTd(_, td, cat, cats, value, read, idx) {
           // resize: 'cover', // 按指定宽高自动居中裁剪
           // aspectRatio: 1, // 宽高比
           // crop: 'img/crop', // 按宽高比人工裁剪
+          preview: false, // 不使用内置预览
 
-          multiple: false, // 可否同时选择多个文件
+          multiple: true, // 可否同时选择多个文件
           left: 250, // 预览偏移，左边有导航栏
 
           // 随文件上传的数据
@@ -188,24 +190,18 @@ function fillTd(_, td, cat, cats, value, read, idx) {
 
           if (rs?.abb) abb = rs.abb
 
-          const el = addItem(wrap, `${field}-attach-add`, 'img', 'jpg', name, abb, '', value.length)
-          el.hide()
+          // const el = addItem(wrap, `${field}-attach-add`, 'img', 'jpg', name, abb, '', value.length)
+          // el.hide()
 
           ud.config({
-            img: el,
-            data, // 其他参数
+            // img: el, // 图片显示的容器
+            data: rs, // 其他参数
           })
         })
 
-        // 加入 data，点击浏览
+        // 点击浏览
         ud.on('success', (rs, file, files) => {
           console.log('uploader succ', {rs, file, files})
-          const {id, type, name, url} = file
-          let {ext} = file
-          ext = ext.replace('.', '')
-          const {abb} = ud.opt.data || {}
-          addValue(value, {id, url, cat, type, ext, name, abb})
-
           // FileData.push({id: file.id, type: file.type, url: file.url, ext: file.ext, _idx: file.id, abb: file.name})
           // FileEl.data('id', file.id)
         })
@@ -287,16 +283,18 @@ function addItem(wrap, field, type, ext, name, abb, url, idx) {
  * 处理附件删除
  * @param {Dom} td - td
  * @param {Dom} att - 附件（.attach-item）
- * @param {string} field -
+ * @param {Dom} wrap - 新增 ._wrap
+ * @param {string} field - 字段名
  * @param {*} value - 附件数据值
  * @param {number} idx - EditTable data 索引
  */
-function delItem(td, att, field, value, idx) {
+function delItem(td, att, wrap, field, value, idx) {
   try {
     if (att.dom) {
       // 新增附件删除
-      if (field.endsWith('-attach-add')) {
-        const src = att.find('img').attr('src')
+      // if (field.endsWith('-attach-add')) {
+      if (wrap.dom) {
+        const src = wrap.find('._file').data('src')
         // uploader 维护 input
         if (src) td.dom.uploader?.remove({url: src})
       } else {
@@ -312,9 +310,8 @@ function delItem(td, att, field, value, idx) {
         parent: att.dom.parentNode,
         prev: att.dom.previousSibling,
       })
-      }
-
       att.remove() // 移除DOM元素
+    }
     }
   } catch (e) {
     log.err(e, 'delItem')
@@ -463,29 +460,48 @@ function addValue(value, item) {
 }
 
 /**
- * 点击浏览大图或删除附件
+ * 点击tr、td 浏览大图或删除附件
  * @param {*} ev
  */
 async function attachClick(ev) {
+  try {
+    // 如果点击的是 input 则不处理
+    if (ev.target.type === 'file') return
+
   const td = $(ev).upper('td')
   const idx = td.data('idx') // EditTable data 索引
 
-  let data = td?.dom?.attachData
+    let value = td?.dom?.attachData
 
   const tr = $(ev).upper('tr')
-  if (!data) data = tr?.dom?.attachData
+    if (!value) value = tr?.dom?.attachData
 
   const att = $(ev).upper('.attach-item')
+    const wrap = $(ev).upper('._wrap')
 
-  const i = att.data('idx') // 附件数据索引
+    let i = att.data('idx') // 附件数据索引，新增附件没有
   const field = att.data('field')
 
   const btnDel = $(ev).upper('.attach-delete')
   // 删除
-  if (btnDel.dom) delItem(td, att, field, data[i], idx)
+    if (btnDel.dom) delItem(td, att, wrap, field, value[i], idx)
   else if (att.dom && tr.dom) {
+      // 新增附件没有idx，使用 src
+      let src = ''
+      if (wrap.dom) src = wrap.find('._file').data('src')
+
+      const add = td.find('[name$="-attach-add"]')
+      const addVal = add.dom.uploadData
+
+      const data = [...value, ...addVal]
+
   // 浏览图片附件
-    const v = data.find(v => v._idx === i)
+      let v
+      if (src) {
+        i = -1
+        v = addVal.find(v => v.url === src)
+      } else v = data.find(v => v._idx === i)
+
     const {type, ext} = v || {}
     let {url} = v || {}
     if (type === 'doc') {
@@ -501,18 +517,22 @@ async function attachClick(ev) {
         // const m = await import('https://cdn.jsdelivr.net/npm/glightbox@3/+esm')
         const m = await import('https://cos.wia.pub/wiajs/glightbox.mjs')
         g.lightbox = m.default
-        setTimeout(() => showImg(data, i), 1000)
-      } else showImg(data, i)
+          setTimeout(() => showImg(data, i, src), 1000)
+        } else showImg(data, i, src)
     }
+  }
+  } catch (e) {
+    log.err(e, 'attachClick')
   }
 }
 
 /**
  * 使用 lightbox 图片浏览
- * @param {*[]} data
+ * @param {*[]} data - 附件数据
  * @param {number} idx
+ * @param {string} src
  */
-function showImg(data, idx) {
+function showImg(data, idx, src) {
   if (g.lightbox) {
     // window.dispatchEvent(new CustomEvent('animeReady'))
     const lbox = g.lightbox({selector: null})
@@ -521,7 +541,7 @@ function showImg(data, idx) {
     for (const v of data) {
       if (v.type === 'img' || v.type === 'video') {
       i++
-      if (v._idx === idx) id = i
+        if (v.url === src || v._idx === idx) id = i
         lbox.insertSlide({href: v.url})
       }
     }
