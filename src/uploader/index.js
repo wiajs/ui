@@ -85,7 +85,7 @@ const def = {
   /** @type JQuery} */
   choose: null, // 点击触发选择文件，默认为上传容器
 
-  headers: {},
+  header: {},
   data: {},
   withCredentials: false,
 }
@@ -216,14 +216,14 @@ class Uploader {
     /** @type{*} */
     const el = document.createElement('input')
 
-    Object.entries({
+    for (const [key, value] of Object.entries({
       type: 'file',
       accept: opt.accept,
       multiple: opt.multiple,
       hidden: true,
-    }).forEach(([key, value]) => {
+    })) {
       el[key] = value
-    })
+    }
 
     el.addEventListener('change', this.changeHandler)
     opt.el.append(el)
@@ -556,7 +556,7 @@ class Uploader {
 
         if (opt.label)
           tp = (
-            <div class="css._wrap">
+            <div class="css._wrap _wrap">
               {tp}
               <p>上传中</p>
             </div>
@@ -583,7 +583,7 @@ class Uploader {
 
             if (opt.label)
               tp = (
-                <div class="css._wrap">
+                <div class="css._wrap _wrap">
                   {tp}
                   <p>需裁剪</p>
                 </div>
@@ -608,7 +608,7 @@ class Uploader {
 
         if (opt.label)
           tp = (
-            <div class="css._wrap">
+            <div class="css._wrap _wrap">
               {tb}
               <p>上传中</p>
             </div>
@@ -632,7 +632,7 @@ class Uploader {
 
           if (opt.label)
             tp = (
-              <div class="css._wrap">
+              <div class="css._wrap _wrap">
                 {tp}
                 <p>上传成功</p>
               </div>
@@ -698,30 +698,6 @@ class Uploader {
   }
 
   /**
-   *
-   * @param {*} file
-   */
-  removeFile(file) {
-    const idx = file.idx || file
-    this.remove(idx)
-  }
-
-  /**
-   * 删除图片
-   * @param {*} idx
-   */
-  remove(idx) {
-    const index = this.files.findIndex(f => f.idx == idx)
-    if (index > -1) {
-      this.files.splice(index, 1)
-      this.callEvent('change', this.files)
-    }
-
-    this.opt.el.name(`img${idx}`).remove()
-    this.updateInput()
-  }
-
-  /**
    * 上传成功的文件 [{url、id}] 以json 字符串写入 input
    * 不触发 change
    * 多个文件，每个文件单独触发！
@@ -737,7 +713,7 @@ class Uploader {
       if (fs.length > 0) {
         const rs = fs.map(f => ({id: f.id, url: f.url}))
         opt.input.val(JSON.stringify(rs))
-        opt.data = rs
+        opt.val = rs
       } else this.opt.input.val('')
     } catch (e) {
       log.err(e, 'updateInput')
@@ -748,10 +724,54 @@ class Uploader {
    * 清除内部文件
    */
   clear() {
-    this.idx = 1
-    this.files = []
-    this.opt.el.classes(`${css._file}`).remove()
-    this.callEvent('change', this.files)
+    const _ = this
+
+    try {
+      _.idx = 1
+      _.files = []
+      _.opt.el.classes(`${css._file}`).remove()
+      _.updateInput()
+      _.callEvent('change', this.files)
+    } catch (e) {
+      log.err(e, 'clear')
+    }
+  }
+
+  /**
+   * 删除文件
+   * @param {*} file
+   */
+  removeFile(file) {
+    const idx = file.idx || file
+    this.remove(idx)
+  }
+
+  /**
+   * 删除文件
+   * @param {{idx?:number, id?: number, url?:string}} opts
+   */
+  remove(opts) {
+    const _ = this
+    try {
+      let {idx} = opts
+      const {id, url} = opts
+      if (typeof opts === 'number') idx = opts
+
+      let index
+      if (idx >= 0) index = _.files.findIndex(f => f.idx == idx)
+      else if (id >= 0) index = _.files.findIndex(f => f.id == id)
+      else if (url) index = _.files.findIndex(f => f.url == url)
+
+      if (index > -1) {
+        _.files.splice(index, 1)
+        _.callEvent('change', _.files)
+      }
+
+      _.opt.el.name(`img${idx}`).remove()
+      _.updateInput()
+    } catch (e) {
+      log.err(e, 'remove')
+    }
   }
 
   /**
@@ -973,16 +993,16 @@ function loadImg(url) {
 
 /**
  *
- * @param {*} headers
+ * @param {*} header
  * @returns
  */
-function getHeaders(headers) {
+function getHeader(header) {
   const R = {
     'content-type': `multipart/form-data; boundary=${getBoundary()}`,
   }
 
-  Object.keys(headers).forEach(k => {
-    R[k.toLowerCase()] = headers[k]
+  Object.keys(header).forEach(k => {
+    R[k.toLowerCase()] = header[k]
   })
 
   return R

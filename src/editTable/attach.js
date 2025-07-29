@@ -1,5 +1,4 @@
 /** @jsxImportSource @wiajs/core */
-
 /**
  * editTable 中的附件模块
  */
@@ -10,6 +9,10 @@ const log = Log({m: 'attach'}) // 创建日志实例
 
 /**
  * @typedef {import('./index').default} EditTable
+ */
+/**
+ * @typedef {import('jquery')} $
+ * @typedef {JQuery} Dom
  */
 
 const g = {
@@ -171,17 +174,21 @@ function fillTd(_, td, cat, cats, value, read, idx) {
           header: {'x-wia-token': $.store.get(token)}, // 请求头
         })
 
+        td.uploader = ud
+
         ud.on('choose', async files => {
-          let data
-          if (_.onAttach) data = await _.onAttach(idx, cat, files)
+          let abb = cat ? `${cat}1` : ''
+          let rs = {abb}
+
+          // 客户端输入 abb、附件类型（合同、图片等）
+          if (_.onAttach) rs = await _.onAttach(idx, cat, files)
 
           let name = ''
           if (files?.[0].name) name = files[0].name
 
-          let abb = cat ? `${cat}1` : ''
-          if (data?.abb) abb = data.abb
+          if (rs?.abb) abb = rs.abb
 
-          const el = addItem(wrap, '', 'img', 'jpg', name, abb)
+          const el = addItem(wrap, `${field}-attach-add`, 'img', 'jpg', name, abb, '', value.length)
           el.hide()
 
           ud.config({
@@ -189,7 +196,19 @@ function fillTd(_, td, cat, cats, value, read, idx) {
             data, // 其他参数
           })
         })
-        td.uploader = ud
+
+        // 加入 data，点击浏览
+        ud.on('success', (rs, file, files) => {
+          console.log('uploader succ', {rs, file, files})
+          const {id, type, name, url} = file
+          let {ext} = file
+          ext = ext.replace('.', '')
+          const {abb} = ud.opt.data || {}
+          addValue(value, {id, url, cat, type, ext, name, abb})
+
+          // FileData.push({id: file.id, type: file.type, url: file.url, ext: file.ext, _idx: file.id, abb: file.name})
+          // FileEl.data('id', file.id)
+        })
       }
       }
 
@@ -266,14 +285,21 @@ function addItem(wrap, field, type, ext, name, abb, url, idx) {
 
 /**
  * 处理附件删除
- * @param {*} att - 附件（.attach-item）
+ * @param {Dom} td - td
+ * @param {Dom} att - 附件（.attach-item）
  * @param {string} field -
  * @param {*} value - 附件数据值
  * @param {number} idx - EditTable data 索引
  */
-function delItem(att, field, value, idx) {
+function delItem(td, att, field, value, idx) {
   try {
     if (att.dom) {
+      // 新增附件删除
+      if (field.endsWith('-attach-add')) {
+        const src = att.find('img').attr('src')
+        // uploader 维护 input
+        if (src) td.dom.uploader?.remove({url: src})
+      } else {
       const el = att.upper('.etAttach')
       if (!el.dom.attachDel) el.dom.attachDel = []
 
@@ -286,6 +312,7 @@ function delItem(att, field, value, idx) {
         parent: att.dom.parentNode,
         prev: att.dom.previousSibling,
       })
+      }
 
       att.remove() // 移除DOM元素
     }
@@ -422,12 +449,26 @@ function attachLast(row) {
 }
 
 /**
- * 点击浏览大图
+ * 添加数据到 data，用于点击浏览
+ * @param {*[]} value - 附件值
+ * @param {{id: number, url: string, cat: string, type: string, ext:string, name: string, abb:string}} item
+ */
+function addValue(value, item) {
+  try {
+    value.push(item)
+    value.at(-1)._idx = value.length - 1
+  } catch (e) {
+    log.err(e, 'addValue')
+  }
+}
+
+/**
+ * 点击浏览大图或删除附件
  * @param {*} ev
  */
 async function attachClick(ev) {
   const td = $(ev).upper('td')
-  const idx = td.data('idx')
+  const idx = td.data('idx') // EditTable data 索引
 
   let data = td?.dom?.attachData
 
@@ -435,16 +476,15 @@ async function attachClick(ev) {
   if (!data) data = tr?.dom?.attachData
 
   const att = $(ev).upper('.attach-item')
-  // 附件数据索引
-  const i = att.data('idx')
+
+  const i = att.data('idx') // 附件数据索引
   const field = att.data('field')
 
   const btnDel = $(ev).upper('.attach-delete')
-  if (btnDel.dom)
-    delItem(att, field, data[i], idx) // 删除
+  // 删除
+  if (btnDel.dom) delItem(td, att, field, data[i], idx)
   else if (att.dom && tr.dom) {
   // 浏览图片附件
-
     const v = data.find(v => v._idx === i)
     const {type, ext} = v || {}
     let {url} = v || {}
@@ -479,9 +519,11 @@ function showImg(data, idx) {
     let id = 0
     let i = -1
     for (const v of data) {
+      if (v.type === 'img' || v.type === 'video') {
       i++
       if (v._idx === idx) id = i
-      if (v.type === 'img' || v.type === 'video') lbox.insertSlide({href: v.url})
+        lbox.insertSlide({href: v.url})
+      }
     }
     // lbox.open()
     lbox.openAt(id)

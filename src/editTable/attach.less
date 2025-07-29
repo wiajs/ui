@@ -5,6 +5,7 @@
     --edit-table-attach-img: 30px;
     --wia-uploader-add-height: 15px;
     --wia-uploader-height: 34px;
+    --wia-uploader-file-gap: 2px;
   }
 
   width: 100%;
@@ -42,6 +43,7 @@
           flex-direction: column;
           align-items: center;
           cursor: pointer;
+          height: 100%;
         }
       }
 
@@ -67,10 +69,10 @@
 
       .attach-delete {
         position: absolute;
-        top: 5px;
-        right: 5px;
-        width: 18px;
-        height: 18px;
+        top: 3px;
+        right: 3px;
+        width: 12px;
+        height: 12px;
         background: #e74c3c;
         border-radius: 50%;
         display: flex;
@@ -87,7 +89,7 @@
         box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
 
         i.icon.wiaicon {
-          font-size: 15px;
+          font-size: 12px;
         }
       }
 

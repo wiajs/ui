@@ -40,6 +40,7 @@
   --wia-uploader-icon-size: 60px; // 86px
   --wia-uploader-height: 90px; // 120px;
   --wia-uploader-add-height: 32px; // 120px;
+  --wia-uploader-file-gap: 6px;
 }
 
 .wia_uploader {
@@ -58,11 +59,12 @@
     display: flex;
     align-items: center;
     flex-direction: column;
+    height: 100%;
   }
 
   // 选择文件图标
   ._file {
-    margin-right: 8px;
+    margin-right: var(--wia-uploader-file-gap); //8px;
     // margin-bottom: 8px;
     width: var(--wia-uploader-icon-size);
     height: var(--wia-uploader-icon-size);

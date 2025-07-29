@@ -900,9 +900,15 @@ class EditTable extends Event {
             const val = $(n).val()
             n.checked = value === val
           }
+            } else if (type === DataType.attach || type === DataTypes.attach) {
+              // 取消新增
+              // uploader 维护 input
+              $td.dom.uploader.clear() // 清空 input 和 uploader
+              // let ns = $td.find('input[name$="-attach-add"]')
+              // for (const n of ns) $(n).val('')
+              const ns = $td.find('.attach-item[data-field$="-attach-add"]')
+              for (const n of ns) $(n).remove()
         } else if (
-          type !== DataType.attach &&
-          type !== DataTypes.attach &&
           type !== DataType.table &&
           type !== DataTypes.table &&
           type !== DataType.view &&
@@ -929,6 +935,7 @@ class EditTable extends Event {
       }
     }
 
+      // 取消删除
       cancelDel(_.tb)
     } catch (e) {
       log.err(e, 'cancel')
