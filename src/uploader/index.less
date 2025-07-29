@@ -39,6 +39,7 @@
 :root {
   --wia-uploader-icon-size: 60px; // 86px
   --wia-uploader-height: 90px; // 120px;
+  --wia-uploader-add-height: 32px; // 120px;
 }
 
 .wia_uploader {
@@ -113,11 +114,11 @@
 
     &:before {
       width: 2px;
-      height: 32px;
+      height: var(--wia-uploader-add-height);
     }
 
     &:after {
-      width: 32px;
+      width: var(--wia-uploader-add-height);
       height: 2px;
     }
   }

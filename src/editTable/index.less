@@ -8,6 +8,8 @@
   --edit-table-font-size: 14px;
   --edit-table-attach-gap: 2px;
   --edit-table-attach-img: 60px; // 附件图标高度
+  // --edit-table-attach-cat-minheight: 90px; // 类别高度
+  --edit-table-attach-cat-heigth: 90px; // 类别高度
 }
 
 .edit-table {
@@ -24,8 +26,6 @@
   font-size: var(--edit-table-font-size); // 17
   // color: #828282;
   color: #4b4b4b;
-
-  @import './attach.less';
 
   h1 {
     font-size: 0.9rem; // 18
@@ -141,6 +141,16 @@
     border-bottom: 1px solid rgb(255, 193, 7); /* 灰色下划线 */
   }
 
+  td:has(> .etAttach) {
+    border-bottom: 1px solid #ccc; /* 灰色下划线 */
+    padding-bottom: 3px;
+  }
+
+  td:has(> .etAttach.etCap) {
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    padding-top: 5px;
+  }
+
   /* editTable 独有的，跟 行 底色一致,与TD类似 */
   input {
     // --dy-input-color: red;
@@ -184,6 +194,8 @@
     // justify-content: start;
     // text-align: left;
     word-break: break-all;
+    white-space: pre-wrap; // 保留空格和换行，超出自动换行
+
     width: 100%;
     // height: 100%; // 跨行时高度不正常
 
@@ -217,10 +229,41 @@
       }
     }
 
-    &.vertical {
+    &.etVertical {
       writing-mode: vertical-rl; /* 从右到左垂直排列 */
       /* writing-mode: vertical-lr;  从左到右垂直排列 */
       text-orientation: upright; /* 保持文字直立（中文/日文适用） */
+    }
+
+    &.etClamp {
+      display: -webkit-box;
+      -webkit-line-clamp: 3; // 只显示三行
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-height: 5em; // 1em = font-size
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+
+    &.etClamp:hover {
+      -webkit-line-clamp: unset;
+      overflow: visible;
+      max-height: none;
+    }
+
+    // span 可编辑
+    &.edit {
+      display: block;
+      // contenteditable = plaintext-only"; // 编辑，但是无法获得光标位置,插入图片需要光标位置!
+      -webkit-user-modify: read-write-plaintext-only;
+      user-modify: read-write-plaintext-only;
+      // border: 1px solid #2563eb !important; // rgb(0, 123, 255)
+      border: 1px solid #80bdff !important;
+
+      -webkit-line-clamp: unset;
+      overflow: visible;
+      max-height: none;
     }
   }
 
@@ -248,16 +291,6 @@
       width: fit-content; /* 基于内容宽度 */
       color: #a8abb2;
     }
-  }
-
-  // span 可编辑
-  span.edit {
-    display: block;
-    // contenteditable = plaintext-only"; // 编辑，但是无法获得光标位置,插入图片需要光标位置!
-    -webkit-user-modify: read-write-plaintext-only;
-    user-modify: read-write-plaintext-only;
-    // border: 1px solid #2563eb !important; // rgb(0, 123, 255)
-    border: 1px solid #80bdff !important;
   }
 
   textarea {
@@ -392,4 +425,6 @@
       min-height: 32px;
     }
   }
+
+  @import './attach.less';
 }

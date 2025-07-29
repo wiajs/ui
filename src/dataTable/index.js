@@ -1247,6 +1247,7 @@ export default class DataTable extends Event {
   resize(ch) {
     let R = 0
     const _ = this
+    try {
     const {view, el, tb, cfg} = _
     const {fix, height, width} = cfg
     const tbWrap = el.findNode('.data-table-content')
@@ -1272,25 +1273,30 @@ export default class DataTable extends Event {
     }
 
     // 获取表格相对于视口的位置
-    const tbLeft = tb.rect().left
     tb.dom.style.setProperty('--dt-col1-width', '0px')
     tb.dom.style.setProperty('--dt-col2-width', '0px')
     tb.dom.style.setProperty('--dt-col3-width', '0px')
     tb.dom.style.setProperty('--dt-col4-width', '0px')
 
+      const tbLeft = tb.rect()?.left
+      if (tbleft) {
     const th2 = tb.findNode('th:nth-of-type(2)')
     const th3 = tb.findNode('th:nth-of-type(3)')
     const th4 = tb.findNode('th:nth-of-type(4)')
     const th5 = tb.findNode('th:nth-of-type(5)')
-    const w1 = th2.rect().left - tbLeft
-    const w2 = th3.rect().left - tbLeft - w1
-    const w3 = th4.rect().left - tbLeft - w2 - w1
-    const w4 = th5.rect().left - tbLeft - w3 - w2 - w1
+        const w1 = th2 ? th2.rect().left - tbLeft : 0
+        const w2 = th3 ? th3.rect().left - tbLeft - w1 : 0
+        const w3 = th4 ? th4.rect().left - tbLeft - w2 - w1 : 0
+        const w4 = th5 ? th5.rect().left - tbLeft - w3 - w2 - w1 : 0
 
     if (fix.includes('left1')) tb.dom.style.setProperty('--dt-col1-width', `${w1}px`)
     if (fix.includes('left2')) tb.dom.style.setProperty('--dt-col2-width', `${w2}px`)
     if (fix.includes('left3')) tb.dom.style.setProperty('--dt-col3-width', `${w3}px`)
     if (fix.includes('left4')) tb.dom.style.setProperty('--dt-col4-width', `${w4}px`)
+      }
+    } catch (e) {
+      // log.err(e, 'resize')
+    }
 
     return R
   }
@@ -1714,8 +1720,9 @@ function formatVal(val, opt) {
     type = type ?? 'string'
 
     if (type === 'string') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : val
-    else if (type === 'date') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : $.date('yyyy-MM-dd', val)
-    else if (type === 'time') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : $.date('hh:mm:ss', val)
+    else if (type === 'date') {
+      R = val === '' || val === undefined || val === null || val === 'null' ? '-' : $.date('yyyy-MM-dd', val)
+    } else if (type === 'time') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : $.date('hh:mm:ss', val)
     else if (type === 'datetime') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : $.date('yyyy-MM-dd hh:mm:ss', val)
     else if (type === 'number') {
       decimal = decimal ?? 2
@@ -1732,11 +1739,10 @@ function formatVal(val, opt) {
         if (mul && mul > 0) val = val * mul
         if (format) val = formatNum(val, decimal, zero)
       }
+      R = val
     }
 
-    if (unit) val = `${val}${unit}`
-
-    R = val
+    if (unit) R = `${R}${unit}`
   } catch (e) {
     log.err(e, 'formatVal')
   }

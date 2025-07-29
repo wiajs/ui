@@ -5,7 +5,7 @@
 import {Event} from '@wiajs/core'
 import {Page} from '@wiajs/core'
 import DataTable from '../dataTable'
-import {fillAttach, getRowCat} from './attach'
+import {fillAttach, cancelDel, getDel} from './attach'
 import * as tool from './tool'
 import {log as Log} from '@wiajs/util'
 
@@ -24,6 +24,7 @@ const log = Log({m: 'editTable'}) // 创建日志实例
  * @prop {boolean} [kv] - key value
  * @prop {number} [col] - 最大列数
  * @prop {number[]} [colWidth] - 列宽
+ * @prop {*} [upload] - 上传接口
  */
 
 /** @typedef {object} Opt
@@ -36,6 +37,7 @@ const log = Log({m: 'editTable'}) // 创建日志实例
  * @prop {number} col - 最大列数
  * @prop {number[]} [colWidth] - 列宽
  * @prop {number} [colRatio] - 列比
+ * @prop {*} [upload] - 上传接口
  */
 
 /** @type {Opt} */
@@ -268,7 +270,7 @@ class EditTable extends Event {
 
       const idx = td?.data('idx') // 数据索引
       const idv = td?.data('idv') // 数据中的value索引，多值数组模式下
-      const value = td?.attr('data-value') // 数据原值 data 会自动转换 json 字符串
+      const value = td?.attr('data-value') // 数据原值 data() 会自动转换 json 字符串
 
       const r = _.data?.[idx]
       if (r) {
@@ -374,6 +376,13 @@ class EditTable extends Event {
               return rt
             })
             else if (typeof option === 'object') {
+              if (!val) {
+                htm.push(
+                  <option selected value="">
+                    请选择
+                  </option>
+                )
+              }
               for (const k of Object.keys(option)) {
                 const v = option[k]
                 if (v === val) {
@@ -558,8 +567,23 @@ class EditTable extends Event {
     const _ = this
   }
 
-  use(cls) {
-    this[cls.name] = cls
+  /**
+   *
+   * @param {*} cls
+   * @param {*} [opts]
+   */
+  use(cls, opts) {
+    const _ = this
+    try {
+      const {opt} = _
+
+      _[cls.name] = cls
+      if (cls.name === 'Uploader' && opts?.upload) {
+        opt.upload = opts.upload
+      }
+    } catch (e) {
+      log.err(e, 'use')
+    }
   }
 
   /**
@@ -675,6 +699,9 @@ class EditTable extends Event {
     const _ = this
     _.opt.edit = true
     _.tb.tag('tbody').addClass('etEdit').removeClass('etView')
+
+    _.tb.find('.wia_uploader').show()
+
     _.bind()
   }
 
@@ -684,13 +711,17 @@ class EditTable extends Event {
    */
   view() {
     const _ = this
+    try {
     _.opt.edit = false
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
     _.unbind()
 
+      _.tb.find('.wia_uploader').hide()
+
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
       for (const td of tds.get()) {
+          try {
         const $td = $(td)
         const idx = $td.data('idx') // 数据索引
         const d = _.data[idx]
@@ -719,10 +750,17 @@ class EditTable extends Event {
             span.removeClass('edit')
             span.show()
           }
-          const tx = $td.find('input')
-          if (tx) tx.hide()
+              let tx = $td.find('input')
+              if (!tx.dom) tx = $td.find('select')
+              if (tx.dom) tx.hide()
+            }
+          } catch (e) {
+            log.err(e, 'view')
         }
       }
+    }
+    } catch (e) {
+      log.err(e, 'view')
     }
   }
 
@@ -731,12 +769,16 @@ class EditTable extends Event {
    */
   save() {
     const _ = this
+    try {
     _.opt.edit = false
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
     _.unbind()
+      _.tb.find('.wia_uploader').hide()
+
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
       for (const td of tds.get()) {
+          try {
         const $td = $(td)
         const idx = $td.data('idx') // 数据索引
         const d = _.data[idx]
@@ -796,8 +838,11 @@ class EditTable extends Event {
             span.removeClass('edit')
             span.show()
           }
-          const tx = $td.find('input')
-          if (tx) {
+
+              let tx = $td.find('input')
+              if (!tx.dom) tx = $td.find('select')
+
+              if (tx.dom) {
             const val = tx.val()
             // 设置 原始值
             d.value = val
@@ -806,7 +851,13 @@ class EditTable extends Event {
             tx.hide()
           }
         }
+          } catch (e) {
+            log.err(e, 'save')
+          }
       }
+    }
+    } catch (e) {
+      log.err(e, 'save')
     }
   }
 
@@ -815,16 +866,21 @@ class EditTable extends Event {
    */
   cancel() {
     const _ = this
+    try {
     _.opt.edit = false
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
     _.unbind()
+      _.tb.find('.wia_uploader').hide()
+
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
       for (const td of tds.get()) {
+          try {
         const $td = $(td)
         const idx = $td.data('idx') // 数据索引
         const d = _.data[idx]
-        const value = $td.data('value') // 原始值
+            // const value = $td.data('value') // 原始值
+            const value = $td?.attr('data-value') // 数据原值 data() 会自动转换 json 字符串
         const {type, option} = d || {}
         if ((type === DataType.search || type === DataTypes.search) && _.Autocomplete) {
           const dvAc = $td.find('.autocomplete')
@@ -855,18 +911,27 @@ class EditTable extends Event {
           type !== DataTypes.page
         ) {
           const span = $td.find('span')
-          if (span) {
+              if (span.dom) {
             span.html(value)
             span.removeClass('edit')
             span.show()
           }
-          const tx = $td.find('input')
-          if (tx) {
+              let tx = $td.find('input')
+              if (!tx.dom) tx = $td.find('select')
+              if (tx.dom) {
             tx.val(value)
             tx.hide()
           }
         }
+          } catch (e) {
+            log.err(e, 'cancel')
+          }
       }
+    }
+
+      cancelDel(_.tb)
+    } catch (e) {
+      log.err(e, 'cancel')
     }
   }
 
@@ -1279,59 +1344,6 @@ class EditTable extends Event {
     return row
   }
 
-  /**
-   * 从数据中获取一行数据，用于 kv 模式，动态生成 row  col
-   * @param {*[]} rs - 数据
-   * @param {number} idx - 数据起始索引
-   * @returns {*[] & {idx: number}}
-   */
-  getRowData(rs, idx) {
-    /** @type {*[] & {idx: number}} */
-    let R
-    const _ = this
-    const {opt} = _
-    if (!opt.kv || !rs.length) return
-
-    try {
-      let col = 0
-      let hasCol = 0
-
-      for (let i = idx; i < rs.length; i++) {
-        const r = rs[i]
-        let {left} = r
-        left = left ?? 0
-
-        let setCol = left + r.col[0] + r.col[1]
-        if (setCol > opt.col) {
-          setCol = opt.col
-          r.col[1] = opt.col - r.col[0]
-        }
-
-        col += setCol
-        if (col <= opt.col) {
-          if (!R) {
-            R = []
-            R.idx = idx
-          }
-          R.push(r)
-          hasCol += setCol
-        } else break
-      }
-
-      // 多余列
-      if (R && hasCol < opt.col) {
-        const r = R.at(-1)
-        r.col[1] += opt.col - hasCol
-      }
-
-      // log({R}, 'getRow')
-    } catch (e) {
-      log.err(e, 'getRow')
-    }
-
-    return R
-  }
-
   clearRow(tb) {
     if (!tb) {
       alert('请传入table对象！')
@@ -1660,17 +1672,24 @@ class EditTable extends Event {
       }
 
       // _.data = data // 用于对比修改变化
-      let r
+      let rs
       let idx = 0
+      let subidx = 0 // 子列定义
 
       _.repairCol(data)
       do {
-        r = _.getRowData(data, idx)
-        if (r) {
-          _.fillKv(r)
-          idx = r.idx + r.length
+        rs = _.getRowData(data, idx, subidx)
+        if (rs?.length) {
+          _.fillKv(rs, idx)
+          idx += rs.length
+
+          subidx = rs.subidx
+          // 处理子列
+          if (subidx) {
+            idx--
         }
-      } while (r)
+        }
+      } while (rs)
     } catch (e) {
       log.err(e, 'setKv')
     }
@@ -1687,25 +1706,18 @@ class EditTable extends Event {
     const {opt} = _
 
     for (const d of data) {
-      let {type, col, row} = d
+      let {type, col, row, subCol, catCol, cat} = d
+      if (catCol && !subCol) subCol = catCol // 兼容旧字段
+
       // 缺省一列、一行
       col = col ?? [1, 1]
+      if (Array.isArray(subCol)) d.subCol = subCol.map(v => v * opt.colRatio) // 兼容旧模式，2倍
 
       if (typeof col === 'number') {
         col *= opt.colRatio // 兼容旧模式，2倍
         if (col > 1) {
-          if (
-            [
-              DataType.attach,
-              DataType.table,
-              DataType.view,
-              DataType.page,
-              DataTypes.attach,
-              DataTypes.table,
-              DataTypes.view,
-              DataTypes.page,
-            ].includes(type)
-          ) {
+          const cats = [DataType.attach, DataTypes.attach].includes(type) && cat
+          if (cats || [DataType.table, DataType.view, DataType.page, DataTypes.table, DataTypes.view, DataTypes.page].includes(type)) {
             col = [col, 0]
           } else col = [1, col - 1]
         }
@@ -1731,9 +1743,10 @@ class EditTable extends Event {
 
   /**
    * 行填充，创建tr、td，填充 kv 值到 span
-   * @param {*} rs - 行数据
+   * @param {*[]} rs - 行数据
+   * @param {number} idx - 数据数组索引
    */
-  fillKv(rs) {
+  fillKv(rs, idx) {
     const _ = this
     const {opt} = _
 
@@ -1741,8 +1754,8 @@ class EditTable extends Event {
       const thead = _.tb.tag('THEAD')
       const tbody = _.tb.tag('TBODY')
       let tr = thead.lastChild().clone()
+      let hasTd = false
 
-      let {idx} = rs // 数据数组索引
       idx -= 1
       // 行赋值
       for (const r of rs) {
@@ -1750,14 +1763,21 @@ class EditTable extends Event {
 
         try {
           const {field, left, vertical} = r
-          let {name, type, value, unit, option, row, col, align} = r
+          let {name, type, value, unit, option, row, col, align, cat, subCols} = r
 
           if (field === 'debug') debugger
 
           type = type ?? DataType.text
           value = _.getKv(r)
+
+          let skipLb = false
+          // 子类后面行不显示label
+          if ([DataType.attach, DataTypes.attach].includes(type) && (cat?.length === 1 || subCols?.[0] > 0)) {
+            skipLb = true
+          }
+
           // label
-          if (col[0]) {
+          if (col[0] && !skipLb) {
             if (!Array.isArray(name)) name = [name]
 
             for (let nm of name) {
@@ -1798,6 +1818,7 @@ class EditTable extends Event {
 
               if (code?.col > 0) td.colSpan = code?.col
               tr.append(td)
+              hasTd = true
             }
           }
 
@@ -1805,8 +1826,9 @@ class EditTable extends Event {
           const vcol = col[1]
           if (vcol > 0) {
             let types = type
-            let muti = true // 多个value
+            let muti = true
             if (!Array.isArray(type)) {
+              // 多个value
               types = [type]
               muti = false
             }
@@ -1815,7 +1837,7 @@ class EditTable extends Event {
             let i = -1
             for (const type of types) {
               i++
-              let val = value
+              let val = value ?? ''
               // 多值，取其中一个
               if (muti) {
                 if (Array.isArray(value)) val = value?.[i] ? value[i] : ''
@@ -1835,8 +1857,10 @@ class EditTable extends Event {
 
           // 换行
                 td.innerHTML = `${val}`
-            } else if ([DataType.table, DataType.attach, DataTypes.table, DataTypes.attach].includes(type)) td.innerHTML = `<span name="tx"/>`
-          else {
+              } else if ([DataType.table, DataType.attach, DataTypes.table, DataTypes.attach].includes(type)) {
+                if (cat) td.innerHTML = `<span name="tx"/>`
+                else fillAttach(_, r, value, td, null, idx)
+              } else {
               if ([DataType.checkbox, DataTypes.checkbox].includes(type)) {
                   const htm = option?.map(v => {
                   const rt = (
@@ -1883,7 +1907,12 @@ class EditTable extends Event {
                   if (htm) td.innerHTML = `<span name="tx" class="etChip">${htm.join('')}</span>`
             } else if (unit)
                   td.innerHTML = `<div class=etNumber><span name="tx" class="etValue">${val}</span><span class="etSuffix">${unit}</span></div>`
-                else td.innerHTML = `<span name="tx" class="etValue">${val}</span>`
+                else {
+                  td.innerHTML = `<span name="tx" class="etValue">${val ?? ''}</span>`
+
+                  if (type === DataType.texts || type === DataTypes.texts) $td.find('span').addClass('etClamp')
+                }
+
                 // else td.innerHTML = `<input name="tx" class="etValue dy-input" value=${val}></input>`
 
             //  txs[i].setAttribute('idx', '') // 每行编辑节点设置idx属性，对应名称与数据索引，方便获取、设置节点数据
@@ -1893,12 +1922,15 @@ class EditTable extends Event {
           }
 
             tr.append(td)
+              hasTd = true
           }
           }
 
           // 插入到空行前
+          if (hasTd) {
           tbody.dom.insertBefore(tr.dom, null)
           tr.show()
+          }
 
           // 嵌套表，换行
           if ([DataType.table, DataTypes.table].includes(r.type) && value?.head && value?.data) {
@@ -1922,20 +1954,38 @@ class EditTable extends Event {
             // 插入到空行前
             tbody.dom.insertBefore(tr.dom, null)
             tr.show()
-          } else if ([DataType.attach, DataTypes.attach].includes(type) && value?.length) {
-            const {cat} = r
-            let {catCol} = r
-            catCol = catCol.map(v => v * opt.colRatio)
-            let cats
-            let catid = 0
+          } else if ([DataType.attach, DataTypes.attach].includes(type) && cat) {
+            if (hasTd) tr = thead.lastChild().clone()
 
-            do {
-              cats = getRowCat(cat, catCol, opt.col, catid)
-              if (cats) {
-                fillAttach(_, value, thead, tbody, cats, catCol, idx)
-                catid = cats.catid + cats.length
-              }
-            } while (cats)
+            let {cat, subCol, subCols} = r
+            cat = cat ?? [name]
+            subCol = subCol ?? [r.col[0]]
+            if (subCol.length === 1) cat[0] = name // 名称替代分类
+
+            subCols = subCols ?? [0]
+            const cats = []
+            for (const i of subCols) {
+              cats.push({cat: cat[i], col: subCol[i]})
+            }
+
+            // cat.catid = 0
+
+            // let cats
+            // let catid = 0
+            // do {
+            //   cats = getRowCat(cat, catCol, opt.col, catid)
+            //   if (cats?.length) {
+            //     fillAttach(_, value, thead, tbody, cats, catCol, idx)
+            //     catid = cats.catid + cats.length
+            //   }
+            // } while (cats?.length)
+            // 按 cats 分类填充
+            fillAttach(_, r, value, tr, cats, idx)
+            // 插入到空行前
+            tbody.dom.insertBefore(tr.dom, null)
+            tr.show()
+            // setTimeout(() => _.attachLast(tr), 1000) // 换行时补全格线
+            // tr.click(attachClick) // 点击浏览大图
           }
         } catch (e) {
           log.err(e, 'fillKv')
@@ -1944,6 +1994,114 @@ class EditTable extends Event {
     } catch (e) {
       log.err(e, 'fillKv')
     }
+  }
+
+  /**
+   * 从数据中获取一行数据，用于 kv 模式，动态生成 row  col
+   * @param {*[]} rs - 数据
+   * @param {number} idx - 数据起始索引
+   * @param {number} [subidx] - 字段内置子索引，如附件
+   * @returns {*[] & {subidx: number}}
+   */
+  getRowData(rs, idx, subidx) {
+    /** @type {*[] & {idx: number}} */
+    let R
+    const _ = this
+    const {opt} = _
+    const max = opt.col
+
+    if (!opt.kv || !rs.length) return
+
+    try {
+      let col = 0
+      let hasCol = 0
+      let subCol
+      let row = false // 满一行
+
+      for (let i = idx; i < rs.length; i++) {
+        const r = rs[i]
+        let {left, subCol} = r
+        left = left ?? 0
+
+        // 子列处理
+        if (subCol) {
+          // 处理完毕
+          if (subidx >= subCol.length) {
+            subidx = 0
+            continue // 跳过
+          }
+
+          const subCols = []
+          for (let j = subidx; j < subCol.length; j++) {
+            let useCol = left + subCol[j] // 占用列宽
+            if (j > subidx) left = 0
+
+            // 设置列宽超过最大列
+            if (useCol > max) {
+              useCol = max
+              subCol[j] = useCol - max
+            }
+
+            col += useCol
+            // 超过列宽，作为下行处理
+            if (col <= max) {
+              subidx++
+
+              // 子列全部完成
+              if (subidx >= subCol.length) subidx = 0
+
+              subCols.push(j)
+              hasCol += useCol
+
+              r.subCols = subCols
+              if (!R) R = []
+
+              if (!R.includes(r)) R.push(r)
+
+              R.subidx = subidx
+            } else {
+              // 超出一行，下行处理
+              row = true
+              break
+            }
+          }
+
+          if (row) break
+        } else {
+          subidx = 0
+          let useCol = left + r.col[0] + r.col[1]
+          // 列宽超过最大列
+          if (useCol > max) {
+            useCol = max
+            r.col[1] = max - r.col[0]
+          }
+
+          col += useCol
+          // 超过列宽，作为下行处理
+          if (col <= max) {
+            if (!R) R = []
+
+            R.push(r)
+            R.subidx = subidx
+
+            hasCol += useCol
+          } else break
+        }
+      }
+
+      // 多余列
+      if (R && hasCol < max) {
+        const r = R.at(-1)
+        if (subidx) r.subCol[subidx - 1] += max - hasCol
+        else r.col[1] += max - hasCol
+      }
+
+      // log({R}, 'getRow')
+    } catch (e) {
+      log.err(e, 'getRowData')
+    }
+
+    return R
   }
 
   /**
@@ -2068,13 +2226,22 @@ class EditTable extends Event {
       // 将data存入 value，方便FormData读取
       const rs = []
       const ck = []
+      const attach = []
 
+      // input
       let els = tb.find('input')
       for (const el of els.get()) {
+        // 跳过上传的文件input
+        if (el.type === 'file') continue
+
+        // 通过输入input获得新旧值
         const r = _.getCellVal(el)
         if (r !== undefined) {
+          const name = $(el).attr('name')
           if (r.checked) ck.push(r.data)
-          else rs.push(r.data)
+          else if (name?.endsWith('-attach-add')) {
+            if (r.data.val) attach.push(r.data)
+          } else rs.push(r.data)
         }
       }
 
@@ -2100,7 +2267,34 @@ class EditTable extends Event {
         rs.push(v)
       }
 
-      R = rs
+      // 合并attach值 到 add 字段
+      let atts = attach.reduce((acc, r) => {
+        const {idx, field, value} = r
+        let {val} = r
+
+        if (val) {
+          try {
+            val = JSON.parse(val)
+            const v = `${idx}-${field}`
+            const o = acc[v]
+            if (o) o.add.push(...val)
+            else acc[v] = {idx, field, value, add: val}
+          } catch {}
+        }
+
+        return acc
+      }, {})
+
+      const adds = []
+      for (const k of Object.keys(atts)) {
+        const v = atts[k]
+        adds.push(v)
+      }
+
+      const dels = getDel(tb, _.data)
+      atts = mergeAttach(adds, dels)
+
+      R = [...rs, ...atts]
 
       log({R}, 'getVal')
     } catch (e) {
@@ -2110,9 +2304,9 @@ class EditTable extends Event {
   }
 
   /**
-   * 获得变化的输入值
+   * 获得变化的输入值和原值
    * @param {HTMLElement} el
-   * @returns
+   * @returns {*}
    */
   getCellVal(el) {
     let R
@@ -2120,13 +2314,16 @@ class EditTable extends Event {
 
     try {
       const $el = $(el)
-      const field = $el.attr('name')
+      const field = $el.attr('name').replace(/-attach-add$/, '')
       const td = $el.upper('td')
       const idx = td.data('idx')
-      const d = _.data[idx]
+      const d = _.data[idx] // 原始值
+
+      if (!d) return
+
       const {value, type, div, mul} = d
       let val = $el.val()
-      const key = $el.data('key')
+      const key = $el.data('key') // key:val
 
       let skip
       let checked
@@ -2882,6 +3079,38 @@ function getTime(date) {
   if (typeof date === 'string') date = new Date(date)
 
   return date.toLocaleTimeString()
+}
+
+/**
+ * 合并附件
+ * @param {*} adds
+ * @param {*} dels
+ * @returns
+ */
+function mergeAttach(adds, dels) {
+  let R
+  try {
+    const map = new Map()
+
+    // 处理 addList
+    for (const {idx, field, value, add} of adds || []) {
+      if (!map.has(idx)) map.set(idx, {idx, field, value, del: [], add: []})
+
+      map.get(idx).add = add
+    }
+
+    // 处理 delList
+    for (const {idx, field, value, del} of dels || []) {
+      if (!map.has(idx)) map.set(idx, {idx, field, value, del: [], add: []})
+
+      map.get(idx).del = del
+    }
+
+    R = Array.from(map.values())
+  } catch (e) {
+    log.err(e, 'mergeAttach')
+  }
+  return R
 }
 
 export {EditTable as default, DataType, DataTypes}

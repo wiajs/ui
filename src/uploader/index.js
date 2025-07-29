@@ -14,7 +14,7 @@ const log = Log({m: 'uploader'}) // 创建日志实例
  */
 
 /** @typedef {object} FileType
- * @prop {number} id
+ * @prop {number} idx：数组索引
  * @prop {Blob} rawFile
  * @prop {string} name
  * @prop {string} ext
@@ -23,6 +23,7 @@ const log = Log({m: 'uploader'}) // 创建日志实例
  * @prop {HTMLCanvasElement} canvas
  * @prop {boolean} compress
  * @prop {string} url
+ * @prop {string} id - 数据库中的附件id，上传时服务端返回或从数据库加载，用于修改
  */
 
 /** @typedef {object} Opts
@@ -131,12 +132,12 @@ const parseSuccess = rs => {
 
 class Uploader {
   /** @type {FileType[]} */
-  files
+  files // 所有文件
 
   /** @type {*} */
   opt
 
-  id = 1
+  idx = 1
 
   /**
    * 构造函数
@@ -190,11 +191,12 @@ class Uploader {
    * @param {*} opt
    */
   initInput(opt) {
+    const _ = this
     // 选择文件后返回
     this.changeHandler = async e => {
       let {files} = e.target
 
-      console.log('initInput', {files})
+      // console.log('Input', {files})
 
       const type = Object.prototype.toString.call(files)
       if (type === '[object FileList]') {
@@ -203,10 +205,12 @@ class Uploader {
         files = [files]
       }
 
+      _.hideChoose()
+
       // 外部可干预，返回false或者文件数组
-      const ret = await this.callEvent('choose', files)
+      const ret = await _.callEvent('choose', files)
       // const ret = this.emit('local::choose', files)
-      if (ret !== false) this.loadFiles(ret || files)
+      if (ret !== false) _.loadFiles(ret || files)
     }
 
     /** @type{*} */
@@ -259,8 +263,8 @@ class Uploader {
 
       gal.name('delete').click(
         /** @param {*}ev */ ev => {
-          const id = gal.class(`${css._img}`).data('fileid')
-          this.remove(id)
+          const idx = gal.class(`${css._img}`).data('fileid')
+          this.remove(idx)
         }
       )
 
@@ -282,37 +286,44 @@ class Uploader {
     // opt.input.dom.onclick = ev => {
     //   this.chooseFile();
     // };
-    // 外部更改input时，显示图片
+    //
+
+    /**
+     * 外部更改input时，显示图片，如：模板视图加载时
+     * [{id, url}], [url], url
+     */
     opt.input.change(
       /** @param {*}ev */ ev => {
-        // 优先获取 data
         try {
+          // 优先获取 data
           let p = opt.input.dom.data
           const val = opt.input.val()
           // 字符串转对象
           if ($.isEmpty(p) && val) {
             // json
-            if (/^\{[\s\S]+\}/.test(val)) p = JSON.parse(opt.input.val())
+            if (/^\{[\s\S]+\}/.test(val)) p = JSON.parse(val)
             else {
               p = {dir: ''}
               p.url = val.split(',')
             }
           }
 
+          // 加载 url
           if (p?.url) {
-            this.clear()
-            this.files = p.url.map(v => {
+            _.clear()
+            _.files = p.url.map(v => {
               // const {dir} = p;
               // const host = dir.replace(`/${opt.dir}`, '');
               const f = {
-                id: this.id++, // 内部计数
+                idx: this.idx++, // 内部索引计数
                 // dir 可选
-                file: p.dir ? `${p.dir}/${v}` : v,
+                url: p.dir ? `${p.dir}/${v}` : v,
                 status: 'upload', // 已上传
+                id: p.id, // 可选
               }
               return f
             })
-            this.load()
+            _.load()
           }
         } catch (ex) {
           console.error(`input value exp:${ex.message}`)
@@ -337,7 +348,7 @@ class Uploader {
             if (f && f.status === 'crop' && opt.crop)
               $.go(opt.crop, {
                 src: 'crop',
-                id: f.id,
+                idx: f.idx,
                 url: f.url, // 图像数据
                 aspectRatio: opt.aspectRatio,
               })
@@ -352,12 +363,26 @@ class Uploader {
     }
 
     // 如指定文件选择器choose，点击则选择文件
-    if (opt.choose) {
-      opt.choose.click(ev => {
-        ev.stopPropagation() // 阻止事件冒泡
-        _.chooseFile() // 触发文件选择
-      })
-    }
+    opt.choose?.click(ev => {
+      ev.stopPropagation() // 阻止事件冒泡
+      _.chooseFile() // 触发文件选择
+    })
+  }
+
+  hideChoose() {
+    const {opt} = this
+    const el = opt.choose
+    const wrap = el.upper('._wrap')
+    if (wrap.dom) wrap.hide()
+    else el.hide()
+  }
+
+  showChoose() {
+    const {opt} = this
+    const el = opt.choose
+    const wrap = el.upper('._wrap')
+    if (wrap.dom) wrap.show()
+    else el.show()
   }
 
   /**
@@ -421,58 +446,71 @@ class Uploader {
 
   /**
    * 加载文件，选择或外部传入的文件数组
+   * 注意，如果设置了 limit，则只能保留该数量文件
    * @param {File|FileType[]} files
    * @returns {boolean}
    */
   loadFiles(files) {
-    if (!files) return false
+    const _ = this
+    try {
+      if (!files) return false
 
-    if (this.opt.limit > 0 && files.length && files.length + this.files.length > this.opt.limit) {
-      if (this.opt.limit === 1) this.clear()
-      // 单文件替换
-      else {
-        this.callEvent('exceed', files)
-        return false
-      }
-    }
+      const {opt} = _
 
-    this.files = this.files.concat(
-      files.map(file => {
-        if (file.id && file.rawFile) return file
-
-        // 任意后缀
-        const rg = /(\.(?:\w+))$/i.exec(file.name)
-
-        return {
-          id: this.id++,
-          rawFile: file,
-          mimeType: file.type,
-          type: getFileType(file.type),
-          name: file.name,
-          ext: rg && rg[1],
-          size: file.size,
-          status: 'choose',
+      if (opt.limit > 0 && files.length && files.length + _.files.length > opt.limit) {
+        if (opt.limit === 1) this.clear()
+        // 单文件替换
+        else {
+          _.callEvent('exceed', files)
+          return false
         }
-      })
-    )
+      }
 
-    this.callEvent('change', this.files) // 文件列表改变
-    this.load()
+      _.files = _.files.concat(
+        files.map(file => {
+          if (file.idx && file.rawFile) return file
+
+          // 任意后缀
+          const rg = /(\.(?:\w+))$/i.exec(file.name)
+
+          return {
+            idx: _.idx++,
+            rawFile: file,
+            mimeType: file.type,
+            type: getFileType(file.type),
+            name: file.name,
+            ext: rg && rg[1],
+            size: file.size,
+            status: 'choose',
+          }
+        })
+      )
+
+      _.callEvent('change', this.files) // 文件列表改变
+      _.load()
+    } catch (e) {
+      log.err(e, 'loadFiles')
+    }
 
     return true
   }
 
-  getFile(id) {
-    return this.files.find(f => f.id == id)
+  /**
+   *
+   * @param {*} idx
+   * @returns
+   */
+  getFile(idx) {
+    return this.files.find(f => f.idx == idx)
   }
 
   /**
    * 裁剪后，更新文件
-   * @param {number|string} id
+   * @param {number|string} idx
    * @param {Blob} blob
    */
-  async update(id, blob) {
-    const file = this.files.find(f => f.id == id)
+  async update(idx, blob) {
+    const file = this.files.find(f => f.idx == idx)
     if (file && blob) {
       file.status = 'croped'
       // @ts-ignore
@@ -495,26 +533,26 @@ class Uploader {
 
     // const fs = this.files.filter(f => f.status === 'choose');
     for (const f of _.files ?? []) {
-        let src
-        let tp
+      let src
+      let tp
       const {ext} = f
-        if (f.status === 'choose') {
-          f.status = 'load'
+      if (f.status === 'choose') {
+        f.status = 'load'
 
-          if (/\.(jpeg|jpg|png|gif)/i.test(ext)) {
-            const URL = window.URL || window.webkitURL || window.mozURL
-            src = URL && f.rawFile && URL.createObjectURL(f.rawFile)
+        if (/\.(jpeg|jpg|png|gif)/i.test(ext)) {
+          const URL = window.URL || window.webkitURL || window.mozURL
+          src = URL && f.rawFile && URL.createObjectURL(f.rawFile)
         } else src = getThumb(ext)
 
-            tp = (
-              <div
-                name={`img${f.id}`}
-            data-fileid={f.id}
-                class={`flex-center ${css._file} ${css._status}`}
-                style={`background-image: url(${src}); background-size: contain`}>
-                <div class={css._content}>50%</div>
-              </div>
-            )
+        tp = (
+          <div
+            name={`img${f.idx}`}
+            data-fileid={f.idx}
+            class={`flex-center ${css._file} ${css._status}`}
+            style={`background-image: url(${src}); background-size: contain`}>
+            <div class={css._content}>50%</div>
+          </div>
+        )
 
         if (opt.label)
           tp = (
@@ -524,24 +562,24 @@ class Uploader {
             </div>
           )
 
-            // 指定宽高比
-            if (opt.aspectRatio) {
-              const img = await loadImg(src)
-              if (Math.round((img.naturalWidth * 100) / img.naturalHeight) / 100 !== this.opt.aspectRatio) {
-                f.status = 'crop'
-                f.img = img
-                f.url = src
-                tp = (
-                  <div
-                    name={`img${f.id}`}
-                data-fileid={f.id}
-                    class={`flex-center ${css._file} ${css._status}`}
-                    style={`background-image: url(${src}); background-size: contain`}>
-                    <div class={`flex-center ${css._content}`}>
-                      <i class="icon wiaicon">&#xe61c;</i>
-                    </div>
-                  </div>
-                )
+        // 指定宽高比
+        if (opt.aspectRatio) {
+          const img = await loadImg(src)
+          if (Math.round((img.naturalWidth * 100) / img.naturalHeight) / 100 !== this.opt.aspectRatio) {
+            f.status = 'crop'
+            f.img = img
+            f.url = src
+            tp = (
+              <div
+                name={`img${f.idx}`}
+                data-fileid={f.idx}
+                class={`flex-center ${css._file} ${css._status}`}
+                style={`background-image: url(${src}); background-size: contain`}>
+                <div class={`flex-center ${css._content}`}>
+                  <i class="icon wiaicon">&#xe61c;</i>
+                </div>
+              </div>
+            )
 
             if (opt.label)
               tp = (
@@ -550,23 +588,23 @@ class Uploader {
                   <p>需裁剪</p>
                 </div>
               )
-            }
           }
-        } else if (f.status === 'croped') {
-          // 裁剪后的文件，重新加载，准备自动上传
-          opt.el.name(`img${f.id}`).remove()
-          f.status = 'load'
-          src = f.url
+        }
+      } else if (f.status === 'croped') {
+        // 裁剪后的文件，重新加载，准备自动上传
+        opt.el.name(`img${f.idx}`).remove()
+        f.status = 'load'
+        src = f.url
 
-            tp = (
-              <div
-                name={`img${f.id}`}
-            data-fileid={f.id}
-                class={`flex-center ${css._file} ${css._status}`}
-                style={`background-image: url(${src}); background-size: contain`}>
-                <div class={css._content}>50%</div>
-              </div>
-            )
+        tp = (
+          <div
+            name={`img${f.idx}`}
+            data-fileid={f.idx}
+            class={`flex-center ${css._file} ${css._status}`}
+            style={`background-image: url(${src}); background-size: contain`}>
+            <div class={css._content}>50%</div>
+          </div>
+        )
 
         if (opt.label)
           tp = (
@@ -575,21 +613,22 @@ class Uploader {
               <p>上传中</p>
             </div>
           )
-        } else if (f.status === 'upload') {
+      } else if (f.status === 'upload') {
         // 已上传
-          const n = opt.el.name(`img${f.id}`)
+        const n = opt.el.name(`img${f.idx}`)
+        // 是否在内部显示图标
+        if (!n.dom && !opt.img) src = `${f.url}`
 
-        if (n.length === 0) src = `${f.url}`
-
-        if (!opt.img) {
-            tp = (
-              <div
-                name={`img${f.id}`}
-              data-fileid={f.id}
-                class={`flex-center ${css._file}`}
-                style={`background-image: url(${src}); background-size: contain`}
-              />
-            )
+        // 重新加载图标
+        if (src) {
+          tp = (
+            <div
+              name={`img${f.idx}`}
+              data-fileid={f.idx}
+              class={`flex-center ${css._file}`}
+              style={`background-image: url(${src}); background-size: contain`}
+            />
+          )
 
           if (opt.label)
             tp = (
@@ -599,10 +638,10 @@ class Uploader {
               </div>
             )
         }
-        }
+      }
 
       // 加载图标
-        if (src) {
+      if (src) {
         if (tp) $(tp).insertBefore(opt.input)
         else if (opt.img) {
           // 上传成功
@@ -613,11 +652,11 @@ class Uploader {
           opt.img.show()
         }
 
-          _.callEvent('load', f, _.files)
-          console.log({f, files: _.files}, 'load')
+        _.callEvent('load', f, _.files)
+        console.log({f, files: _.files}, 'load')
 
-          opt.upload && _.upload()
-        }
+        opt.upload && _.upload()
+      }
     }
   }
 
@@ -663,50 +702,53 @@ class Uploader {
    * @param {*} file
    */
   removeFile(file) {
-    const id = file.id || file
-    this.remove(id)
+    const idx = file.idx || file
+    this.remove(idx)
   }
 
   /**
    * 删除图片
-   * @param {*} id
+   * @param {*} idx
    */
-  remove(id) {
-    const index = this.files.findIndex(f => f.id == id)
+  remove(idx) {
+    const index = this.files.findIndex(f => f.idx == idx)
     if (index > -1) {
       this.files.splice(index, 1)
       this.callEvent('change', this.files)
     }
 
-    this.opt.el.name(`img${id}`).remove()
+    this.opt.el.name(`img${idx}`).remove()
     this.updateInput()
   }
 
   /**
-   * 上传成功的文件以json方式写入 input，不触发 change
+   * 上传成功的文件 [{url、id}] 以json 字符串写入 input
+   * 不触发 change
    * 多个文件，每个文件单独触发！
    */
   updateInput() {
-    // 已上传成功文件
-    const fs = this.files.filter(f => f.status === 'upload')
-    console.log({fs}, 'updateInput')
+    const _ = this
+    const {opt, files} = _
+    try {
+      // 已上传成功文件
+      const fs = files.filter(f => f.status === 'upload')
+      // console.log({fs}, 'updateInput')
 
-    if (fs.length > 0) {
-      let rs = fs.map(f => f.url)
-      // 一个文件，数组转为文件
-      if (rs.length === 1) {
-        ;[rs] = rs
-        this.opt.input.val(rs)
-      } else this.opt.input.val(JSON.stringify(rs))
-      this.opt.data = rs
-    } else this.opt.input.val('')
+      if (fs.length > 0) {
+        const rs = fs.map(f => ({id: f.id, url: f.url}))
+        opt.input.val(JSON.stringify(rs))
+        opt.data = rs
+      } else this.opt.input.val('')
+    } catch (e) {
+      log.err(e, 'updateInput')
+    }
   }
 
   /**
    * 清除内部文件
    */
   clear() {
-    this.id = 1
+    this.idx = 1
     this.files = []
     this.opt.el.classes(`${css._file}`).remove()
     this.callEvent('change', this.files)
@@ -721,7 +763,7 @@ class Uploader {
     if (!this.files.length && !file) return
 
     if (file) {
-      const target = this.files.find(item => item.id === file.id || item.id === file)
+      const target = this.files.find(item => item.idx === file.idx || item.idx === file)
       target && target.status !== 'upload' && target.status !== 'crop' && this.prePost(target)
     } else {
       const fs = this.files.filter(f => f.status !== 'upload' && f.status !== 'crop')
@@ -769,7 +811,7 @@ class Uploader {
         percent += 5
 
         // $li.find(".progress span").css('width', percent + "%");
-        const f = ls.name(`img${file.id}`)
+        const f = ls.name(`img${file.idx}`)
         const content = f.class(`${css._content}`)
         content.html(`${percent}%`)
 
@@ -792,7 +834,7 @@ class Uploader {
 
     const fd = new FormData()
     // 传入路径、文件数据和文件名称
-    const name = `${file.id}${file.ext}` // id.文件扩展名，不可重复
+    const name = `${file.idx}${file.ext}` // idx.文件扩展名，不可重复
     fd.append(opt.dir, file.rawFile, name)
 
     if (data)
@@ -827,29 +869,24 @@ class Uploader {
             //      host: 'https://fin.wia.pub',
             //      len: 55834,
             //      name: '3.jpg',
+            //      url: 'https://fin.wia.pub/img/req/a42f5e9265e42064d169c76700209d4f.jpg',
+            //      id: 4523,
             //    }
             //  }
-
-            // {
-            //   '1.pdf': {
-            //     dir: 'img/mine/',
-            //     file: 'fb541d484bf414b80fa67de34b374a96.pdf',
-            //     host: 'https://fin.wia.pub',
-            //     len: 128625,
-            //     name: '1.pdf',
-            //   },
-            // };
             const r = rs.data[name]
             // 服务器返回存储路径、文件名称
             if (r.url) {
-              const id = r.name.replace(/\.\w+/i, '')
+              const idx = r.name.replace(/\.\w+/i, '')
               // 去掉末尾 / 字符
               r.dir = r.dir.replace(/\/$/, '')
 
               // 不支持多文件、多次不同路径上传
               file.url = r.url //`${r.host}/${r.dir}/${r.file}`
+              file.id = r.id
 
-              const uf = ls.name(`img${file.id}`).parent()
+              let uf = ls.name(`img${file.idx}`)
+              if (opt.label) uf = uf.parent()
+
               // 上传成功，更新图片缩略图
               if (opt.label) uf.find('p').html('上传成功')
 
@@ -860,8 +897,10 @@ class Uploader {
                 img.attr('src', src)
                 uf.remove() // 删除上传显示
                 opt.img.show()
-              } else opt.el.name(`img${id}`).css('background-image', `url(${src})`)
+              } else opt.el.name(`img${idx}`).css('background-image', `url(${src})`)
             }
+
+            _.showChoose()
 
             // 填入 input，方便客户读取
             _.updateInput()
@@ -879,6 +918,8 @@ class Uploader {
     xhr.onerror = e => {
       file.status = 'error'
       _.callEvent('error', parseError(xhr), file, _.files)
+
+      _.showChoose()
     }
 
     // 数据发送进度，前50%展示该进度,后50%使用模拟进度!

@@ -20,19 +20,20 @@ const g = {
 /**
  * 按分类渲染附件
  * @param {EditTable} _
+ * @param {*} r
  * @param {{_idx: number, id: number, cat:string, name:string,abb:string, url:string, status?:string, type:string, ext?:string}[]} value - 数据卡 值，对象数组
- * @param {*} thead - 表头
- * @param {*} tbody - 表body
- * @param {*[] & {catid: number}} cats - 分类
- * @param {number[]} cols - 分类列数
+ * @param {*} tr - 行 或 td
+ * @param {{cat: string, col: number}[]} cats - 分类数组，null 无分类，使用 td
  * @param {number} idx - editTable 的数据索引
  */
-function fillAttach(_, value, thead, tbody, cats, cols, idx) {
+function fillAttach(_, r, value, tr, cats, idx) {
   try {
-    const {data} = _
-    const {uploader} = data[idx]
+    const {read} = r
 
-    if (!value?.length) return
+    let td
+    if (!cats) td = tr // 无分类，普通显示
+
+    // if (!value?.length) return
 
     let i = -1
     for (const v of value) {
@@ -40,21 +41,63 @@ function fillAttach(_, value, thead, tbody, cats, cols, idx) {
       v._idx = i // 数据加索引，方便浏览
     }
 
-    const tr = thead.lastChild().clone()
-    let {catid} = cats // 数据数组索引
-    catid -= 1
+    if (!cats) {
+      fillTd(_, td, null, null, value, read, idx)
+      const $td = $(td)
+      $td.click(attachClick) // 点击浏览大图
+      td.attachData = value
+      $td.data('idx', idx) // td 保存 EditTable 的数据索引
+    }
+    // const tr = thead.lastChild().clone()
+    // let {catid} = cats // 数据数组索引
+    // catid -= 1
     // 行赋值
-    for (const cat of cats) {
-      catid++
-
-      tr.dom.data = value // 保存数据，用于点击浏览
+    else if (tr) {
+      tr.dom.attachData = value // 保存数据，用于点击浏览
+      tr.click(attachClick) // 点击浏览大图
+    for (const {cat, col} of cats) {
+      // catid++
       const td = document.createElement('td')
-      td.colSpan = cols[catid] // col * 2
+      td.colSpan = col //  cols[catid] // col * 2
 
       const $td = $(td)
       $td.data('idx', idx) // td 保存 EditTable 的数据索引
 
-      const att = $(<div class="etAttach" />)
+        fillTd(_, td, cat, cats, value, read, idx)
+
+        tr.append(td)
+        // // 插入到空行前
+        // tbody.dom.insertBefore(tr.dom, null)
+        // tr.show()
+        // // setTimeout(() => _.attachLast(tr), 1000) // 换行时补全格线
+      }
+    }
+  } catch (e) {
+    log.err(e, 'fillAttach')
+  }
+}
+
+/**
+ *
+ * @param {*} _ - editDable 实例
+ * @param {*} td
+ * @param {string} cat
+ * @param {*[]} cats
+ * @param {*} value
+ * @param {boolean} read
+ * @param {number} idx - EditTable 数组数据索引
+ */
+function fillTd(_, td, cat, cats, value, read, idx) {
+  try {
+    const {data, opt} = _
+    const {field} = data[idx]
+    let {upload} = data[idx]
+    upload = upload ?? opt.upload
+
+    const $td = $(td)
+
+    const att = $(<div class={`etAttach ${cat ? 'etCat' : ''}`} />)
+    // <input name={`${field}-attach-del`} type="hidden" />
       att.appendTo($td)
 
       // 按 cat 分组，预先已定义cat，无需分组
@@ -66,40 +109,49 @@ function fillAttach(_, value, thead, tbody, cats, cols, idx) {
       //   } else acc[v.cat] = {data: [v], count: 1}
       //   return acc
       // }, {})
+      if (cat) att.append(<div class="attach-cat">{cat}</div>)
 
-      att.append(<div class="attach-cat">{cat}</div>)
       att.append(<div class="attach-wrap" />)
       // 封装层，超出左右滑动
       const wrap = att.find('.attach-wrap')
       // 分类
-      const cs = value.filter(v => v.cat === cat)
+    let vs = value || []
+
+      // 多个cat过滤，一个cat 全部显示
+    if (cats?.length > 1) vs = vs?.filter(v => v.cat === cat)
+    vs = vs ?? []
+
       // 添加分类项目
-      for (const c of cs) {
-        const {_idx, abb, url, type, ext} = c
-        addItem(wrap, type, ext, abb, url, _idx)
+    for (const v of vs) {
+      const {_idx, name, url, type, ext} = v
+      let {abb} = v
+      if (!cat) abb = ''
+
+      addItem(wrap, field, type, ext, name, abb, url, _idx)
       }
 
+      if (!read) {
       // 添加附件上传
       wrap.append(
         <div class="attach-item wia_uploader">
-          <input name="attach" type="hidden" />
+          <input name={`${field}-attach-add`} type="hidden" />
           <div class="_wrap">
             <div name="btnAdd" class="_input" />
-            <p>新增</p>
+            {cat && <p>新增</p>}
           </div>
         </div>
       )
 
       if (_.Uploader) {
-        const {dir, url, token} = uploader
+        const {dir, url, token} = upload
         const ud = new _.Uploader({
           // dir: `prj/${cat}`, // 图片存储路径
           dir, // 图片存储路径
           url, // 图片上传网址
           el: wrap.class('wia_uploader'), // 组件容器
-          input: wrap.name('attach'), // 上传成功后的url填入输入框，便于提交
+          input: wrap.name(`${field}-attach-add`), // 上传成功后的url填入输入框，便于提交
           choose: wrap.name('btnAdd'), // 点击触发选择文件
-          label: true, // 显示底部标签
+          label: !!cat, // 显示底部标签
           accept: '*', // 选择文件类型
           // accept: 'image/jpg,image/jpeg,image/png', // 选择文件类型
           // compress: true, // 启动压缩
@@ -112,7 +164,6 @@ function fillAttach(_, value, thead, tbody, cats, cols, idx) {
           // crop: 'img/crop', // 按宽高比人工裁剪
 
           multiple: false, // 可否同时选择多个文件
-          limit: 1, // 选择图片数限制 -1 0 不限
           left: 250, // 预览偏移，左边有导航栏
 
           // 随文件上传的数据
@@ -124,10 +175,15 @@ function fillAttach(_, value, thead, tbody, cats, cols, idx) {
           let data
           if (_.onAttach) data = await _.onAttach(idx, cat, files)
 
-          let abb = `${cat}1`
+          let name = ''
+          if (files?.[0].name) name = files[0].name
+
+          let abb = cat ? `${cat}1` : ''
           if (data?.abb) abb = data.abb
-          const el = addItem(wrap, 'img', 'jpg', abb)
+
+          const el = addItem(wrap, '', 'img', 'jpg', name, abb)
           el.hide()
+
           ud.config({
             img: el,
             data, // 其他参数
@@ -135,55 +191,61 @@ function fillAttach(_, value, thead, tbody, cats, cols, idx) {
         })
         td.uploader = ud
       }
+      }
 
-      tr.append(td)
-      // 插入到空行前
-      tbody.dom.insertBefore(tr.dom, null)
-      tr.show()
-      // setTimeout(() => _.attachLast(tr), 1000) // 换行时补全格线
-      tr.click(attachClick) // 点击浏览大图
-    }
+      if (!opt.edit) wrap.find('.wia_uploader').hide()
   } catch (e) {
-    log.err(e, 'fillAttach')
+    log.err(e, 'fillTd')
   }
 }
 
 /**
  * 添加子项
  * @param {*} wrap
+ * @param {string} field
  * @param {string} type
  * @param {string} ext - 后缀
+ * @param {string} name - 名称
  * @param {string} abb - 缩写标签
  * @param {string} [url]
- * @param {number} [id]
+ * @param {number} [idx] - 附件数组索引，便于点击连续浏览
  */
-function addItem(wrap, type, ext, abb, url, id) {
+function addItem(wrap, field, type, ext, name, abb, url, idx) {
   let R
   try {
     let el
     if (type === 'img') {
       el = (
-        <div class="attach-item" data-id={id}>
-          <img src={url} alt={abb} loading="lazy" />
-          <p>{abb}</p>
+        <div class="attach-item" data-idx={idx} data-field={field}>
+          <img src={url} alt={abb} title={name} loading="lazy" />
+          {abb && <p>{abb}</p>}
+          <div class="attach-delete">
+            <i class="icon wiaicon">&#xe9fb;</i>
+          </div>
         </div>
       )
     } else if (type === 'video') {
       ext = ext ?? 'mp4'
       el = (
-        <div class="attach-item" data-id={id}>
+        <div class="attach-item" data-idx={idx} data-field={field}>
           <video controls preload="none">
             <source src={url} type={`${type}/${ext}`} />
           </video>
-          <p>{abb}</p>
+          {abb && <p>{abb}</p>}
+          <div class="attach-delete">
+            <i class="icon wiaicon">&#xe9fb;</i>
+          </div>
         </div>
       )
     } else if (type === 'doc') {
       const src = getThumb(ext)
       el = (
-        <div class="attach-item" data-id={id}>
-          <img src={src} alt={abb} loading="lazy" />
-          <p>{abb}</p>
+        <div class="attach-item" data-idx={idx} data-field={field}>
+          <img src={src} alt={abb} title={name} loading="lazy" />
+          {abb && <p>{abb}</p>}
+          <div class="attach-delete">
+            <i class="icon wiaicon">&#xe9fb;</i>
+          </div>
         </div>
       )
     }
@@ -197,6 +259,100 @@ function addItem(wrap, type, ext, abb, url, id) {
     }
   } catch (e) {
     log.err(e, 'addItem')
+  }
+
+  return R
+}
+
+/**
+ * 处理附件删除
+ * @param {*} att - 附件（.attach-item）
+ * @param {string} field -
+ * @param {*} value - 附件数据值
+ * @param {number} idx - EditTable data 索引
+ */
+function delItem(att, field, value, idx) {
+  try {
+    if (att.dom) {
+      const el = att.upper('.etAttach')
+      if (!el.dom.attachDel) el.dom.attachDel = []
+
+      // 保存被删除元素的信息：DOM克隆、父节点、前一个兄弟节点（用于还原位置）
+      el.dom.attachDel.push({
+        idx,
+        field,
+        value,
+        att,
+        parent: att.dom.parentNode,
+        prev: att.dom.previousSibling,
+      })
+
+      att.remove() // 移除DOM元素
+    }
+  } catch (e) {
+    log.err(e, 'delItem')
+  }
+}
+
+/**
+ * 还原所有被删除的元素
+ * @param {*} el - EditTable
+ */
+function cancelDel(el) {
+  try {
+    const es = el.find('.etAttach')
+    for (const e of es.get()) {
+      if (!e.attachDel) continue
+
+      // 遍历所有需要还原的元素
+      for (const r of e.attachDel) {
+        if (r.att && r.parent) {
+          const {parent, att} = r
+          $(parent).append(att)
+        }
+      }
+      e.dom.attachDel = []
+    }
+  } catch (e) {
+    log.err(e, 'cancelDel')
+  }
+}
+
+/**
+ * 还原所有被删除的元素
+ * @param {*} el - EditTable
+ * @param {*} data - EditTable data
+ * @returns {{idx: number, field: string, del:[id: number, url: string, value: *]}[]}
+ */
+function getDel(el, data) {
+  let R
+  try {
+    const es = el.find('.etAttach')
+    for (const e of es.get()) {
+      if (!e.attachDel) continue
+
+      // 遍历所有需要还原的元素
+      const rs = []
+      for (const r of e.attachDel) {
+        if (r.att && r.parent) {
+          const {idx, field, value} = r
+          const {id, url} = value
+          rs.push({idx, field, id, url, value: data[idx].value})
+        }
+      }
+
+      if (rs.length) {
+        const map = new Map()
+        for (const {idx, field, id, url, value} of rs) {
+          if (!map.has(idx)) map.set(idx, {idx, field, value, del: []})
+          map.get(idx).del.push({id, url})
+        }
+
+        R = Array.from(map.values())
+      }
+    }
+  } catch (e) {
+    log.err(e, 'cancelDel')
   }
 
   return R
@@ -239,7 +395,7 @@ function getRowCat(cats, cols, max, catid) {
     }
 
     // 多余列
-    if (R && hasCol < max) R[R.length - 1] += max - hasCol
+    // if (R && hasCol < max) R[R.length - 1] += max - hasCol
   } catch (e) {
     log.err(e, 'getRowCat')
   }
@@ -270,14 +426,26 @@ function attachLast(row) {
  * @param {*} ev
  */
 async function attachClick(ev) {
-  const row = $(ev).upper('tr')
-  const att = $(ev).upper('.attach-item')
-  const idx = att.data('id')
+  const td = $(ev).upper('td')
+  const idx = td.data('idx')
 
+  let data = td?.dom?.attachData
+
+  const tr = $(ev).upper('tr')
+  if (!data) data = tr?.dom?.attachData
+
+  const att = $(ev).upper('.attach-item')
+  // 附件数据索引
+  const i = att.data('idx')
+  const field = att.data('field')
+
+  const btnDel = $(ev).upper('.attach-delete')
+  if (btnDel.dom)
+    delItem(att, field, data[i], idx) // 删除
+  else if (att.dom && tr.dom) {
   // 浏览图片附件
-  if (att.dom && row.dom) {
-    const {data} = row.dom
-    const v = data.find(v => v._idx === idx)
+
+    const v = data.find(v => v._idx === i)
     const {type, ext} = v || {}
     let {url} = v || {}
     if (type === 'doc') {
@@ -293,8 +461,8 @@ async function attachClick(ev) {
         // const m = await import('https://cdn.jsdelivr.net/npm/glightbox@3/+esm')
         const m = await import('https://cos.wia.pub/wiajs/glightbox.mjs')
         g.lightbox = m.default
-        setTimeout(() => showImg(data, idx), 1000)
-      } else showImg(data, idx)
+        setTimeout(() => showImg(data, i), 1000)
+      } else showImg(data, i)
     }
   }
 }
@@ -344,4 +512,4 @@ function getThumb(ext, url) {
   return R
 }
 
-export {fillAttach, getRowCat, getThumb}
+export {fillAttach, getRowCat, getThumb, cancelDel, getDel}
