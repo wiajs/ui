@@ -179,23 +179,23 @@ function fillTd(_, td, cat, cats, value, read, idx) {
         td.uploader = ud
 
         ud.on('choose', async files => {
-          let abb = cat ? `${cat}1` : ''
-          let rs = {abb}
+          const abb = cat ? `${cat}1` : ''
 
+          let rs
           // 客户端输入 abb、附件类型（合同、图片等）
           if (_.onAttach) rs = await _.onAttach(idx, cat, files)
 
-          let name = ''
-          if (files?.[0].name) name = files[0].name
+          const data = {cat, abb, ...rs}
 
-          if (rs?.abb) abb = rs.abb
-
+          // let name = ''
+          // if (files?.[0].name) name = files[0].name
+          // if (rs?.abb) abb = rs.abb
           // const el = addItem(wrap, `${field}-attach-add`, 'img', 'jpg', name, abb, '', value.length)
           // el.hide()
 
           ud.config({
             // img: el, // 图片显示的容器
-            data: rs, // 其他参数
+            data, // 其他参数
           })
         })
 
@@ -208,7 +208,7 @@ function fillTd(_, td, cat, cats, value, read, idx) {
       }
       }
 
-      if (!opt.edit) wrap.find('.wia_uploader').hide()
+    if (!opt.edit) wrap.find('._choose').hide()
   } catch (e) {
     log.err(e, 'fillTd')
   }
@@ -252,7 +252,8 @@ function addItem(wrap, field, type, ext, name, abb, url, idx) {
           </div>
         </div>
       )
-    } else if (type === 'doc') {
+    } else if (!type || type === 'doc') {
+      // 默认按 doc 处理，部分文档上传未识别为 doc，此处做兼容处理，避免附件无显示
       const src = getThumb(ext)
       el = (
         <div class="attach-item" data-idx={idx} data-field={field}>
@@ -307,7 +308,7 @@ function delItem(td, att, wrap, field, value, idx) {
         field,
         value,
         att,
-        parent: att.dom.parentNode,
+          parent: att.parentNode(),
         prev: att.dom.previousSibling,
       })
       att.remove() // 移除DOM元素
@@ -325,17 +326,19 @@ function delItem(td, att, wrap, field, value, idx) {
 function cancelDel(el) {
   try {
     const es = el.find('.etAttach')
-    for (const e of es.get()) {
+    for (const e of es) {
       if (!e.attachDel) continue
 
       // 遍历所有需要还原的元素
       for (const r of e.attachDel) {
         if (r.att && r.parent) {
           const {parent, att} = r
-          $(parent).append(att)
+          const up = parent.findNode('.wia_uploader')
+          if (up.dom) up.before(att)
+          else parent.append(att)
         }
       }
-      e.dom.attachDel = []
+      e.attachDel = []
     }
   } catch (e) {
     log.err(e, 'cancelDel')
@@ -476,6 +479,8 @@ async function attachClick(ev) {
   const tr = $(ev).upper('tr')
     if (!value) value = tr?.dom?.attachData
 
+    value = value ?? []
+
   const att = $(ev).upper('.attach-item')
     const wrap = $(ev).upper('._wrap')
 
@@ -491,7 +496,7 @@ async function attachClick(ev) {
       if (wrap.dom) src = wrap.find('._file').data('src')
 
       const add = td.find('[name$="-attach-add"]')
-      const addVal = add.dom.uploadData
+      const addVal = add.dom?.uploadData ?? []
 
       const data = [...value, ...addVal]
 
@@ -502,13 +507,10 @@ async function attachClick(ev) {
         v = addVal.find(v => v.url === src)
       } else v = data.find(v => v._idx === i)
 
-    const {type, ext} = v || {}
+      const {ext, type} = v || {}
     let {url} = v || {}
-    if (type === 'doc') {
-      if (['doc', 'docx', 'xls', 'xlsx', 'ppt'].includes(ext)) url = `https://view.officeapps.live.com/op/view.aspx?src=${url}&wdOrigin=BROWSELINK`
 
-      window.open(url, '_blank')
-    } else if (type === 'img' || type === 'video') {
+      if (type === 'img' || type === 'video') {
       if (!g.lightbox) {
         // @ts-ignore
         // if (!g.anime) g.anime = await import('https://cdn.jsdelivr.net/npm/animejs@4/+esm')
@@ -519,6 +521,11 @@ async function attachClick(ev) {
         g.lightbox = m.default
           setTimeout(() => showImg(data, i, src), 1000)
         } else showImg(data, i, src)
+      } else if (url) {
+        if (['.doc', '.docx', '.docm', '.xls', '.xlsm', '.xlsb', '.xlsx', '.pptx', '.ppt'].includes(`.${ext}`))
+          url = `https://view.officeapps.live.com/op/view.aspx?src=${url}&wdOrigin=BROWSELINK`
+
+        window.open(url, '_blank')
     }
   }
   } catch (e) {
@@ -560,8 +567,9 @@ function getThumb(ext, url) {
   let R
   try {
     ext = `.${ext}`
-    if (ext.endsWith('.docx')) ext = '.doc'
-    else if (ext.endsWith('.xlsx')) ext = '.xls'
+    if (ext.endsWith('.docx') || ext.endsWith('.docm')) ext = '.doc'
+    else if (ext.endsWith('.pptx')) ext = '.ppt'
+    else if (ext.endsWith('.xlsx') || ext.endsWith('.xlsm') || ext.endsWith('.xlsb')) ext = '.xls'
 
     ext = ext.replace(/^\.+/, '.')
 

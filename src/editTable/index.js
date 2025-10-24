@@ -3,11 +3,10 @@
  * 在线编辑表格
  */
 import {Event} from '@wiajs/core'
-import {Page} from '@wiajs/core'
-import DataTable from '../dataTable'
-import {fillAttach, cancelDel, getDel} from './attach'
-import * as tool from './tool'
 import {log as Log} from '@wiajs/util'
+import DataTable from '../dataTable'
+import {cancelDel, fillAttach, getDel} from './attach'
+import * as tool from './tool'
 
 const log = Log({m: 'editTable'}) // 创建日志实例
 
@@ -24,7 +23,10 @@ const log = Log({m: 'editTable'}) // 创建日志实例
  * @prop {boolean} [kv] - key value
  * @prop {number} [col] - 最大列数
  * @prop {number[]} [colWidth] - 列宽
+ * @prop {number} [viewid] - 数据卡id
  * @prop {*} [upload] - 上传接口
+ * @prop {*} [updateJson] - 编辑卡片json
+ *
  */
 
 /** @typedef {object} Opt
@@ -37,7 +39,12 @@ const log = Log({m: 'editTable'}) // 创建日志实例
  * @prop {number} col - 最大列数
  * @prop {number[]} [colWidth] - 列宽
  * @prop {number} [colRatio] - 列比
+ * @prop {number} [viewid] - 数据卡id
  * @prop {*} [upload] - 上传接口
+ * @prop {*} [prjid] - 项目id
+ * @prop {*} [getSelAll] - 公司列表接口
+ * @prop {*} [saveEmbTb] - 保存表格接口
+ * @prop {*} [updateJson] - 编辑卡片json
  */
 
 /** @type {Opt} */
@@ -126,6 +133,16 @@ const DataTypes = {
 }
 
 /**
+ * @enum {number} 状态
+ */
+const State = {
+  null: 0,
+  view: 1, // 浏览
+  edit: 2, // 编辑
+  json: 3, // json
+}
+
+/**
  * EditTable
  */
 class EditTable extends Event {
@@ -155,6 +172,9 @@ class EditTable extends Event {
 
   /** @type {*[]} */
   data
+
+  /** @type {State} */
+  state = State.null
 
   /**
    * 构造函数
@@ -251,8 +271,8 @@ class EditTable extends Event {
 
     // 表格点击事件
     // 编辑元素（input） 不能 focus，不能 onblur？原因：pointer-events: none
-    _.tb.click(ev => {
-      if (!opt.edit) return
+    _.tb.click(async ev => {
+      if (_.state !== State.edit) return
 
       // 点击 input、select 则跳过
       if (['SELECT', 'INPUT'].includes(ev.target.tagName)) return
@@ -351,99 +371,67 @@ class EditTable extends Event {
         } else if (type === DataType.select || type === DataTypes.select) {
           const span = td.find('span')
           span.hide()
-          let val = span.html()
+          const val = span.html()
           let key
-          let tx = td.find('select')
-          if (!tx.dom) {
-            tx = document.createElement('select')
-            tx.name = r.field
-            td.append(tx)
-            tx = $(tx)
-            tx.addClass('dy-select')
-            const {option} = r
-            // 添加选项
-            let htm = []
-            if (Array.isArray(option))
-              htm = option.map(v => {
-              let rt
-              if (v === val)
-                rt = (
-                  <option selected value={v}>
-                    {v}
-                  </option>
-                )
-              else rt = <option value={v}>{v}</option>
-              return rt
-            })
-            else if (typeof option === 'object') {
-              if (!val) {
-                htm.push(
-                  <option selected value="">
-                    请选择
-                  </option>
-                )
-              }
-              for (const k of Object.keys(option)) {
-                const v = option[k]
-                if (v === val) {
-                  key = k
-                  htm.push(
-                    <option selected value={k}>
-                      {v}
-                    </option>
-                  )
-                } else htm.push(<option value={k}>{v}</option>)
-              }
-            }
-            tx.html(htm.join(''))
+          let sel = td.find('select')
+          if (!sel.dom) {
+            sel = document.createElement('select')
+            sel.name = r.field
+            td.append(sel)
+            sel = $(sel)
+            sel.addClass('dy-select dy-select-primary')
 
-            if (key) tx.val(key)
-            else tx.val(val)
-
-            tx.click(ev => ev.stopPropagation()) // 阻止事件冒泡
+            sel.click(ev => ev.stopPropagation()) // 阻止事件冒泡 tb 无感知？
 
             // tx.addClass('dy-input')
             // tx.val(span.html())
             // tx.change(ev => {
-            tx.blur(ev => {
+            sel.blur(ev => {
               // _.viewCell()
               let val
-              if (Array.isArray(option)) val = tx.val()
+              const {option} = r
+              if (Array.isArray(option)) val = sel.val()
               else if (typeof option === 'object') {
-              key = tx.val()
+                key = sel.val()
               val = option[key]
               }
               span.html(val)
 
               if (`${val}` === `${value}`) {
-              tx.hide()
+                sel.hide()
                 span.show()
               }
             })
+
+            sel.focus(ev => {
+              // 关联查询
+              _.fillOption(idx, td, sel)
+            })
           }
-          tx.show()
-          tx.focus()
+
+          // 选项
+          await _.fillOption(idx, td, sel)
+
+          sel.show()
+          sel.focus()
           setTimeout(() => {
             // 创建并触发鼠标事件来展开下拉框
-            // const event = new MouseEvent('mousedown')
             const event = new MouseEvent('mousedown', {
               bubbles: true,
               cancelable: true,
               view: window,
             })
-            tx.dom.dispatchEvent(event)
+            sel.dom.dispatchEvent(event)
           }, 100)
         } else if ((type === DataType.search || type === DataTypes.search) && _.Autocomplete) {
           const span = td.find('span')
           if (span.css('display') !== 'none') {
             span.hide()
-            let val = span.html()
-            let key
             let tx = td.find('.ac-input')
             let dvAc = td.find('.autocomplete')
 
             if (!tx.dom) {
-              const {option, source, field} = r
+              const {option, source, field, addUrl} = r
               let {placeholder} = r
               placeholder = placeholder ?? '请输入'
               td.append(
@@ -462,6 +450,7 @@ class EditTable extends Event {
                 data: option, // 设置数据
                 refEl: [span.dom], // 关联元素，点击不关闭列表，否则会关闭列表
                 source,
+                addUrl,
               })
 
               tx.blur(ev => {
@@ -499,10 +488,10 @@ class EditTable extends Event {
             tx.name = r.field
             td.append(tx)
             tx = $(tx)
-            tx.addClass('dy-select')
+            tx.addClass('dy-select dy-select-primary')
             const option = {true: '是', false: '否'}
             // 添加选项
-            let htm = []
+            const htm = []
             for (const k of Object.keys(option)) {
               const v = option[k]
               if (v === val) {
@@ -552,6 +541,34 @@ class EditTable extends Event {
 
           // tx.click()
         }
+                // urlChange
+                else if (type === DataType.url || type === DataTypes.url) {
+          const span = td.find('span')
+          span.hide()
+          let tx = td.find('input')
+                    if (!tx.dom) {
+            tx = document.createElement('input')
+            tx.name = r.field
+            tx.type = 'url'
+            td.append(tx)
+            tx = $(tx)
+            tx.addClass('dy-input')
+            tx.blur(ev => {
+                            // _.viewCell()
+              const val = tx.val()
+              span.eq(0).find('a').attr('href', val)
+                            // 比较值是否被修改
+                            if (`${val}` === `${value}`) {
+                tx.hide()
+                span.show()
+                            }
+            })
+                    }
+                    // urlChange
+          tx.val(span.eq(0).find('a').attr('href'))
+          tx.show()
+          tx.focus()
+                }
       }
       // for (const tag of _.opt.editTag) {
       //   const tx = $ev.upper(tag)
@@ -563,12 +580,131 @@ class EditTable extends Event {
     })
   }
 
-  unbind() {
+  /**
+   * 填充select option
+   * @param {number} idx
+   * @param {Dom} td
+   * @param {Dom} sel
+   * @returns
+   */
+  async fillOption(idx, td, sel) {
     const _ = this
+    try {
+      const {data} = _
+      const r = data[idx]
+      const {source} = r
+      let {name} = source?.param || {}
+      let {option} = r
+
+      // 引用字段
+      let refField
+      if (name?.includes('${')) {
+        const lastRefField = td.data('lastRefField') // 保存关联
+
+        const match = name.match(/\$\{([^}]+)\}/)
+        const ref = match?.[1]
+        const i = _.getDataIdx({field: ref})
+        if (i) {
+          // 关联节点
+          const n = _.tb.findNode(`[data-idx="${i}"]`)
+          const v = n.findNode('span').html()
+          if (v && v !== lastRefField) {
+            refField = v
+
+            td.data('lastRefField', v) // 保存关联
+            // 替换 'city:${province}'
+            name = name.replace(`\${${ref}}`, v)
+          }
+        }
+      }
+
+      // 关联字段变化或无选项，动态获取
+      if (refField || (source && !option)) {
+        sel.html('')
+
+        // 数据字典
+        // 默认 name = field
+        if (!name) name = r.field
+
+        // source.param.name = name
+        option = await getOption(source, name)
+
+        log({option}, 'getOption')
+      }
+
+        if (option) {
+          r.option = option
+          let key
+          const span = td.find('span')
+          const val = span.html()
+          // 添加选项
+          let htm = []
+          if (Array.isArray(option))
+            htm = option.map(v => {
+              let rt
+              if (v === val)
+                rt = (
+                  <option selected value={v}>
+                    {v}
+                  </option>
+                )
+              else rt = <option value={v}>{v}</option>
+              return rt
+            })
+          else if (typeof option === 'object') {
+            if (!val) {
+              htm.push(
+                <option selected value="">
+                  请选择
+                </option>
+              )
+            }
+            for (const k of Object.keys(option)) {
+              const v = option[k]
+              if (v === val) {
+                key = k
+                htm.push(
+                  <option selected value={k}>
+                    {v}
+                  </option>
+                )
+              } else htm.push(<option value={k}>{v}</option>)
+            }
+          }
+
+          sel.html(htm.join(''))
+
+          if (key) sel.val(key)
+          else sel.val(val)
+        }
+    } catch (e) {
+      log.err(e, 'fillOption')
+    }
   }
 
   /**
-   *
+   * 获得数据索引
+   * @param {*} opts
+   * @returns {number}
+   */
+  getDataIdx(opts) {
+    let R
+    const _ = this
+    try {
+      const {field} = opts
+      if (field) {
+        const idx = _.data.findIndex(v => v.field === field)
+        if (idx >= 0) R = idx
+      }
+    } catch (e) {
+      log.err(e, 'getData')
+    }
+
+    return R
+  }
+
+  /**
+   * 加载插件
    * @param {*} cls
    * @param {*} [opts]
    */
@@ -578,9 +714,13 @@ class EditTable extends Event {
       const {opt} = _
 
       _[cls.name] = cls
-      if (cls.name === 'Uploader' && opts?.upload) {
+      if (cls.name === 'Uploader' && opts?.upload) opt.upload = opts.upload
+      else if (cls.name === 'Tabulate' && (opts?.getSelAll || opts?.saveEmbTb)) {
+        opt.getSelAll = opts.getSelAll
+        opt.saveEmbTb = opts.saveEmbTb
+        opt.prjid = opts.prjid
         opt.upload = opts.upload
-      }
+      } else if (cls.name === 'JsonView' && opts?.updateJson) opt.updateJson = opts.updateJson
     } catch (e) {
       log.err(e, 'use')
     }
@@ -605,10 +745,11 @@ class EditTable extends Event {
       case DataType.date:
         R = 'date'
         break
-      case DataTypes.url:
-      case DataType.url:
-        R = 'url'
-        break
+            // urlChange
+            // case DataTypes.url:
+            // case DataType.url:
+            //     R = 'url'
+            //     break
       case DataTypes.email:
       case DataType.email:
         R = 'email'
@@ -691,18 +832,115 @@ class EditTable extends Event {
     const ev = evt || window.event
     ev.preventDefault()
   }
+  addHandler() {
+    const data = this.tabulate.getData()
+    this.tabulate.addRow()
+  }
+  saveTable() {
+    this.tabulate.saveTable()
+  }
+
+  /**
+   * 初始化表格编辑器
+   */
+  async editModeTable() {
+    const _ = this
+    const {opt} = _
+    const tds = _.tb.find('td[data-idx]')
+    console.log(tds, 'tds')
+    //! 应该根据field 创建，支持多个内嵌表格编辑
+    //! 需判断是否已创建，避免重复创建
+    //! 应该根据字段类型(内嵌表)创建，而不是在编辑模式没有内嵌表也创建
+    if (_.hasTable && !_.tabulate && _.Tabulate) {
+      _.tabulate = new _.Tabulate({
+      containerName: 't-table',
+      addButtonName: 'add-button',
+      targetBox: _.tb.tag('tbody')[0].querySelectorAll('.data-table'),
+      baseTableInfo: _.baseTableInfo, // 基础表格信息对象
+      getSelAll: opt.getSelAll, // 获取公司数据的方法
+        saveEmbTb: opt.saveEmbTb, // 保存表格的接口方法
+        viewid: opt.viewid,
+        prjid: opt.prjid,
+        upload: opt.upload,
+    })
+    } else {
+      const tTableDivs = new Set()
+      const dataTables = _.tb.tag('tbody')[0].querySelectorAll('.data-table')
+      dataTables.forEach(table => {
+        table.style.display = 'none'
+        // 获取当前 .data-table 的父节点（兄弟元素的共同容器）
+        const parent = table.parentNode
+        // 在父节点中查找 name="t-table" 的 div
+        const tTableDiv = parent.querySelector('div[name="t-table"]')
+        const addButton = parent.querySelector('button[name="add-button"]')
+        // 找到后添加到集合（去重，避免重复元素）
+        if (tTableDiv) {
+          tTableDiv.style.display = 'block'
+          addButton.style.display = 'block'
+          tTableDivs.add(tTableDiv)
+        } else {
+          _.tabulate.destroyTabulateInstance(_.tabulate)
+      _.tabulate = new _.Tabulate({
+        containerName: 't-table',
+        addButtonName: 'add-button',
+        targetBox: _.tb.tag('tbody')[0].querySelectorAll('.data-table'),
+        baseTableInfo: _.baseTableInfo, // 基础表格信息对象
+        getSelAll: opt.getSelAll, // 获取公司数据的方法
+        saveEmbTb: opt.saveEmbTb, // 保存表格的接口方法
+        viewid: opt.viewid,
+        prjid: opt.prjid,
+            upload: opt.upload,
+      })
+  }
+      })
+    }
+  }
 
   /**
    * 编辑模式
    */
   edit() {
+    try {
     const _ = this
-    _.opt.edit = true
+      if ( _.state === State.json) {
+        _.tb.parent().find('.json-view-box').hide()
+        _.tb.show()
+      }
+      _.state = State.edit
     _.tb.tag('tbody').addClass('etEdit').removeClass('etView')
+    _.editModeTable()
 
     _.tb.find('._choose').show()
 
-    _.bind()
+      // _.bind()
+    } catch (e) {
+      log.err(e, 'edit')
+    }
+  }
+
+  /**
+   * @param {{ etb: EditTable; dtb: any; path: string; no: string; tab?: string; name: string; icon?: string; card?: HTMLElement; tb?: JQuery; data: any[]; }} data
+   */
+  json(data) {
+    const _ = this
+    try {
+      _.state = State.json
+      _.tb.hide()
+      const jsonView = _.tb.parent().find('.json-view-box')
+      if (jsonView.dom) jsonView.show()
+      else {
+        _.jsonView = new _.JsonView({
+          parent: _.tb.parent(),
+          data: data,
+          source: _.opt.updateJson,
+        })
+      }
+
+      // console.log(_.tb.parent().parent().data('tab'), '_.tb.parent')
+      // _.bind()
+    } catch (e) {
+      log.err(e, 'json')
+    }
   }
 
   /**
@@ -712,10 +950,13 @@ class EditTable extends Event {
   view() {
     const _ = this
     try {
-    _.opt.edit = false
+      if (_.state === State.json) {
+        _.tb.parent().find('.json-view-box').hide()
+        _.tb.show()
+      }
+      _.state = State.view
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
-    _.unbind()
-
+      _.tabulate?.togglePreview()
       _.tb.find('._choose').hide()
 
     if (_.data) {
@@ -767,13 +1008,26 @@ class EditTable extends Event {
   /**
    * 保存修改数据到data，并切换到浏览视图
    */
-  save() {
+  async save() {
     const _ = this
     try {
-    _.opt.edit = false
-    _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
-    _.unbind()
+      // 保存 json 代码
+      if (_.state === State.json) {
+        const rt = await _.jsonView.saveJson()
+        if (rt) {
+          const jsonView = _.tb.parent().find('.json-view-box').hide()
+          _.tb.show()
+          _.state = State.view
+        }
+        return
+      }
+
+      _.state = State.view
+
+      _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
       _.tb.find('._choose').hide()
+
+      if (_.hasTable && _.tabulate) _.tabulate.saveTable()
 
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
@@ -823,7 +1077,25 @@ class EditTable extends Event {
           // 设置 原始值
           d.value = val
           $td.data('value', val)
-        } else if (
+                        }
+                        // urlChange
+                        else if (type === DataType.url || type === DataTypes.url) {
+                            // urlChange
+              const span = $td.find('span')
+              const tx = $td.find('input')
+                            if (span) {
+                span.eq(0).find('a').attr('href', tx.val())
+                span.removeClass('edit')
+                span.show()
+                            }
+                            if (tx.dom) {
+                const val = tx.val()
+                                // 设置 原始值
+                d.value = val
+                $td.data('value', val)
+                tx.hide()
+                        }
+            } else if (
           type !== DataType.attach &&
           type !== DataTypes.attach &&
           type !== DataType.table &&
@@ -867,9 +1139,13 @@ class EditTable extends Event {
   cancel() {
     const _ = this
     try {
-    _.opt.edit = false
+      if (_.state === State.json) {
+        _.tb.parent().find('.json-view-box').hide()
+        _.tb.show()
+      }
+      _.state = State.view
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
-    _.unbind()
+      _.tabulate?.togglePreview()
       _.tb.find('._choose').hide()
 
     if (_.data) {
@@ -904,7 +1180,21 @@ class EditTable extends Event {
               // 取消新增
               // uploader 维护 input
               $td.dom.uploader.clear() // 清空 input 和 uploader
-        } else if (
+                        }
+                        // urlChange
+                        else if (type === DataType.url || type === DataTypes.url) {
+              const span = $td.find('span')
+                            if (span.dom) {
+                span.removeClass('edit')
+                span.eq(0).find('a').attr('href', value)
+                span.show()
+                            }
+              const tx = $td.find('input')
+                            if (tx.dom) {
+                tx.val(value)
+                tx.hide()
+                        }
+            } else if (
           type !== DataType.table &&
           type !== DataTypes.table &&
           type !== DataType.view &&
@@ -949,7 +1239,7 @@ class EditTable extends Event {
   editCell(tx, sel) {
     const _ = this
     const {opt} = _
-    if (tx && opt.edit) {
+    if (tx && _.state === State.edit) {
       const $tx = $(tx)
 
       // 点击同一网格编辑直接返回
@@ -1678,7 +1968,12 @@ class EditTable extends Event {
       let rs
       let idx = 0
       let subidx = 0 // 子列定义
-
+      // 多个内嵌表？
+      _.data.forEach(ele => {
+        if (ele.type === 24) {
+          _.baseTableInfo = ele.value
+        }
+      })
       _.repairCol(data)
       do {
         rs = _.getRowData(data, idx, subidx)
@@ -1895,7 +2190,15 @@ class EditTable extends Event {
               })
 
                   if (htm) td.innerHTML = `<span name="tx" class="etRadio">${htm.join('')}</span>`
-              } else if ([DataType.chip, DataTypes.chip].includes(type)) {
+                                }
+                                // urlChange
+                else if ([DataType.url, DataTypes.url].includes(type)) {
+                                    // urlChange
+                                    td.innerHTML = `<span title="${val}" name="tx" class="etValue" style="display: flex;align-items: center">
+                                        <i class="icon wiaicon" style="color:red;font-size: 16px;">&#xe61b;</i>
+                                        <a href="${val}" target="_blank" style="cursor:pointer;">点击跳转链接</a>
+                                    </span>`
+                } else if ([DataType.chip, DataTypes.chip].includes(type)) {
                   const htm = val?.map(v => {
                 // <a class="chip-delete"></a>
                   const rt = (
@@ -1946,11 +2249,13 @@ class EditTable extends Event {
 
             $td.append(<div class="data-table" />)
 
+            _.hasTable = true // 存在内嵌表，编辑时，需切换内嵌表编辑
+
             const dtb = new DataTable(_.page, {
               el: $td.find('div.data-table'),
               name: `dtb${name}`, // datatable 名称
               head: value.head, // 表头
-              data: value.data, // 数据
+              data: value.data,
             })
 
             tr.append(td)
@@ -1998,7 +2303,6 @@ class EditTable extends Event {
       log.err(e, 'fillKv')
     }
   }
-
   /**
    * 从数据中获取一行数据，用于 kv 模式，动态生成 row  col
    * @param {*[]} rs - 数据
@@ -2233,7 +2537,7 @@ class EditTable extends Event {
 
       // input
       let els = tb.find('input')
-      for (const el of els.get()) {
+      for (const el of els) {
         // 跳过上传的文件input
         if (el.type === 'file') continue
 
@@ -2331,9 +2635,13 @@ class EditTable extends Event {
       let skip
       let checked
       if ([DataType.number, DataTypes.number].includes(type)) {
-        val = Number(val)
+        // 没有修改跳过
+        if (value === val) skip = true
+        else {
+          val = Number(val) // 空字符串会变成0
         if (div) val = val * div
         else if (mul) val = val / mul
+        }
       } else if ([DataType.bool, DataTypes.bool].includes(type)) val = val === 'true' || val === '是'
       else if ([DataType.radio, DataTypes.radio].includes(type)) skip = !el.checked
       else if ([DataType.checkbox, DataTypes.checkbox].includes(type)) {
@@ -3008,6 +3316,7 @@ class EditTable extends Event {
  * 格式化数字：保留 cnt 位小数并添加千位分隔符
  * @param {number} val - 需要格式化的数字
  * @param {number} [cnt] - 小数位数
+ * @param {boolean} [zero] - 默认保留0
  * @returns {string} 格式化后的字符串
  */
 function formatNum(val, cnt = 2, zero = true) {
@@ -3116,4 +3425,28 @@ function mergeAttach(adds, dels) {
   return R
 }
 
-export {EditTable as default, DataType, DataTypes}
+/**
+ * 查询选项
+ * @param {*} source
+ * @param {string} name
+ */
+async function getOption(source, name) {
+  let R
+  try {
+    if (!source?.url) return
+
+    const {url, token, param} = source
+    const tk = token ? $.store.get(token) : ''
+
+    const rs = await $.post(url, {...param, name}, {'x-wia-token': tk})
+
+    // 输入完成后再触发查询
+    if (rs?.code === 200) R = rs.data
+  } catch (e) {
+    log.err(e, 'getOption')
+  }
+
+  return R
+}
+
+export {DataType, DataTypes, EditTable as default}

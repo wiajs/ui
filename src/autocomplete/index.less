@@ -4,6 +4,12 @@
   --autocomplete-status-font-size: 12px;
   --autocomplete-clear-font-size: 10px;
   --autocomplete-search-font-size: 12px;
+  --add-button-offset: 0px; /* 新增按钮偏移量，默认为0 */
+
+  // 当有新增按钮时修改变量
+  &.has-add {
+    --add-button-offset: 25px;
+  }
 
   position: relative;
   // max-width: 600px;
@@ -42,7 +48,7 @@
     .ac-status {
       position: absolute;
       // right: 20px;
-      right: 30px; /* 调整位置 */
+      right: calc(30px + var(--add-button-offset)); /* 动态计算位置 */
       top: 50%;
       transform: translateY(-50%);
       // font-size: 0.9rem;
@@ -61,7 +67,7 @@
     .ac-clear {
       position: absolute;
       // right: 15px;
-      right: 30px; /* 为搜索按钮留出空间 */
+      right: calc(30px + var(--add-button-offset)); /* 动态计算位置 */
       top: 50%;
       transform: translateY(-50%);
       background: none;
@@ -95,7 +101,7 @@
 
     .ac-search {
       position: absolute;
-      right: 5px;
+      right: calc(5px + var(--add-button-offset)); /* 动态计算位置 */
       top: 50%;
       transform: translateY(-50%);
       background: linear-gradient(135deg, #3498db, #2980b9);
@@ -116,6 +122,37 @@
       &:hover {
         transform: translateY(-50%) scale(1.1);
         box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
+      }
+
+      &:active {
+        transform: translateY(-50%) scale(0.95);
+      }
+    }
+
+    .ac-add {
+      position: absolute;
+      right: 5px; /* 最右侧位置 */
+      top: 50%;
+      transform: translateY(-50%);
+      background: linear-gradient(135deg, #27ae60, #219a52);
+      color: white;
+      border: none;
+      font-size: var(--autocomplete-search-font-size);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 5px;
+      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+      transition: all 0.3s ease;
+      width: 25px;
+      height: 25px;
+      z-index: 10;
+
+      &:hover {
+        transform: translateY(-50%) scale(1.1);
+        box-shadow: 0 6px 20px rgba(39, 174, 96, 0.6);
+        background: linear-gradient(135deg, #219a52, #1e8449);
       }
 
       &:active {

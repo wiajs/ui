@@ -2,12 +2,18 @@
 /**
  * 数据表组件
  */
-import {Utils, Event} from '@wiajs/core'
-import Table from '../table'
+import {Event, Utils} from '@wiajs/core'
 // import * as view from './view'
 import {log as Log} from '@wiajs/util'
+import {getThumb} from '../editTable/attach'
+import Table from '../table'
 
 const log = Log({m: 'dataTable'}) // 创建日志实例
+
+const g = {
+  /** @type {*} */
+  lightbox: null,
+}
 
 // 缺省值
 const def = {
@@ -63,6 +69,7 @@ export default class DataTable extends Event {
 
     if (!$.dataTb) $.dataTb = {}
     if (!$.dataTb.formatVal) $.dataTb.formatVal = formatVal
+    if (!$.dataTb.attachVal) $.dataTb.attachVal = attachVal
     if (!$.dataTb.number) $.dataTb.number = number
 
     _.page = page
@@ -207,7 +214,7 @@ export default class DataTable extends Event {
             }
             hs2.push(<th class={cls.join(' ')}>{d.name}</th>)
 
-            // @ts-ignore
+            // @ts-expect-error
             lastCat[1]--
           } else {
             hs1.push(
@@ -290,17 +297,23 @@ export default class DataTable extends Event {
         let cls = h.type === 'number' ? 'numeric-cell' : 'label-cell'
         if (align) cls += `align-${align}`
 
-        if (h.link || link?.includes(i)) {
+        if (h.type === 'attach') {
+          R.push(
+            <td class={cls} data-col={i} data-attach={true}>
+              {`\${$.dataTb.attachVal(r[${col}], ${opt})}`}
+            </td>
+          )
+        } else if (h.link || link?.includes(i)) {
           if (!h.link) h.link = ''
             R.push(
               <td class={cls} data-link={h.link} data-col={i}>
-              <a>{`$\{$.dataTb.formatVal(r[${col}], ${opt})}`}</a>
+              <a>{`\${$.dataTb.formatVal(r[${col}], ${opt})}`}</a>
               </td>
             )
         } else {
               R.push(
             <td class={cls} data-col={i}>
-              {`$\{$.dataTb.formatVal(r[${col}], ${opt})}`}
+              {`\${$.dataTb.formatVal(r[${col}], ${opt})}`}
             </td>
             )
       }
@@ -420,10 +433,12 @@ export default class DataTable extends Event {
       for (const d of data) {
         for (const h of head) {
           try {
-            const {idx} = h // 表头对应的数据列
+            const {idx, div, mul} = h // 表头对应的数据列
             // 空字符不参与统计
             if (idx >= 0 && (h.sum === true || h.sum === 'avg') && d[idx] !== '' && d[idx] !== null && d[idx] !== 'null') {
               cnt[idx]++
+              if (div && div > 0) R[idx] += Number(d[idx]) / div
+              if (mul && mul > 0) R[idx] += Number(d[idx]) * mul
               R[idx] += Number(d[idx])
             } else if (idx >= 0 && h.sum === 'value' && !R[idx]) R[idx] = d[idx]
           } catch (e) {
@@ -433,9 +448,10 @@ export default class DataTable extends Event {
       }
 
       for (const h of head) {
-        const {idx} = h
+        const {idx, unit} = h
         if (idx >= 0 && h.sum === true) R[idx] = formatNum(R[idx])
         else if (idx >= 0 && h.sum === 'avg' && cnt[idx]) R[idx] = formatNum(R[idx] / cnt[idx])
+        if (unit) R[idx] = `${R[idx]}${unit}`
       }
     } catch (e) {}
 
@@ -941,7 +957,7 @@ export default class DataTable extends Event {
       if (ck) {
         if (Array.isArray(ck) && ck.length) {
           ck = ck[0]
-          ckv = `$\{r[${ck}]}`
+          ckv = `\${r[${ck}]}`
         } else if (ck === 'index') ckv = '${r.index}'
       }
 
@@ -1076,6 +1092,29 @@ export default class DataTable extends Event {
         }
       })
 
+      el.findNode('tbody').click('td[data-attach]', async ev => {
+        const att = $(ev).upper('.attach-item')
+        const attWrap = $(ev).upper('.attach-wrap')
+        const list = attWrap.data('list')
+        const value = list
+
+        const i = att.data('idx')
+        let v
+        v = value.find(v => v._idx === i)
+        const {type, ext} = v || {}
+        let {url} = v || {}
+        if (type === 'img' || type === 'video') {
+          if (!g.lightbox) {
+            const m = await import('https://cos.wia.pub/wiajs/glightbox.mjs')
+            g.lightbox = m.default
+            setTimeout(() => _.showImg(value, i), 1000)
+          } else _.showImg(value, i)
+        } else if (url) {
+          if (['.doc', '.docx', '.docm', '.xls', '.xlsm', '.xlsb', '.xlsx', '.pptx', '.ppt'].includes(`.${ext}`))
+            url = `https://view.officeapps.live.com/op/view.aspx?src=${url}&wdOrigin=BROWSELINK`
+          window.open(url, '_blank')
+        }
+      })
       // 头部指定的 link 字段，包含在上面link中，link值为空
       // el.findNode('tbody').click('td[data-col]', (ev, sender) => {
       //   const n = $(sender)
@@ -1193,6 +1232,29 @@ export default class DataTable extends Event {
       })
     } catch (e) {
       log.err(e, 'bind')
+    }
+  }
+
+  /**
+   * 使用 lightbox 图片浏览
+   * @param {*[]} data - 附件数据
+   * @param {number} idx
+   */
+  async showImg(data, idx) {
+    if (g.lightbox) {
+      // window.dispatchEvent(new CustomEvent('animeReady'))
+      const lbox = g.lightbox({selector: null})
+      let id = 0
+      let i = -1
+      for (const v of data) {
+        if (v.type === 'img' || v.type === 'video') {
+          i++
+          if (v._idx === idx) id = i
+          lbox.insertSlide({href: v.url})
+        }
+      }
+      // lbox.open()
+      lbox.openAt(id)
     }
   }
 
@@ -1750,6 +1812,64 @@ function formatVal(val, opt) {
   return R
 }
 
+/**
+ * 附件显示与点击浏览
+ * @param {Array<any>} val
+ * @param {{type?:string, div?:number, zero?:boolean, qian?:boolean, unit?:string, mul?:boolean, decimal?:number, format: boolean}} opt
+ */
+function attachVal(val, opt) {
+  let R = val
+
+  try {
+  val.forEach((element, index) => {
+    element['_idx'] = index
+  })
+
+    const attachItems = val?.map(item => {
+      let rt
+      if (item.type === 'img') {
+        rt = (
+          <div class="attach-item" data-idx={item._idx}>
+            <img src={item.url} loading="lazy" alt="附件图片" />
+            </div>
+        )
+      } else if (item.type === 'video') {
+        const ext = item.ext ?? 'mp4'
+        rt = (
+          <div class="attach-item" data-idx="${item._idx}">
+                <video controls preload="none">
+              <source src={item.url} type={`${item.type}/${ext}`} />
+                </video>
+          </div>
+        )
+      } else {
+        const src = getThumb(item.ext)
+        rt = (
+          <div class="attach-item" data-idx={item._idx}>
+            <img src={src} loading="lazy" />
+          </div>
+        )
+      }
+
+      return rt
+    })
+
+    R = (
+            <div class="upload-editor-container">
+                <div class="etAttach">
+          <div class="attach-wrap" data-list={JSON.stringify(val)}>
+            <input id="hiddenArray" class="ipu-value" value={JSON.stringify(val)} type="hidden" />
+            {attachItems}
+                    </div>
+                </div>
+            </div>
+    )
+  } catch (e) {
+    log.err(e, 'attachVal')
+  }
+
+  return R
+}
 /**
  * 是否为数字
  * @param {*} value

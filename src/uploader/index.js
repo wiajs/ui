@@ -479,12 +479,16 @@ class Uploader {
           // 任意后缀
           const rg = /(\.(?:\w+))$/i.exec(file.name)
 
+          let name = file.name
+          // 后缀改为小写
+          name = name.replace(/\.[^.]*$/, ext => ext.toLowerCase())
+
           return {
             idx: _.idx++,
             rawFile: file,
             mimeType: file.type,
             type: getFileType(file.type),
-            name: file.name,
+            name,
             ext: rg && rg[1],
             size: file.size,
             status: 'choose',
@@ -807,8 +811,6 @@ class Uploader {
       else if (url) i = _.files.findIndex(f => f.url === url)
       ;({idx} = _.files[i])
 
-      debugger
-
       if (i > -1) {
         _.files.splice(i, 1)
         _.callEvent('change', _.files)
@@ -1123,8 +1125,9 @@ function getThumb(ext, url) {
   let R
   try {
     ext = `.${ext}`
-    if (ext.endsWith('.docx')) ext = '.doc'
-    else if (ext.endsWith('.xlsx')) ext = '.xls'
+    if (ext.endsWith('.docx') || ext.endsWith('.docm')) ext = '.doc'
+    else if (ext.endsWith('.pptx')) ext = '.ppt'
+    else if (ext.endsWith('.xlsx') || ext.endsWith('.xlsm') || ext.endsWith('.xlsb')) ext = '.xls'
 
     ext = ext.replace(/^\.+/, '.')
 

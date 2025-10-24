@@ -1,6 +1,6 @@
 /** @jsxImportSource @wiajs/core */
 
-import {Page, Event, Device as device} from '@wiajs/core'
+import {Page, Event} from '@wiajs/core'
 import {log as Log} from '@wiajs/util'
 
 const log = Log({m: 'autoComplete'}) // 创建日志实例
@@ -19,6 +19,7 @@ const log = Log({m: 'autoComplete'}) // 创建日志实例
  * @prop {*[]} [data] - 数据
  * @prop {HTMLElement[]} [refEl] - 关联元素，点击不关闭列表
  * @prop {{url:string, token:string}} [source] - 显示数量，避免性能问题
+ * @prop {string} [addUrl] - 新增网址
  */
 
 /** @typedef {object} Opt
@@ -30,6 +31,7 @@ const log = Log({m: 'autoComplete'}) // 创建日志实例
  * @prop {number} maxItems - 显示数量，避免性能问题
  * @prop {HTMLElement[]} refEl - 关联元素，点击不关闭列表
  * @prop {{url:string, token:string}} source - 显示数量，避免性能问题
+ * @prop {string} addUrl - 新增网址
  */
 
 /** @type {Opt} */
@@ -44,6 +46,7 @@ const def = {
   refEl: [],
   maxItems: 50, // 限制显示数量，避免性能问题
   source: undefined,
+  addUrl: undefined,
 }
 
 export default class Autocomplete extends Event {
@@ -57,6 +60,8 @@ export default class Autocomplete extends Event {
   btnClear
   /** @type {Dom} */
   btnSearch
+  /** @type {Dom} */
+  btnAdd
   /** @type {Dom} */
   dvStatus
   /** @type {Dom} */
@@ -92,9 +97,11 @@ export default class Autocomplete extends Event {
       el.dom.wiaAutocomplete = _
       _.wrapper = el.find('.ac-wrapper')
       _.input = el.find('.ac-input')
-      _.btnClear = el.find('.ac-clear')
-      _.btnSearch = el.find('.ac-search')
-      _.dvStatus = el.find('.ac-status')
+      // 下面部分动态加载
+      // _.btnClear = el.find('.ac-clear')
+      // _.btnSearch = el.find('.ac-search')
+      // _.btnAdd = el.find('.ac-add')
+      // _.dvStatus = el.find('.ac-status')
 
       _.init()
       _.bind()
@@ -105,7 +112,7 @@ export default class Autocomplete extends Event {
     const _ = this
     try {
       const {el, opt, wrapper} = _
-      const {status, search, clear} = opt
+      const {status, search, addUrl, clear} = opt
       if (clear) {
         wrapper.append(
           <button type="button" class="ac-clear">
@@ -122,6 +129,16 @@ export default class Autocomplete extends Event {
           </button>
         )
         _.btnSearch = el.find('.ac-search')
+      }
+
+      if (addUrl) {
+        el.addClass('has-add')
+        wrapper.append(
+          <button type="button" class="ac-add">
+            <i class="icon wiaicon">&#xea63;</i>
+          </button>
+        )
+        _.btnAdd = el.find('.ac-add')
       }
 
       if (status) {
@@ -144,7 +161,7 @@ export default class Autocomplete extends Event {
     const _ = this
     try {
       const {el, opt, wrapper, data} = _
-      const {source} = opt
+      const {source, addUrl} = opt
 
       _.input.focus(ev => {
         _.showAllList()
@@ -247,7 +264,7 @@ export default class Autocomplete extends Event {
       })
 
       // 搜索按钮事件
-      _.btnSearch.click(() => {
+      _.btnSearch?.click(() => {
         const inputValue = _.input.val().trim()
         // 显示加载状态
         _.showStatus('查询中...')
@@ -262,6 +279,15 @@ export default class Autocomplete extends Event {
           _.hideStatus()
         }, 300)
       })
+
+      if (addUrl && _.btnAdd) {
+        _.btnAdd.click(ev => {
+          const {addUrl} = opt
+
+          const newWin = window.open(addUrl, '_blank')
+          if (newWin) newWin.focus()
+        })
+      }
     } catch (e) {
       log.err(e, 'bind')
     }

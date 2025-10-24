@@ -1,6 +1,6 @@
 {
   "name": "@wiajs/ui",
-  "version": "1.5.10",
+  "version": "1.6.18",
   "description": "wia app ui packages",
   "main": "",
   "scripts": {
@@ -25,6 +25,8 @@
     "./editTable": "./dist/editTable/index.js",
     "./dataView/*": "./dist/dataView/*",
     "./dataView": "./dist/dataView/appbar.js",
+    "./jsonView/*": "./dist/jsonView/*",
+    "./jsonView": "./dist/jsonView/index.js",
     "./list-nav/*": "./dist/list-nav/*",
     "./list-nav": "./dist/list-nav/index.js",
     "./messagebar/*": "./dist/messagebar/*",
@@ -39,6 +41,8 @@
     "./swipeout": "./dist/swipeout/index.js",
     "./swiper/*": "./dist/swiper/*",
     "./swiper": "./dist/swiper/index.js",
+    "./tabulate/*": "./dist/tabulate/*",
+    "./tabulate": "./dist/tabulate/index.js",
     "./uploader": "./dist/uploader/index.js",
     "./verify": "./dist/verify/index.js"
   },
