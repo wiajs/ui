@@ -4,6 +4,8 @@
 .data-table {
   --f7-table-cell-padding-horizontal: 8px;
   --f7-table-label-cell-padding-horizontal: 8px;
+  --f7-table-title-font-size: 16px;
+  --f7-table-title-font-weight: 450;
 
   overflow-x: auto; // 允许表格左右滑动
   width: 100%;
@@ -256,6 +258,12 @@
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    white-space: nowrap;
+  }
+
+  span.data-table-count {
+    display: inline;
+    padding: 0;
   }
 
   .card-header {
@@ -445,7 +453,8 @@
     thead {
       th,
       td {
-        // overflow: hidden;
+        // overflow: hidden; 下拉菜单会被隐藏
+        overflow-x: hidden;
         // white-space: nowrap;
         // text-overflow: ellipsis;
         // 新增，可换行
@@ -479,7 +488,8 @@
     tbody {
       td {
         white-space: nowrap;
-        overflow: hidden;
+        // overflow: hidden; Ac 组件无法下拉，被隐藏啦！
+        overflow-x: hidden;
         text-overflow: ellipsis; /* 显示省略号 */
         min-width: 40px; // 最小列宽
         max-width: 160px; // 最大列宽
@@ -488,7 +498,7 @@
       // 鼠标移动显示
       td:hover {
         overflow: visible;
-        white-space: normal;
+        white-space: normal; // 可换行
         // z-index: 1;
         position: relative;
         // background: white;

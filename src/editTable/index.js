@@ -3,9 +3,10 @@
  * 在线编辑表格
  */
 import {Event} from '@wiajs/core'
+import {isDate, promisify} from '@wiajs/core/util/tool'
 import {log as Log} from '@wiajs/util'
-import DataTable from '../dataTable'
-import {cancelDel, fillAttach, getDel} from './attach'
+import DataTable, {col, th} from '../dataTable'
+import {cancelDel, edit as editAttach, fillAttach, getDel, view as viewAttach} from './attach'
 import * as tool from './tool'
 
 const log = Log({m: 'editTable'}) // 创建日志实例
@@ -16,9 +17,12 @@ const log = Log({m: 'editTable'}) // 创建日志实例
  */
 
 /** @typedef {object} Opts
- * @prop {Dom} tb - $table
+ * @prop {Dom} [el] - contain
+ * @prop {Dom} [tb] - $table
+ * @prop {string} [name]
  * @prop {string[]} [editTag] - 可编辑元素标签
  * @prop {boolean} [edit] - 编辑模式
+ * @prop {boolean} [newEdit] - 新编辑
  * @prop {boolean} [add] - 新增模式
  * @prop {boolean} [kv] - key value
  * @prop {number} [col] - 最大列数
@@ -26,13 +30,21 @@ const log = Log({m: 'editTable'}) // 创建日志实例
  * @prop {number} [viewid] - 数据卡id
  * @prop {*} [upload] - 上传接口
  * @prop {*} [updateJson] - 编辑卡片json
- *
+ * @prop {*[]} [head] - 非kv模式表头
+ * @prop {*[]} [data] - 非kv模式数据
+ * @prop {*[]} [use] - 插件，如果带data，则需带插件，否则附件加载有问题
  */
+
+//  * @prop {{url:string, token: string, param:*}} [api]
 
 /** @typedef {object} Opt
  * @prop {Dom} tb - $table
+ * @prop {Dom} el - contain
+ * @prop {string} name
+ * @prop {string} domProp
  * @prop {string[]} editTag
  * @prop {boolean} edit
+ * @prop {boolean} newEdit
  * @prop {boolean} add
  * @prop {boolean} kv - key value
  * @prop {number} labelWidth - label 宽度 百分比
@@ -45,19 +57,28 @@ const log = Log({m: 'editTable'}) // 创建日志实例
  * @prop {*} [getSelAll] - 公司列表接口
  * @prop {*} [saveEmbTb] - 保存表格接口
  * @prop {*} [updateJson] - 编辑卡片json
+ * @prop {*[]} [head] - 非kv模式表头
+ * @prop {*[]} [data] - 非kv模式数据
+ * @prop {*[]} [use] - 插件，如果带data，则需带插件，否则附件加载有问题
  */
 
 /** @type {Opt} */
 const def = {
+  domProp: 'wiaEditTable',
   tb: null,
+  el: null,
   editTag: ['input', 'textarea'], // 'span'
   edit: false,
+  newEdit: false,
   add: false,
   kv: false,
   labelWidth: 10, // label 宽度 百分比
   col: 8, // KV 模式数量列，k、v各占一列，实际 8 列
   // colWidth: [0.1, 0.15, 0.1, 0.15, 0.1, 0.15, 0.1, 0.15],
   colRatio: 1, // 兼容历史，col 4 模式
+  name: null,
+  head: null,
+  data: null,
 }
 
 /**
@@ -161,20 +182,27 @@ class EditTable extends Event {
   /** @type {*} */
   editRow = null // 最后编辑行
 
-  /** @type {number} */
   editCursorPos = 0 // 最后编辑光标位置
-
-  /** @type {number} */
   rowNum = 0 // 表行数
-
-  /** @type {number} */
+  newNum = 0 // 新增行数
   dataid = 0 // 当前数据索引，用于render row
 
   /** @type {*[]} */
   data
 
+  /** @type {Object.<string, string>[]} */
+  fields // 字段数组，kv 为 data，非kv为 head.slice(1)，统一管理字段
+
+  /** @type {Object.<string, string>[]} */
+  vals // 修改后的字段值，用于字段动态计算
+
   /** @type {State} */
   state = State.null
+
+  sel = new Set() // 选择
+  add = new Set() // 新增
+  del = new Set() // 删除
+  uses = new Set() // 插件
 
   /**
    * 构造函数
@@ -184,10 +212,46 @@ class EditTable extends Event {
   constructor(page, opts) {
     super(opts, [page])
     const _ = this
+    _.page = page
+
     const opt = {...def, ...opts}
     _.opt = opt
-    _.tb = opt.tb
-    _.page = page
+    const {el, tb, kv, head, data} = opt
+
+    // 是否为kv模式，非kv需带表头
+    if (kv && tb) {
+      _.tb = tb
+      // 克隆数组数据，操作时，不改变原数据
+      if (data?.length) _.data = [...data]
+    } else if (head && el) {
+      _.head = opt.head
+      const cfg = {...(opt.head[0] || {})}
+
+      if (cfg.id) cfg.checkbox = cfg.id
+      else cfg.checkbox = 'index'
+      _.cfg = cfg
+
+      const fields = _.head.slice(1)
+      // 创建 field 的深拷贝，避免修改原配置对象value后，导致原列表出问题
+      _.fields = fields.map(f => ({...f}))
+
+      _.lastW = window.innerWidth
+      _.lastH = window.innerHeight
+
+      // 已创建，直接返回
+      if (el.dom[opt.domProp]) {
+        const instance = el.dom[opt.domProp]
+        _.destroy()
+        return instance
+      }
+
+      el.dom[opt.domProp] = this
+
+      // 容器
+      _.el = el
+      // 克隆数组数据，操作时，不改变原数据
+      if (data) _.data = [...data]
+    }
 
     // 4 改为 8,兼容旧模式
     if (!opt.colWidth) {
@@ -197,8 +261,10 @@ class EditTable extends Event {
     }
 
     _.init()
+
     if (opt.edit) _.edit()
     else _.view()
+
     _.bind()
 
     // const txs = $(tr).find('input.etCellView')
@@ -224,9 +290,13 @@ class EditTable extends Event {
   init() {
     const _ = this
     const {opt, tb} = _
-    const {colWidth, edit} = opt
+    const {colWidth, edit, kv, use} = opt
 
     try {
+      // 加载数据之前，先加载插件
+      for (const u of use || []) if (u.cls) _.use(u.cls, u.opts)
+
+      if (kv) {
       // 列宽控制
       const cg = tb.find('colgroup')
       if (!cg.dom && colWidth?.length) {
@@ -246,8 +316,8 @@ class EditTable extends Event {
       // 构造空body
       let body = tb.find('tbody')
       if (!body.dom) {
-        if (edit) tb.append(<tbody class="etEdit" />)
-        else tb.append(<tbody class="etView" />)
+          if (edit) tb.append(<tbody class="etEdit" />)
+          else tb.append(<tbody class="etView" />)
       }
 
       body = tb.find('tbody')
@@ -256,28 +326,135 @@ class EditTable extends Event {
       if (!th.dom) {
         body.before(
           <thead>
-            <tr style="display: none" class="etRowOdd" />
+              <tr style="display: none" class="etRowOdd" />
           </thead>
         )
       }
+
+        // 数据视图
+        if (_.data?.length) _.setKv()
+      } else _.render()
     } catch (e) {
       log.err(e, 'init')
     }
   }
 
+  /**
+   * 生成edit table，包括 thead、tbody
+   * @returns
+   */
+  render() {
+    const _ = this
+    try {
+      const {el, opt, cfg, fields} = _
+      const {edit} = opt
+      const head = [cfg, ...fields]
+
+      if (!head) {
+        console.log('param is null.')
+        return
+      }
+
+      // checkbox
+      const {checkbox: ck, layout, sum, fix} = cfg
+
+      if (fix.includes('table'))
+        // 固定表格，上下滚动
+        el.append(<div class="data-table-content overflow-auto" />)
+      else el.append(<div class="data-table-content" />)
+
+      let ckv = ''
+      if (ck) {
+        // checkbox
+        if (Array.isArray(ck) && ck.length) {
+          ckv = `\${r[${ck[0]}]}`
+        } else if (ck === 'index') ckv = '${r.index}'
+      }
+
+      const {name} = opt
+
+      // 默认固定表头、表尾
+      const clas = ['edit-table', 'fix-h', 'fix-b']
+      if (fix.includes('right1'))
+        // 固定表头 表尾
+        clas.push('fix-r1')
+      if (fix.includes('right2')) clas.push('fix-r2')
+      if (fix.includes('left1')) clas.push('fix-l1')
+      if (fix.includes('left2')) clas.push('fix-l2')
+      if (fix.includes('left3')) clas.push('fix-l3')
+      if (fix.includes('left4')) clas.push('fix-l4')
+      if (fix.includes('left5')) clas.push('fix-l5')
+
+      const style = [`table-layout: ${layout}`]
+      const tb = $(<table name={name} class={clas.join(' ')} style={style.join(';')} />)
+      // 保存tb
+      _.tb = tb
+
+      // 加入到容器
+      const tbWrap = el.findNode('.data-table-content')
+      tbWrap.append(tb)
+
+      // 列宽
+      tb.append(<colgroup>{col(head)}</colgroup>)
+
+      // <table name="tbLoan">
+      // jsx 通过函数调用，实现html生成。
+      let v = th(head)
+
+      // 加入到表格
+      tb.append(v)
+
+      const thead = tb.tag('THEAD')
+      thead.append(
+        <tr name={`${name}-tp`} style="display: none">
+          {ck && (
+            <td class="checkbox-cell">
+              <label class="checkbox">
+                <input type="checkbox" data-val={ckv} />
+                <i class="icon-checkbox" />
+              </label>
+            </td>
+          )}
+        </tr>
+      )
+
+      // 表主体
+      v = <tbody name="tbBody" class={`${edit ? 'etEdit' : 'etView'}`}></tbody>
+
+      // 加入到表格
+      tb.append(v)
+
+      _.header = el.findNode('.data-table-header')
+      _.$headerSel = el.findNode('.data-table-header-selected')
+
+      // 数据视图
+      if (_.data?.length) _.setView()
+    } catch (ex) {
+      console.log('render', {ex: ex.message})
+    }
+  }
+
   bind() {
     const _ = this
-    const {opt} = _
+    const {opt, fields, vals} = _
+    const {kv} = opt
 
     // 表格点击事件
     // 编辑元素（input） 不能 focus，不能 onblur？原因：pointer-events: none
     _.tb.click(async ev => {
+      // 阻止冒泡，否则会莫名其妙的（内嵌表格编辑叠加到kv编辑，导致混乱）事件！
+      // ev.preventDefault()
+      ev.stopPropagation()
+
+      const $ev = $(ev)
+      const th = $ev.upper('th')
+      if (th?.length) return
+
       if (_.state !== State.edit) return
 
       // 点击 input、select 则跳过
       if (['SELECT', 'INPUT'].includes(ev.target.tagName)) return
 
-      const $ev = $(ev)
       const td = $ev.upper('td')
 
       let span = $ev.upper('span')
@@ -288,11 +465,13 @@ class EditTable extends Event {
         return
       }
 
-      const idx = td?.data('idx') // 数据索引
+      const idx = td?.data('idx') // 数据或字段索引
+      const idy = td?.data('idy') // 表编辑，多行数据行索引
       const idv = td?.data('idv') // 数据中的value索引，多值数组模式下
       const value = td?.attr('data-value') // 数据原值 data() 会自动转换 json 字符串
 
-      const r = _.data?.[idx]
+      const r = fields?.[idx]
+
       if (r) {
         if (r.read) return // 只读
 
@@ -300,8 +479,9 @@ class EditTable extends Event {
         // document.body.setAttribute('tabindex', '-1')
         // document.body.focus()
         // document.body.removeAttribute('tabindex')
-
         let type = r.type ?? DataType.text // 默认单行字符串
+        if (type === 'string') type = DataType.text
+
         // 多值
         if (idv && idv >= 0 && Array.isArray(type) && type[idv]) {
           type = type[idv]
@@ -327,7 +507,7 @@ class EditTable extends Event {
               if (`${val}` === `${value}`) {
                 tx.hide()
               span.show()
-              }
+              } else vals[idy][r.field] = val
             })
           }
           tx.val(span.eq(0).html())
@@ -359,7 +539,7 @@ class EditTable extends Event {
               tx.value = val
               if (`${val}` === `${value}`) {
                 span.removeClass('edit') // span 可编辑
-              }
+              } else vals[idy][r.field] = val
             })
             span.focus()
 
@@ -371,9 +551,9 @@ class EditTable extends Event {
         } else if (type === DataType.select || type === DataTypes.select) {
           const span = td.find('span')
           span.hide()
-          const val = span.html()
           let key
           let sel = td.find('select')
+          // 第一次创建
           if (!sel.dom) {
             sel = document.createElement('select')
             sel.name = r.field
@@ -395,34 +575,41 @@ class EditTable extends Event {
                 key = sel.val()
               val = option[key]
               }
-              span.html(val)
 
-              if (`${val}` === `${value}`) {
+              if (`${val}` === `${value}` || val === '') {
                 sel.hide()
+                span.html(value) // 还原值
                 span.show()
+              } else {
+                span.html(val) // 修改值
+                vals[idy][r.field] = val
               }
             })
 
             sel.focus(ev => {
               // 关联查询
-              _.fillOption(idx, td, sel)
+              _.fillOption(r, td, sel, value, idy)
             })
           }
 
           // 选项
-          await _.fillOption(idx, td, sel)
-
+          await _.fillOption(r, td, sel, value, idy)
           sel.show()
           sel.focus()
-          setTimeout(() => {
-            // 创建并触发鼠标事件来展开下拉框
-            const event = new MouseEvent('mousedown', {
-              bubbles: true,
-              cancelable: true,
-              view: window,
+
+          // 弹出下拉列表，基本无效！
+          // 等待一帧，确保已渲染
+          requestAnimationFrame(() => {
+            // 尝试用鼠标事件打开（Chromium 下通常有效）
+            const ev = new MouseEvent('mousedown', {bubbles: true, cancelable: true, view: window})
+            sel.dom.dispatchEvent(ev)
+
+            // 如果还不行，退一步触发键盘组合（某些浏览器用 Alt+↓ 打开）
+            if (document.activeElement === sel) {
+              const keyEv = new KeyboardEvent('keydown', {key: 'ArrowDown', altKey: true, bubbles: true})
+              sel.dom.dispatchEvent(keyEv)
+            }
             })
-            sel.dom.dispatchEvent(event)
-          }, 100)
         } else if ((type === DataType.search || type === DataTypes.search) && _.Autocomplete) {
           const span = td.find('span')
           if (span.css('display') !== 'none') {
@@ -431,8 +618,12 @@ class EditTable extends Event {
             let dvAc = td.find('.autocomplete')
 
             if (!tx.dom) {
-              const {option, source, field, addUrl} = r
-              let {placeholder} = r
+              const {source, field, addUrl} = r
+              let {placeholder, option} = r
+              if (!option) option = [value]
+              else if (Array.isArray(option) && !option.includes(value)) option.push(value)
+
+              r.option = option
               placeholder = placeholder ?? '请输入'
               td.append(
                 <div class="autocomplete">
@@ -447,20 +638,23 @@ class EditTable extends Event {
               // tx.addClass('dy-input')
               const ac = new _.Autocomplete(_.page, {
                 el: dvAc,
-                data: option, // 设置数据
+                data: option, // 设置初始数据
                 refEl: [span.dom], // 关联元素，点击不关闭列表，否则会关闭列表
                 source,
                 addUrl,
               })
 
-              tx.blur(ev => {
+              tx.blur(() => {
                 // 选择赋值在 blur 后
                 setTimeout(() => {
                   const val = tx.val()
-                  if (`${val}` === `${value}`) {
+                  if (`${val}` === `${value}` || val === '') {
                     dvAc.hide()
-                    span.eq(0).html(val)
+                    span.eq(0).html(value) // 还原值
                     span.show()
+                  } else {
+                    span.eq(0).html(val) // 修改值
+                    vals[idy][r.field] = val
                   }
                 }, 200)
               })
@@ -523,7 +717,7 @@ class EditTable extends Event {
               if (`${val}` === `${value}`) {
               tx.hide()
                 span.show()
-              }
+              } else vals[idy][r.field] = val
             })
           }
           tx.show()
@@ -561,7 +755,7 @@ class EditTable extends Event {
                             if (`${val}` === `${value}`) {
                 tx.hide()
                 span.show()
-                            }
+              } else vals[idy][r.field] = val
             })
                     }
                     // urlChange
@@ -578,48 +772,173 @@ class EditTable extends Event {
       //   }
       // }
     })
+
+    // 处理checkbox
+    _.tb.on('change', '.checkbox-cell input[type="checkbox"]', function (ev) {
+      _.handleCheck(ev, this)
+    })
+  }
+
+  /**
+   * checkbox Events
+   * @param {*} ev
+   * @param {HTMLElement} el
+   * @returns
+   */
+  handleCheck(ev, el) {
+    const _ = this
+    try {
+      // 代码更改checkbox属性，不会触发change，代码触发change，这里需排除，避免循环
+      if (ev.detail && ev.detail.sentByWiaF7Table) {
+        // Scripted event, don't do anything
+        return
+      }
+
+      const $el = $(el)
+      // 是否被选中
+      const {checked} = el
+      const val = $el.data('val')
+      if (val != null) {
+        if (checked) _.sel.add(val)
+        else _.sel.delete(val)
+      }
+
+      // 列数
+      const columnIndex = $el.parents('td,th').index()
+
+      // 表体checkbox
+      if (columnIndex === 0) $el.parents('tr')[checked ? 'addClass' : 'removeClass']('data-table-row-selected')
+      // _.headerCheck(columnIndex)
+
+      // 延迟到change事件后触发，避免统计选择行数据差错
+      _.handleSel()
+    } catch {}
+  }
+
+  /**
+   * 表头选择区域显示切换，统计选择行，触发选择改变事件，方便跨页统计
+   */
+  handleSel() {
+    const _ = this
+    try {
+      const {el} = _
+      // 选中行
+      const rs = el.find('.data-table-row-selected')
+      const len = rs.length
+      // 改变表头操作面板
+      const hd = el.find('.data-table-header')
+      const hdSel = el.find('.data-table-header-selected')
+      if (hd.length && hdSel.length) {
+        if (len && !el.hasClass('data-table-has-checked')) el.addClass('data-table-has-checked')
+        else if (!len && el.hasClass('data-table-has-checked')) el.removeClass('data-table-has-checked')
+
+        // 选中数量，跨行选择数量与当前也选择数量不一致
+        hdSel.find('.data-table-selected-count').text(len)
+      }
+
+      // 触发当前表选择事件，参数为选择行
+      // 延迟到change事件后触发，避免跨页统计选择行数据差错
+      setTimeout(() => {
+        _.emit('local::select', rs)
+      }, 10)
+    } catch {}
+  }
+
+  /**
+   * 选择表所有行，包括跨页
+   * 表头checkbox只能选择当前页面所有行
+   */
+  cancelSel() {
+    try {
+      this.clearSel()
+      // 每行checkbox
+      // this.headerCheck()
+
+      // 表头选择区
+      this.handleSel()
+    } catch (e) {
+      log.err(e, 'cancelSel')
+    }
+  }
+
+  /**
+   * 清除选择（包括跨页），切换表头区及表头checkbox状态
+   */
+  clearSel() {
+    const _ = this
+    try {
+      const {el} = _
+
+      if (_.sel?.size) _.sel.clear()
+
+      // 切换表头为非选择模式
+      el?.removeClass('data-table-has-checked')
+      const rs = el.find('.data-table-row-selected')
+      if (rs.length) rs.removeClass('data-table-row-selected')
+
+      // 更新header的checkbox
+      // const col = 0
+      // const ckb = this.el.findNode(`thead .checkbox-cell:nth-child(${col + 1}) input[type="checkbox"]`)
+      // ckb.prop('indeterminate', false) // 部分选中
+      const cks = el.find(`.checkbox-cell input[type="checkbox"]`)
+      if (cks.length) cks.prop('checked', false)
+    } catch (e) {
+      log.err(e, 'clearSel')
+    }
   }
 
   /**
    * 填充select option
-   * @param {number} idx
+   * @param {*} r - 字段定义
    * @param {Dom} td
-   * @param {Dom} sel
+   * @param {Dom} sel - select
+   * @param {string} value - 原数据
+   * @param {number} idy - 表数据行索引
    * @returns
    */
-  async fillOption(idx, td, sel) {
+  async fillOption(r, td, sel, value, idy = 0) {
     const _ = this
     try {
-      const {data} = _
-      const r = data[idx]
       const {source} = r
-      let {name} = source?.param || {}
-      let {option} = r
+      let {param = {}} = source || {}
+      // 查询参数 可引用其他字段值
+      param = _.parseRef(param, idy)
 
       // 引用字段
-      let refField
-      if (name?.includes('${')) {
-        const lastRefField = td.data('lastRefField') // 保存关联
+      let change
+      const curParam = JSON.stringify(param)
+      const lastParam = r.lastSourceParam
+      // if (typeof lastParam !== 'string') lastParam = JSON.stringify(lastParam)
 
-        const match = name.match(/\$\{([^}]+)\}/)
-        const ref = match?.[1]
-        const i = _.getDataIdx({field: ref})
-        if (i) {
-          // 关联节点
-          const n = _.tb.findNode(`[data-idx="${i}"]`)
-          const v = n.findNode('span').html()
-          if (v && v !== lastRefField) {
-            refField = v
-
-            td.data('lastRefField', v) // 保存关联
-            // 替换 'city:${province}'
-            name = name.replace(`\${${ref}}`, v)
-          }
-        }
+      if (curParam !== lastParam) {
+        change = true
+        r.lastSourceParam = curParam // 保存查询参数，避免重复查询
       }
 
+      let {option} = r
+      let {name} = param
+      // if (name?.includes('${')) {
+      //   const lastRefField = td.data('lastRefField') // 保存关联
+
+      //   const match = name.match(/\$\{([^}]+)\}/)
+      //   const ref = match?.[1]
+      //   const i = _.getDataIdx({field: ref})
+      //   if (i) {
+      //     // 关联节点
+      //     const n = _.tb.findNode(`[data-idx="${i}"]`)
+      //     const v = n.findNode('span').html()
+      //     if (v && v !== lastRefField) {
+      //       change = true
+
+      //       td.data('lastRefField', v) // 保存关联
+      //       // 替换 'city:${province}'
+      //       name = name.replace(`\${${ref}}`, v)
+      //     }
+      //   }
+      // }
+
       // 关联字段变化或无选项，动态获取
-      if (refField || (source && !option)) {
+      if (source && (change || !option?.length)) {
         sel.html('')
 
         // 数据字典
@@ -632,8 +951,13 @@ class EditTable extends Event {
         log({option}, 'getOption')
       }
 
+      if (!option?.length && value) option = [value]
+
         if (option) {
-          r.option = option
+        if (Array.isArray(option) && !option.includes(value)) option.push(value)
+
+        r.option = option // 保存到字段定义
+
           let key
           const span = td.find('span')
           const val = span.html()
@@ -654,7 +978,7 @@ class EditTable extends Event {
           else if (typeof option === 'object') {
             if (!val) {
               htm.push(
-                <option selected value="">
+              <option selected value="">
                   请选择
                 </option>
               )
@@ -680,6 +1004,71 @@ class EditTable extends Event {
     } catch (e) {
       log.err(e, 'fillOption')
     }
+  }
+
+  /**
+   * 解析引用字段
+   * @param {*} src
+   * @param {number} [idy]
+   * @param {*} [fv] - 字段值，外部传入可加快速度
+   * @returns
+   */
+  parseRef(src, idy = 0, fv = null) {
+    let R = src
+
+    const _ = this
+    try {
+      const {data, opt, vals} = _
+      const {kv} = opt
+
+      let ref = false
+      if (typeof src === 'object') {
+        for (const k of Object.keys(src)) {
+          if (/\$\{[^}]*\}/.test(src[k])) {
+            ref = true
+            break
+          }
+        }
+      } else ref = typeof src === 'string' && /\$\{[^}]*\}/.test(src)
+
+      if (ref) {
+        if (!fv) {
+        /** @type {*} */
+          fv = {} // 当前行最新数据
+        if (kv) {
+          for (const d of data) {
+            const {field, type} = d
+              fv[field] = vals[0][field] ?? d.value
+              if (['number', DataType.number].includes(type) && isNumber(fv[field])) fv[field] = Number(fv[field])
+          }
+        } else {
+          for (const f of _.field) {
+            const {field, idx, type} = f
+            const val = data[idy][idx]
+              fv[field] = vals[idy][field] ?? val
+              if (['number', DataType.number].includes(type) && isNumber(fv[field])) fv[field] = Number(fv[field])
+            }
+          }
+        }
+
+        if (typeof src === 'object') {
+          for (const k of Object.keys(src)) {
+            if (/\$\{[^}]*\}/.test(src[k])) {
+              const val = Function('r', `return \`${src[k]}\``)(fv)
+              log({idy, src: src[k], val}, 'parseRef')
+              src[k] = val
+            }
+          }
+        } else {
+          const val = Function('r', `return \`${src}\``)(fv)
+          R = val
+          log({idy, src, val}, 'parseRef')
+        }
+      }
+    } catch (e) {
+      log.err(e, 'parseRef')
+    }
+    return R
   }
 
   /**
@@ -714,6 +1103,8 @@ class EditTable extends Event {
       const {opt} = _
 
       _[cls.name] = cls
+      _.uses.add({cls, opts})
+
       if (cls.name === 'Uploader' && opts?.upload) opt.upload = opts.upload
       else if (cls.name === 'Tabulate' && (opts?.getSelAll || opts?.saveEmbTb)) {
         opt.getSelAll = opts.getSelAll
@@ -845,25 +1236,52 @@ class EditTable extends Event {
    */
   async editModeTable() {
     const _ = this
-    const {opt} = _
+    try {
+      const {page, opt, data} = _
     const tds = _.tb.find('td[data-idx]')
     console.log(tds, 'tds')
     //! 应该根据field 创建，支持多个内嵌表格编辑
     //! 需判断是否已创建，避免重复创建
     //! 应该根据字段类型(内嵌表)创建，而不是在编辑模式没有内嵌表也创建
-    if (_.hasTable && !_.tabulate && _.Tabulate) {
-      _.tabulate = new _.Tabulate({
-      containerName: 't-table',
-      addButtonName: 'add-button',
-      targetBox: _.tb.tag('tbody')[0].querySelectorAll('.data-table'),
-      baseTableInfo: _.baseTableInfo, // 基础表格信息对象
-      getSelAll: opt.getSelAll, // 获取公司数据的方法
-        saveEmbTb: opt.saveEmbTb, // 保存表格的接口方法
-        viewid: opt.viewid,
-        prjid: opt.prjid,
-        upload: opt.upload,
+      // if (_.hasTable && !_.tabulate && _.Tabulate) {
+      if (_.hasTable) {
+        if (opt.newEdit) {
+        const dvs = _.tb.find('div.data-table')
+        for (const dv of dvs) {
+          const $dv = $(dv)
+          const name = $dv.attr('name')
+          const {wiaDataTable: dtb, wiaEditTable: etb} = dv
+
+          if (!etb) {
+              const {head} = dtb
+              const {api} = head[0]
+              if (api.param) api.param = _.parseRef(api.param)
+            dv.wiaEditTable = makeEdit(page, {
+              el: $dv,
+              name,
+                head,
+              data: dtb.data,
+                use: [..._.uses],
     })
     } else {
+            etb.show()
+            dtb.hide()
+          }
+        }
+      } else {
+          _.tabulate = new _.Tabulate({
+            containerName: 't-table',
+            addButtonName: 'add-button',
+            targetBox: _.tb.tag('tbody')[0].querySelectorAll('.data-table'),
+            baseTableInfo: _.baseTableInfo, // 基础表格信息对象
+            getSelAll: opt.getSelAll, // 获取公司数据的方法
+            saveEmbTb: opt.saveEmbTb, // 保存表格的接口方法
+            viewid: opt.viewid,
+            prjid: opt.prjid,
+            upload: opt.upload,
+          })
+        }
+      } else {
       const tTableDivs = new Set()
       const dataTables = _.tb.tag('tbody')[0].querySelectorAll('.data-table')
       dataTables.forEach(table => {
@@ -894,6 +1312,7 @@ class EditTable extends Event {
   }
       })
     }
+    } catch (e) {}
   }
 
   /**
@@ -910,7 +1329,7 @@ class EditTable extends Event {
     _.tb.tag('tbody').addClass('etEdit').removeClass('etView')
     _.editModeTable()
 
-    _.tb.find('._choose').show()
+      editAttach(_.tb)
 
       // _.bind()
     } catch (e) {
@@ -957,7 +1376,7 @@ class EditTable extends Event {
       _.state = State.view
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
       _.tabulate?.togglePreview()
-      _.tb.find('._choose').hide()
+      viewAttach(_.tb)
 
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
@@ -1011,6 +1430,9 @@ class EditTable extends Event {
   async save() {
     const _ = this
     try {
+      const {opt} = _
+      const {kv} = opt
+
       // 保存 json 代码
       if (_.state === State.json) {
         const rt = await _.jsonView.saveJson()
@@ -1025,9 +1447,25 @@ class EditTable extends Event {
       _.state = State.view
 
       _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
-      _.tb.find('._choose').hide()
+      viewAttach(_.tb)
 
-      if (_.hasTable && _.tabulate) _.tabulate.saveTable()
+      if (!kv) {
+        _.saveTb()
+      }
+
+      // if (_.hasTable && _.tabulate) _.tabulate.saveTable()
+      if (_.hasTable) {
+        const dvs = _.tb.find('div.data-table')
+        for (const dv of dvs) {
+          // @ts-expect-error
+          const {wiaDataTable: dtb, wiaEditTable: etb} = dv
+          if (dtb && etb) {
+            etb?.save()
+            etb?.hide()
+            dtb?.show()
+          }
+        }
+      }
 
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
@@ -1133,96 +1571,175 @@ class EditTable extends Event {
     }
   }
 
+  async saveTb() {
+    const _ = this
+    try {
+      const {data, cfg, opt} = _
+      const {checkbox: ck, api} = cfg
+
+      const up = _.getVal()
+      const del = [..._.del]
+
+      if (up?.length || del?.length) {
+        // const add = [..._etBase.add]
+        for (const u of up) {
+          const {idy, idx} = u
+          if (ck === 'index') u.id = data[idy].index
+          else if (ck?.length) u.id = data[idy][ck[0]]
+        }
+        up.sort((v1, v2) => v1.fieldid - v2.fieldid)
+
+        let add = up.filter(v => v.id[0] === '+')
+        let update = up.filter(v => v.id[0] !== '+')
+
+        update = groupById(update)
+        add = groupById(add)
+
+        const {url, param} = api
+        let {token} = api
+        token = token ?? 'token'
+
+        if (url) {
+          const tk = token ? $.store.get(token) : ''
+          const rs = await $.post(url, {...param, update, add, del}, {'x-wia-token': tk})
+          console.log({rs}, 'editBase save')
+        }
+      }
+    } catch (e) {
+      log.err(e, 'saveTb')
+    }
+  }
+
+  hide() {
+    const {el} = this
+    el.hide()
+  }
+
+  show() {
+    const {el} = this
+    el.show()
+  }
+
   /**
    * 取消修改，还原值
    */
   cancel() {
     const _ = this
     try {
+      const {opt} = _
+      const {kv} = opt
+
+      // 取消附件删除
+      cancelDel(_.tb)
+
       if (_.state === State.json) {
         _.tb.parent().find('.json-view-box').hide()
         _.tb.show()
       }
       _.state = State.view
-    _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
-      _.tabulate?.togglePreview()
-      _.tb.find('._choose').hide()
 
-    if (_.data) {
-      const tds = _.tb.find('td[data-idx]')
-      for (const td of tds.get()) {
-          try {
-        const $td = $(td)
-        const idx = $td.data('idx') // 数据索引
-        const d = _.data[idx]
-            // const value = $td.data('value') // 原始值
-            const value = $td?.attr('data-value') // 数据原值 data() 会自动转换 json 字符串
-        const {type, option} = d || {}
-        if ((type === DataType.search || type === DataTypes.search) && _.Autocomplete) {
-          const dvAc = $td.find('.autocomplete')
-          dvAc?.hide()
-          const span = $td.find('span')
-          span.eq(0).html(value)
-          span.show()
-        } else if (type === DataType.checkbox || type === DataTypes.checkbox) {
-          const ns = $td.find('input[type=checkbox]')
-          for (const n of ns.get()) {
-            const val = $(n).val()
-            n.checked = value.includes(val)
-          }
-        } else if (type === DataType.radio || type === DataTypes.radio) {
-          const ns = $td.find('input[type=radio]')
-          for (const n of ns.get()) {
-            const val = $(n).val()
-            n.checked = value === val
-          }
-            } else if (type === DataType.attach || type === DataTypes.attach) {
-              // 取消新增
-              // uploader 维护 input
-              $td.dom.uploader.clear() // 清空 input 和 uploader
-                        }
-                        // urlChange
-                        else if (type === DataType.url || type === DataTypes.url) {
-              const span = $td.find('span')
-                            if (span.dom) {
-                span.removeClass('edit')
-                span.eq(0).find('a').attr('href', value)
-                span.show()
-                            }
-              const tx = $td.find('input')
-                            if (tx.dom) {
-                tx.val(value)
-                tx.hide()
-                        }
-            } else if (
-          type !== DataType.table &&
-          type !== DataTypes.table &&
-          type !== DataType.view &&
-          type !== DataTypes.view &&
-          type !== DataType.page &&
-          type !== DataTypes.page
-        ) {
-          const span = $td.find('span')
-              if (span.dom) {
-            span.html(value)
-            span.removeClass('edit')
-            span.show()
-          }
-              let tx = $td.find('input')
-              if (!tx.dom) tx = $td.find('select')
-              if (tx.dom) {
-            tx.val(value)
-            tx.hide()
-          }
+    _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
+      viewAttach(_.tb)
+
+      if (kv) {
+        // 存在内嵌表格
+        if (_.hasTable) {
+          // _.tabulate?.togglePreview()
+          const dvs = _.tb.find('div.data-table')
+          for (const dv of dvs) {
+            // @ts-expect-error
+            const {wiaDataTable: dtb, wiaEditTable: etb} = dv
+            if (dtb && etb) {
+              etb?.cancel()
+              etb?.hide()
+              dtb?.show()
         }
-          } catch (e) {
-            log.err(e, 'cancel')
           }
       }
+
+        _.setKv()
+      } else {
+        // cancel add
+        _.newNum = 0
+        for (const v of _.add) _.delRow(v)
+
+        _.cancelSel()
+        _.del.clear()
+        _.setView()
     }
 
-      // 取消删除
-      cancelDel(_.tb)
+      // if (_.data) {
+      //   const tds = _.tb.find('td[data-idx]')
+      //   for (const td of tds) {
+      //     try {
+      //       const $td = $(td)
+      //       const idx = $td.data('idx') // 数据索引
+      //       const d = _.data[idx]
+      //       // const value = $td.data('value') // 原始值
+      //       const value = $td?.attr('data-value') // 数据原值 data() 会自动转换 json 字符串
+      //       const {type, option} = d || {}
+      //       if ((type === DataType.search || type === DataTypes.search) && _.Autocomplete) {
+      //         const dvAc = $td.find('.autocomplete')
+      //         dvAc?.hide()
+      //         const span = $td.find('span')
+      //         span.eq(0).html(value)
+      //         span.show()
+      //       } else if (type === DataType.checkbox || type === DataTypes.checkbox) {
+      //         const ns = $td.find('input[type=checkbox]')
+      //         for (const n of ns.get()) {
+      //           const val = $(n).val()
+      //           n.checked = value.includes(val)
+      //         }
+      //       } else if (type === DataType.radio || type === DataTypes.radio) {
+      //         const ns = $td.find('input[type=radio]')
+      //         for (const n of ns.get()) {
+      //           const val = $(n).val()
+      //           n.checked = value === val
+      //         }
+      //       } else if (type === DataType.attach || type === DataTypes.attach) {
+      //         // 取消新增
+      //         // uploader 维护 input
+      //         $td.dom.uploader.clear() // 清空 input 和 uploader
+      //       }
+      //       // urlChange
+      //       else if (type === DataType.url || type === DataTypes.url) {
+      //         const span = $td.find('span')
+      //         if (span.dom) {
+      //           span.removeClass('edit')
+      //           span.eq(0).find('a').attr('href', value)
+      //           span.show()
+      //         }
+      //         const tx = $td.find('input')
+      //         if (tx.dom) {
+      //           tx.val(value)
+      //           tx.hide()
+      //         }
+      //       } else if (
+      //         type !== DataType.table &&
+      //         type !== DataTypes.table &&
+      //         type !== DataType.view &&
+      //         type !== DataTypes.view &&
+      //         type !== DataType.page &&
+      //         type !== DataTypes.page
+      //       ) {
+      //         const span = $td.find('span')
+      //         if (span.dom) {
+      //           span.html(value)
+      //           span.removeClass('edit')
+      //           span.show()
+      //         }
+      //         let tx = $td.find('input')
+      //         if (!tx.dom) tx = $td.find('select')
+      //         if (tx.dom) {
+      //           tx.val(value)
+      //           tx.hide()
+      //         }
+      //       }
+      //     } catch (e) {
+      //       log.err(e, 'cancel')
+      //     }
+      //   }
+      // }
     } catch (e) {
       log.err(e, 'cancel')
     }
@@ -1487,103 +2004,108 @@ class EditTable extends Event {
 
   /**
    * 删除选择或最后编辑行，或当前行，一次只能删除一行
-   * @param tb
-   * @param iRow 指定的行数
-   * 返回 剩下的行数
+   * @param {*} [val]
+   * @param {*} [tb]
+   * @param {number} [iRow] 指定的行数
+   * @returns {number}  返回 剩下的行数
    */
-  delRow(tb, iRow) {
-    let rs = 0
+  delRow(val, tb, iRow) {
+    const R = 0
 
-    if (!tb) return 0
-
+    const _ = this
     try {
-      const tbody = tool.tags(tb, 'TBODY')[0]
-      const rows = tool.tags(tbody, 'TR')
+      const {tb, data, cfg} = _
+      const {hide, checkbox: ck} = cfg
 
-      if (rows.length === 0) return
+      // 删除tr
+      const txs = tb.find(`tr input[data-val="${val}"]`)
 
-      let delRow = null
-
-      if (tb && iRow)
-        delRow = tb.rows[iRow + 1] // 删除选择行
-      else delRow = this._selRow
-
-      // 没有选择行,直接删除最后编辑行
-      if (!delRow && this.editRow) {
-        delRow = this.editRow
-        // x('txInfo').value = 'this._editRow';
+      for (const tx of txs) {
+        const row = $(tx).upper('tr')
+        row?.remove()
       }
 
-      if (!delRow) delRow = rows[rows.length - 1]
-
-      if (!delRow) return
-
-      if (this._selRow) {
-        this.setRowClass(this._selRow, '')
-        this._selRow = null
+      // 清除新增数据
+      if (val[0] === '+') {
+        _.add.delete(val)
+        for (let i = data.length - 1; i >= 0; i--) {
+          const r = data[i]
+          if ((ck === 'index' && r.index === val) || (ck?.length && r[ck[0]] === val)) data.splice(i, 1)
       }
+      } else _.del.add(val)
 
-      if (this._editCell) {
-        tool.setClass(this._editCell, '')
-        this._editCell = null
-      }
+      _.el.find('.data-table-count')?.text(_.data.length - _.del.size)
 
-      const th = tool.tags(tb, 'TH')[0]
+      // if (!tb) return 0
+      // const tbody = tool.tags(tb, 'TBODY')[0]
+      // const rows = tool.tags(tbody, 'TR')
 
-      if (delRow.childElementCount > 0 && tool.lastChild(tool.firstChild(delRow)).value) {
-        // 记录删除ID
-        tool.lastChild(th).value = tool.lastChild(th).value ? `${tool.lastChild(th).value},` : ''
-        tool.lastChild(th).value += tool.lastChild(tool.firstChild(delRow)).value
-      }
-      // alert( tl.lastChild(tl.firstChild(delRow)).value );
+      // if (rows.length === 0) return
 
-      if (delRow === this._selRow) this._selRow = null
+      // let delRow = null
 
-      if (delRow === this.editRow) {
-        this.editRow = null
-        this.editTx = null
-      }
+      // if (tb && iRow)
+      //   delRow = tb.rows[iRow + 1] // 删除选择行
+      // else delRow = this._selRow
 
-      let preRow = delRow.previousSibling
-      let span = tool.tags(delRow, 'span')[0]
-      if (delRow.parentNode) delRow.parentNode.removeChild(delRow)
+      // // 没有选择行,直接删除最后编辑行
+      // if (!delRow && this.editRow) {
+      //   delRow = this.editRow
+      //   // x('txInfo').value = 'this._editRow';
+      // }
 
-      // span 全屏编辑,没有数据,自动增加一行
-      if (span) {
-        // 返回剩下行数
-        rs = tool.tags(tbody, 'TR').length
-        if (!rs) {
-          preRow = this.addRow(tb, '~~点击输入~~\n\r\n\r')
-          rs = 1
-        }
+      // if (!delRow) delRow = rows[rows.length - 1]
 
-        if (preRow) {
-          span = tool.tags(preRow, 'span')[0]
-          if (span) tool.cursorEnd(span)
-        }
-      }
+      // if (!delRow) return
 
-      // 对tr重新排序，排除 文本节点干扰,移动端不需要,屏蔽!!!???
-      /*
-       var i = 0;
-       for(var j = 0; j < tbody.childNodes.length; j++) {
-       var row = tbody.childNodes[j];
-       if(row.nodeType == 1) {
-       i++;
-       tl.firstChild(tl.firstChild(row)).nodeValue = i; //innerHTML = i+1; 不能使用 innerHTML，里面有隐藏 Field，存放 ID
-       // 更改交替样式
-       if(i % 2 == 1)
-       setRowClass(row, "etRowOdd");
-       else
-       setRowClass(row, 'etRowEven');
-       }
-       }
-       */
+      // if (this._selRow) {
+      //   this.setRowClass(this._selRow, '')
+      //   this._selRow = null
+      // }
+
+      // if (this._editCell) {
+      //   tool.setClass(this._editCell, '')
+      //   this._editCell = null
+      // }
+
+      // const th = tool.tags(tb, 'TH')[0]
+
+      // if (delRow.childElementCount > 0 && tool.lastChild(tool.firstChild(delRow)).value) {
+      //   // 记录删除ID
+      //   tool.lastChild(th).value = tool.lastChild(th).value ? `${tool.lastChild(th).value},` : ''
+      //   tool.lastChild(th).value += tool.lastChild(tool.firstChild(delRow)).value
+      // }
+
+      // if (delRow === this._selRow) this._selRow = null
+
+      // if (delRow === this.editRow) {
+      //   this.editRow = null
+      //   this.editTx = null
+      // }
+
+      // let preRow = delRow.previousSibling
+      // let span = tool.tags(delRow, 'span')[0]
+      // if (delRow.parentNode) delRow.parentNode.removeChild(delRow)
+
+      // // span 全屏编辑,没有数据,自动增加一行
+      // if (span) {
+      //   // 返回剩下行数
+      //   R = tool.tags(tbody, 'TR').length
+      //   if (!R) {
+      //     preRow = this.addRow(tb, '~~点击输入~~\n\r\n\r')
+      //     R = 1
+      //   }
+
+      //   if (preRow) {
+      //     span = tool.tags(preRow, 'span')[0]
+      //     if (span) tool.cursorEnd(span)
+      //   }
+      // }
     } catch (e) {
       console.error(`deleteRow exp:${e.message}`)
     }
 
-    return rs
+    return R
   }
 
   /**
@@ -1595,46 +2117,191 @@ class EditTable extends Event {
    */
   addRow(tp, txt, node) {
     const _ = this
-    const {tb} = _
-    const thead = tb.tag('THEAD')
-    let row
-    if (!tp) row = thead.lastChild().clone()
-    else row = tp.clone()
+    try {
+      const {tb, cfg, fields} = _
+      const {hide, checkbox: ck} = cfg
 
+      if (!fields?.length) return
+
+      _.newNum++
     _.rowNum++
-    row.data('rowNum', _.rowNum)
 
-    const span = row.tag('span')
-    if (span) span.innerHTML = txt || ''
+      let len = fields.length
+      if (hide?.length) len += hide.length
 
-    /*
-    const tx = tl.tags(row, 'INPUT')[0];
-    if (tx)
-      tx.value = txt || '';
-*/
+      const data = Array(len).fill('')
+      const val = `+${_.newNum}`
+      if (ck === 'index') data.index = val
+      else if (ck?.length) data[ck[0]] = val
 
-    row.show()
+      _.add.add(val)
 
-    const tbody = tb.tag('tbody')
+      _.addView([data])
 
-    /* 移动无需 奇偶样式!!!???
-     var cnt = tl.childCount(tbody);
-     tl.firstChild(tl.firstChild(row)).nodeValue = cnt + 1;
-     if ( cnt % 2 == 1)
-     setRowClass( row, 'etRowEven' );
+      // const thead = tb.tag('THEAD')
+      // let row
+      // if (!tp) row = thead.lastChild().clone()
+      // else row = tp.clone()
+
+      // row.data('rowNum', _.rowNum)
+
+      // const span = row.tag('span')
+      // if (span) span.innerHTML = txt || ''
+
+      // row.show()
+
+      // const tbody = tb.tag('tbody')
+
+      // tbody.dom.insertBefore(row.dom, node || null)
+
+      // _.editRow = row.dom
+      // _.editTx = row.tag('span') || row.tag('input')
+      // _._selRow = row.dom
+      // _._editCell = null
+    } catch (e) {}
+    // return row
+  }
+
+  /**
+   * 行列数据填充，创建tr、td，填充 v 值到 span
+   * fillKv 的简化版本：无Label、无多值
+   * @param {*[]} r - 行字段数组
+   * @param {number} idy - 数据数组行索引
      */
+  fillRow(r, idy) {
+    const _ = this
 
-    tbody.dom.insertBefore(row.dom, node || null)
-    // row.insertBefore(node || null)
+    try {
+      const tbody = _.tb.tag('TBODY')
+      const thead = _.tb.tag('THEAD')
 
-    _.editRow = row.dom
-    _.editTx = row.tag('span') || row.tag('input')
-    _._selRow = row.dom
-    _._editCell = null
-    // ???
-    // x('txInfo').value = 'addRow';
+      const tr = thead.lastChild().clone()
+      // const tr = $(document.createElement('tr'))
+      // <input type="checkbox" data-val="${r[0]}">
+      // 替换 checkbox data-val
+      const ck = tr.find('input[type="checkbox"]')
+      if (ck) {
+        let val = ck.data('val')
+        if (/\$\{[^}]*\}/.test(val)) {
+          val = Function('r', `return \`${val}\``)(_.data[idy])
+          ck.data('val', val)
+        }
+      }
 
-    return row
+      /** @type {*} */
+      const fv = {}
+      for (const c of r) {
+        const {field, type} = c
+        fv[field] = _.vals[idy][field] ?? c.value
+        if (['number', DataType.number].includes(type) && isNumber(fv[field])) fv[field] = Number(fv[field])
+      }
+
+      let idx = -1
+      // 列赋值
+      for (const c of r) {
+        idx++
+
+        try {
+          const {field} = c
+          let {name, type, value, unit, option, row, align} = c
+
+          // 指定字段调试
+          if (field === 'debug') debugger
+
+          type = type ?? DataType.text
+          value = _.getKv(c, fv)
+
+          const val = value ?? ''
+
+          const td = document.createElement('td')
+          const $td = $(td)
+
+          if ([DataType.html, DataTypes.html].includes(type)) td.innerHTML = `${val}`
+          else if ([DataType.attach, DataTypes.attach].includes(type)) {
+            fillAttach(_, value, td, null, c.read, idx, idy)
+          } else {
+            if ([DataType.checkbox, DataTypes.checkbox].includes(type)) {
+              const htm = option?.map(v => {
+                const rt = (
+                  <label class="checkbox">
+                    <input type="checkbox" name={field} value={v} checked={`${val.includes(v) ? 'true' : 'false'}`} />
+                    <i class="icon-checkbox"></i>
+                    {v}
+                  </label>
+                )
+                  .replaceAll('checked="true"', 'checked')
+                  .replaceAll('checked="false"', '')
+
+                return rt // + v
+              })
+              if (htm) td.innerHTML = `<span name="tx" class="etCheckbox">${htm.join('')}</span>`
+            } else if ([DataType.radio, DataTypes.radio].includes(type)) {
+              const htm = option?.map(v => {
+                const rt = (
+                  <label class="radio">
+                    <input type="radio" name={field} value={v} checked={`${val === v ? 'true' : 'false'}`} />
+                    <i class="icon-radio"></i>
+                    {v}
+                  </label>
+                )
+                  .replaceAll('checked="true"', 'checked')
+                  .replaceAll('checked="false"', '')
+
+                return rt // + v
+              })
+
+              if (htm) td.innerHTML = `<span name="tx" class="etRadio">${htm.join('')}</span>`
+            }
+            // urlChange
+            else if ([DataType.url, DataTypes.url].includes(type)) {
+              // urlChange
+              td.innerHTML = `<span title="${val}" name="tx" class="etValue" style="display: flex;align-items: center">
+                                        <i class="icon wiaicon" style="color:red;font-size: 16px;">&#xe61b;</i>
+                                        <a href="${val}" target="_blank" style="cursor:pointer;">点击跳转链接</a>
+                                    </span>`
+            } else if ([DataType.chip, DataTypes.chip].includes(type)) {
+              const htm = val?.map(v => {
+                // <a class="chip-delete"></a>
+                const rt = (
+                  <div class="chip">
+                    <div class={`chip-media bg-color-${v.color}`}>{v.media}</div>
+                    <div class="chip-label">{v.val}</div>
+                  </div>
+                )
+
+                return rt // + v
+              })
+              if (htm) td.innerHTML = `<span name="tx" class="etChip">${htm.join('')}</span>`
+            } else if (unit)
+              td.innerHTML = `<div class=etNumber><span name="tx" class="etValue">${val}</span><span class="etSuffix">${unit}</span></div>`
+            else {
+              td.innerHTML = `<span name="tx" class="etValue">${val ?? ''}</span>`
+
+              if (type === DataType.texts || type === DataTypes.texts) $td.find('span').addClass('etClamp')
+            }
+
+            // else td.innerHTML = `<input name="tx" class="etValue dy-input" value=${val}></input>`
+
+            //  txs[i].setAttribute('idx', '') // 每行编辑节点设置idx属性，对应名称与数据索引，方便获取、设置节点数据
+            $td.data('idx', idx) // td 保存 字段索引
+            $td.data('idy', idy) // td 保存 数据行索引
+            $td.data('value', val) // td 保存 原值
+          }
+
+          tr.append(td)
+        } catch (e) {
+          log.err(e, 'fillRow')
+        }
+        // 插入到空行前
+        tbody.dom.insertBefore(tr.dom, null)
+        tr.attr('name', tr.attr('name').replace(/-tp$/, '-data'))
+        tr.show()
+      } // for
+      // 插入到空行前
+      tbody.dom.insertBefore(tr.dom, null)
+    } catch (e) {
+      log.err(e, 'fillRow')
+    }
   }
 
   clearRow(tb) {
@@ -1840,6 +2507,79 @@ class EditTable extends Event {
   }
 
   /**
+   * 生成数据视图
+   * 清空table
+   * @param {*[]} [data]
+   * @param {boolean} [add] - 新增、覆盖
+   */
+  setView(data, add = false) {
+    const _ = this
+
+    try {
+      if (!data?.length && !_.data?.length) return
+
+      const {el, cfg, fields} = _
+      if (!cfg) {
+        console.log('param is null.')
+        return
+      }
+
+      let idy = 0
+      if (!_.data?.length) add = false
+
+        // 拷贝数据
+      if (add && data?.length) {
+        idy = _.data.length
+        _.data.push(...data)
+        _.vals.push(...Array.from({length: data.length}, () => ({})))
+      } else {
+        if (data) _.data = [...data]
+        else data = _.data
+        _.vals = Array.from({length: data.length}, () => ({}))
+
+        const tbody = _.tb.tag('TBODY')
+        tbody.empty()
+      }
+
+      const {hide} = cfg
+
+      // index 需对数组添加index属性
+      if (cfg.checkbox === 'index')
+        _.data.forEach((v, x) => {
+          if (!v.index) v.index = x
+        })
+
+      el.find('.data-table-count')?.text(_.data.length - _.del.size)
+
+      for (const d of data) {
+        if (d?.length) {
+          let i = 0
+          for (const [j, v] of d.entries()) {
+            if (!hide.includes(j) && fields.length > i) {
+              fields[i].value = v
+              fields[i].idx = j // 对应数据
+              i++
+            }
+          }
+
+          _.fillRow(fields, idy)
+          idy++
+        }
+      }
+    } catch (e) {
+      log.err(e, 'setView')
+    }
+  }
+
+  /**
+   * 增加数据视图
+   * @param {*[]} [data]
+   */
+  addView(data) {
+    this.setView(data, true)
+  }
+
+  /**
    * 添加一个实例数据行到空行之前, 返回 添加的行数
    * textarea 实现高度按行高度自动适配很麻烦,去掉支持!
    * span 可直接编辑!
@@ -1949,7 +2689,7 @@ class EditTable extends Event {
   /**
    * 设置kv 数据
    * 清空table
-   * @param {*[]} data
+   * @param {*[]} [data]
    * @param {boolean} [add] - 新增、覆盖
    * @returns {Number} - 新起始索引
    */
@@ -1957,28 +2697,57 @@ class EditTable extends Event {
     let R
     const _ = this
     try {
-      if (add) _.data = [...(_.data || []), ...data]
-      else {
-        _.data = [...data]
+      if (!data?.length && !_.data?.length) return
+
+      if (!_.data?.length) add = false
+
+      // 拷贝数据
+      if (add && data?.length) {
+        _.data.push(...data)
+      } else {
+        if (data?.length) _.data = [...data]
+        else data = _.data
+
+        _.vals = [{}]
+
+        // 恢复原始值
+        for (const d of data) {
+          delete d.subCol
+          delete d.subCols
+        }
+
         const tbody = _.tb.tag('TBODY')
         tbody.empty()
       }
 
-      // _.data = data // 用于对比修改变化
+      _.fields = _.data // 统一字段管理
+
       let rs
       let idx = 0
       let subidx = 0 // 子列定义
+
       // 多个内嵌表？
-      _.data.forEach(ele => {
-        if (ele.type === 24) {
-          _.baseTableInfo = ele.value
+      for (const d of data) {
+        // ???
+        if (d.type === DataType.table) {
+          _.baseTableInfo = d.value
         }
-      })
+        }
+
       _.repairCol(data)
+
+      /** @type {*} */
+      const fv = {}
+      for (const d of data) {
+        const {field, type} = d
+        fv[field] = _.vals[0][field] ?? d.value
+        if (['number', DataType.number].includes(type) && isNumber(fv[field])) fv[field] = Number(fv[field])
+      }
+
       do {
         rs = _.getRowData(data, idx, subidx)
         if (rs?.length) {
-          _.fillKv(rs, idx)
+          _.fillKv(rs, idx, fv)
           idx += rs.length
 
           subidx = rs.subidx
@@ -2040,11 +2809,12 @@ class EditTable extends Event {
   }
 
   /**
-   * 行填充，创建tr、td，填充 kv 值到 span
-   * @param {*[]} rs - 行数据
-   * @param {number} idx - 数据数组索引
+   * 填充单行数据，创建tr、td，填充 kv 值到 span
+   * @param {*[]} r - 单行数据
+   * @param {number} idx - 数据数组起始索引
+   * @param {*} [fv] - 字段数据
    */
-  fillKv(rs, idx) {
+  fillKv(r, idx, fv) {
     const _ = this
     const {opt} = _
 
@@ -2055,18 +2825,21 @@ class EditTable extends Event {
       let hasTd = false
 
       idx -= 1
-      // 行赋值
-      for (const r of rs) {
+      // 列赋值
+      for (const c of r) {
         idx++
 
         try {
-          const {field, left, vertical} = r
-          let {name, type, value, unit, option, row, col, align, cat, subCols} = r
+          const {field, left, vertical, hide} = c
+          let {name, type, value, unit, option, row, col, align, cat, subCols} = c
+
+          // 隐藏字段，跳过
+          if (hide) continue
 
           if (field === 'debug') debugger
 
           type = type ?? DataType.text
-          value = _.getKv(r)
+          value = _.getKv(c, fv)
 
           let skipLb = false
           // 子类后面行不显示label
@@ -2078,8 +2851,10 @@ class EditTable extends Event {
           if (col[0] && !skipLb) {
             if (!Array.isArray(name)) name = [name]
 
+            // 支持多label
             for (let nm of name) {
               let code
+              // 指令代码
               if (nm.includes('__{')) {
                 let src
                 ;({code, src} = _.getCode(nm))
@@ -2157,14 +2932,14 @@ class EditTable extends Event {
                 td.innerHTML = `${val}`
               } else if ([DataType.table, DataType.attach, DataTypes.table, DataTypes.attach].includes(type)) {
                 if (cat) td.innerHTML = `<span name="tx"/>`
-                else fillAttach(_, r, value, td, null, idx)
+                else fillAttach(_, value, td, null, c.read, idx)
               } else {
               if ([DataType.checkbox, DataTypes.checkbox].includes(type)) {
                   const htm = option?.map(v => {
                   const rt = (
-                  <label class="checkbox">
+                      <label class="checkbox">
                         <input type="checkbox" name={field} value={v} checked={`${val.includes(v) ? 'true' : 'false'}`} />
-                    <i class="icon-checkbox"></i>
+                        <i class="icon-checkbox"></i>
                     {v}
                   </label>
                 )
@@ -2177,9 +2952,9 @@ class EditTable extends Event {
               } else if ([DataType.radio, DataTypes.radio].includes(type)) {
                   const htm = option?.map(v => {
                   const rt = (
-                  <label class="radio">
+                      <label class="radio">
                         <input type="radio" name={field} value={v} checked={`${val === v ? 'true' : 'false'}`} />
-                    <i class="icon-radio"></i>
+                        <i class="icon-radio"></i>
                     {v}
                   </label>
                 )
@@ -2202,9 +2977,9 @@ class EditTable extends Event {
                   const htm = val?.map(v => {
                 // <a class="chip-delete"></a>
                   const rt = (
-                  <div class="chip">
+                      <div class="chip">
                     <div class={`chip-media bg-color-${v.color}`}>{v.media}</div>
-                    <div class="chip-label">{v.val}</div>
+                        <div class="chip-label">{v.val}</div>
                   </div>
                 )
 
@@ -2222,7 +2997,8 @@ class EditTable extends Event {
                 // else td.innerHTML = `<input name="tx" class="etValue dy-input" value=${val}></input>`
 
             //  txs[i].setAttribute('idx', '') // 每行编辑节点设置idx属性，对应名称与数据索引，方便获取、设置节点数据
-            $td.data('idx', idx) // td 保存 数据索引
+                $td.data('idx', idx) // td 保存 数据列索引
+                $td.data('idy', 0) // td 保存 数据行索引
                 if (muti) $td.data('idv', i) // td 保存 数据索引
                 $td.data('value', val) // td 保存 原值
           }
@@ -2239,21 +3015,23 @@ class EditTable extends Event {
           }
 
           // 嵌套表，换行
-          if ([DataType.table, DataTypes.table].includes(r.type) && value?.head && value?.data) {
+          if ([DataType.table, DataTypes.table].includes(c.type) && value?.head && value?.data) {
             tr = thead.lastChild().clone()
             const td = document.createElement('td')
             td.colSpan = col[0] // vcol // col * 2 与 label 相同
 
             const $td = $(td)
             $td.data('idx', idx) // td 保存 数据索引
+            $td.data('idy', 0) // td 保存 数据行索引
 
-            $td.append(<div class="data-table" />)
+            $td.append(<div name={field} data-idx={idx} class="data-table" />)
 
             _.hasTable = true // 存在内嵌表，编辑时，需切换内嵌表编辑
-
+            const el = $td.find('div.data-table')
+            // @ts-expect-error
             const dtb = new DataTable(_.page, {
-              el: $td.find('div.data-table'),
-              name: `dtb${name}`, // datatable 名称
+              el,
+              name: `dtb${field}`, // datatable 名称
               head: value.head, // 表头
               data: value.data,
             })
@@ -2265,9 +3043,9 @@ class EditTable extends Event {
           } else if ([DataType.attach, DataTypes.attach].includes(type) && cat) {
             if (hasTd) tr = thead.lastChild().clone()
 
-            let {cat, subCol, subCols} = r
+            let {cat, subCol, subCols} = c
             cat = cat ?? [name]
-            subCol = subCol ?? [r.col[0]]
+            subCol = subCol ?? [c.col[0]]
             if (subCol.length === 1) cat[0] = name // 名称替代分类
 
             subCols = subCols ?? [0]
@@ -2288,7 +3066,7 @@ class EditTable extends Event {
             //   }
             // } while (cats?.length)
             // 按 cats 分类填充
-            fillAttach(_, r, value, tr, cats, idx)
+            fillAttach(_, value, tr, cats, c.read, idx)
             // 插入到空行前
             tbody.dom.insertBefore(tr.dom, null)
             tr.show()
@@ -2468,10 +3246,13 @@ class EditTable extends Event {
   /**
    * 获得kv的val
    * @param {*} r - 数据对象
+   * @param {*} [fv]
    * @returns {*}
    */
-  getKv(r) {
+  getKv(r, fv) {
     let R
+
+    const _ = this
     try {
       const {div, mul, option} = r
       let {type, value, unit, qian, decimal, zero} = r
@@ -2479,12 +3260,16 @@ class EditTable extends Event {
       type = type ?? DataType.text
       value = value ?? ''
 
-      // option: {1: '小型', 2: '中旬', 3: '大型'
+      // option: {1: '小型', 2: '中旬', 3: '大型'}
       if (typeof option === 'object' && !Array.isArray(option)) value = option[value]
       else if (Array.isArray(option) && option?.length && Array.isArray(option[0])) {
+        // 二维数组，如 search 返回的值
         const r = option.find(v => v[0] === value)
         value = r[1]
       }
+
+      // 字段引用
+      value = _.parseRef(value, 0, fv)
 
       // 数据转换
       if ([DataType.bool, DataTypes.bool].includes(type) && value) value = value ? '是' : '否'
@@ -2528,18 +3313,27 @@ class EditTable extends Event {
     const _ = this
 
     try {
-      const {tb} = _
+      const {tb, opt, fields} = _
 
       // 将data存入 value，方便FormData读取
       const rs = []
       const ck = []
       const attach = []
 
+      // 隐藏内嵌表
+      const hs = tb.find('.data-table-content table.edit-table')
+      for (const h of hs) {
+        h._parent = h.parentElement
+        h._next = h.nextSibling // 删除前记录下一个节点
+
+        h.remove()
+      }
+
       // input
       let els = tb.find('input')
       for (const el of els) {
         // 跳过上传的文件input
-        if (el.type === 'file') continue
+        if (el.type === 'file' || !el.name) continue
 
         // 通过输入input获得新旧值
         const r = _.getCellVal(el)
@@ -2553,18 +3347,18 @@ class EditTable extends Event {
       }
 
       els = tb.find('select')
-      for (const el of els.get()) {
+      for (const el of els) {
         const r = _.getCellVal(el)
         if (r !== undefined) rs.push(r.data)
       }
 
       // 合并checkbox多选值
       const vs = ck.reduce((acc, r) => {
-        const {idx, field, value, val} = r
-        const v = `${idx}-${field}`
+        const {idx, idy, field, value, val} = r
+        const v = `${idx}-${idy}-${field}`
         const o = acc[v]
         if (o) o.val.push(r.val)
-        else acc[v] = {idx, field, value, val: [r.val]}
+        else acc[v] = {idx, idy, field, value, val: [r.val]}
 
         return acc
       }, {})
@@ -2576,17 +3370,19 @@ class EditTable extends Event {
 
       // 合并attach值 到 add 字段
       let atts = attach.reduce((acc, r) => {
-        const {idx, field, value} = r
+        const {idx, idy, field, fieldid, value} = r
         let {val} = r
 
         if (val) {
           try {
             val = JSON.parse(val)
-            const v = `${idx}-${field}`
+            const v = `${idx}-${idy}-${field}`
             const o = acc[v]
             if (o) o.add.push(...val)
-            else acc[v] = {idx, field, value, add: val}
-          } catch {}
+            else acc[v] = {idx, idy, field, fieldid, value, add: val}
+          } catch (e) {
+            log.err(e, 'getVal attach JSON解析错误')
+          }
         }
 
         return acc
@@ -2598,8 +3394,16 @@ class EditTable extends Event {
         adds.push(v)
       }
 
-      const dels = getDel(tb, _.data)
+      const dels = getDel(tb, _.data, opt.kv, fields) // 获取删除的附件
       atts = mergeAttach(adds, dels)
+
+      for (const h of hs) {
+        if (h._next) {
+          h._parent.insertBefore(h, h._next)
+        } else {
+          h._parent.appendChild(h) // 如果 nextSibling 是 null，说明原来在最后
+        }
+      }
 
       R = [...rs, ...atts]
 
@@ -2620,25 +3424,33 @@ class EditTable extends Event {
     const _ = this
 
     try {
+      const {opt, fields} = _
+      const {kv} = opt
+
       const $el = $(el)
-      const field = $el.attr('name').replace(/-attach-add$/, '')
+      const name = $el.attr('name').replace(/-attach-add$/, '')
       const td = $el.upper('td')
-      const idx = td.data('idx')
-      const d = _.data[idx] // 原始值
+      const idx = td.data('idx') // 非Kv时 字段索引，kv时，数据索引
+      const idy = td.data('idy') // 非kv时 行索引
+      // 原始值
+      const r = fields[idx]
+      if (r) {
+        const {type, div, mul} = r
+        let value
+        if (kv) value = r.value
+        else value = _.data[idy][r.idx]
 
-      if (!d) return
-
-      const {value, type, div, mul} = d
-      let val = $el.val()
+        let val = $el.val()
       const key = $el.data('key') // key:val
 
       let skip
       let checked
       if ([DataType.number, DataTypes.number].includes(type)) {
+          if (typeof val === 'string') val = val?.replace(',', '') // 千分位
         // 没有修改跳过
+          val = Number(val) // 空字符串会变成0
         if (value === val) skip = true
         else {
-          val = Number(val) // 空字符串会变成0
         if (div) val = val * div
         else if (mul) val = val / mul
         }
@@ -2651,9 +3463,13 @@ class EditTable extends Event {
         val = key
       }
 
-      if (!skip && `${val}` !== `${value}`) R = {data: {idx, field, value, val}, checked}
+        if (!skip && `${val}` !== `${value}`) {
+          if (kv) R = {data: {idx, idy, field: name, fieldid: idx, value, val}, checked}
+          else R = {data: {idx: r.idx, idy, field: name, fieldid: idx, value, val}, checked}
+        }
 
       log({R}, 'getCellVal')
+      }
     } catch (e) {
       log.err(e, 'getCellVal')
     }
@@ -3347,8 +4163,14 @@ function formatNum(val, cnt = 2, zero = true) {
  */
 function isNumber(value) {
   let R = false
+  try {
+    if (value !== undefined && value !== null && value !== '') {
   if (typeof value === 'number') R = true
   else R = Number.isFinite(Number(value)) && value.trim() !== ''
+    }
+  } catch (e) {
+    log.err(e, 'isNumber')
+  }
 
   return R
 }
@@ -3359,14 +4181,23 @@ function isNumber(value) {
  * @returns
  */
 function getDate(date) {
-  if (!date) return ''
-
+  let R = ''
+  try {
+    if (date) {
   if (typeof date === 'string') date = new Date(date)
+
+      if (isDate(date)) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
+        R = `${year}-${month}-${day}`
+      }
+    }
+  } catch (e) {
+    log.err(e, 'getDate')
+    log.error({date}, 'getDate')
+  }
+  return R
 }
 
 /**
@@ -3405,17 +4236,19 @@ function mergeAttach(adds, dels) {
     const map = new Map()
 
     // 处理 addList
-    for (const {idx, field, value, add} of adds || []) {
-      if (!map.has(idx)) map.set(idx, {idx, field, value, del: [], add: []})
+    for (const {idx, idy, field, fieldid, value, add} of adds || []) {
+      const key = `${idx}-${idy}`
+      if (!map.has(key)) map.set(key, {idx, idy, field, fieldid, value, del: [], add: []})
 
-      map.get(idx).add = add
+      map.get(key).add = add
     }
 
     // 处理 delList
-    for (const {idx, field, value, del} of dels || []) {
-      if (!map.has(idx)) map.set(idx, {idx, field, value, del: [], add: []})
+    for (const {idx, idy, field, fieldid, value, del} of dels || []) {
+      const key = `${idx}-${idy}`
+      if (!map.has(key)) map.set(key, {idx, idy, field, fieldid, value, del: [], add: []})
 
-      map.get(idx).del = del
+      map.get(key).del = del
     }
 
     R = Array.from(map.values())
@@ -3435,8 +4268,11 @@ async function getOption(source, name) {
   try {
     if (!source?.url) return
 
-    const {url, token, param} = source
-    const tk = token ? $.store.get(token) : ''
+    const {url, param} = source
+    let {token} = source
+    token = token ?? 'token'
+
+    const tk = $.store.get(token)
 
     const rs = await $.post(url, {...param, name}, {'x-wia-token': tk})
 
@@ -3449,4 +4285,139 @@ async function getOption(source, name) {
   return R
 }
 
-export {DataType, DataTypes, EditTable as default}
+/**
+ * @typedef {object} EditOpts
+ * @prop {JQuery} el - 位置节点
+ * @prop {string} name
+ * @prop {*[]} head
+ * @prop {*[]} data
+ * @prop {*[]} use
+ */
+
+// param: {viewid: '', refid: ''}},
+
+/**
+ * 编辑表格
+ * @param {*} pg
+ * @param {EditOpts} opts
+ */
+function makeEdit(pg, opts) {
+  let R
+  const {head, data, el, name, use} = opts
+
+  try {
+    const htm = (
+      <div name={`dv${name}Edit`} class="data-table data-table-init">
+        <div class="data-table-header">
+          <div name={`lb${name}Info`} class="data-table-title">
+            合计[<span className="data-table-count"></span>]条数据
+          </div>
+          <div class="data-table-actions">
+            <button name={`btn${name}Add`} type="button" class="dy-btn dy-btn-soft dy-btn-accent dy-btn-sm">
+              新增
+            </button>
+          </div>
+        </div>
+        <div class="data-table-header-selected">
+          <div class="data-table-title-selected">
+            选择 [<span class="data-table-selected-count"></span>] 条数据<span class="data-table-selected-info"></span>
+            <span name={`lb${name}SelInfo`}></span>
+          </div>
+          <div class="data-table-actions">
+            <button name={`btn${name}CancelSel`} type="button" class="dy-btn dy-btn-soft dy-btn-sm">
+              取消
+            </button>
+            <button name={`btn${name}DelSel`} type="button" class="dy-btn dy-btn-soft dy-btn-secondary dy-btn-sm">
+              删除
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+
+    el.hide()
+    el.after(htm)
+    const dv = el.parent().find(`div[name="dv${name}Edit"]`)
+    dv.bindName()
+    // dv.dom.wiaDataTable = el.dom.wiaDataTable
+    const etb = new EditTable(pg, {
+      el: dv,
+      name: `tb${name}Edit`, // table 名称
+      edit: true,
+      kv: false,
+      head,
+      use,
+      data, // 视图数据
+    })
+
+    // @ts-expect-error
+    dv[`btn${name}CancelSel`].click(ev => {
+      etb.cancelSel()
+    })
+
+    // @ts-expect-error
+    dv[`btn${name}Add`].click(ev => {
+      etb.addRow()
+    })
+
+    // @ts-expect-error
+    dv[`btn${name}DelSel`].click(async ev => {
+      try {
+        const {sel} = etb
+        if (sel?.size) {
+          if (await promisify($.app.dialog.confirm, 2)(`确认删除所选${sel.size}条记录吗?`, '温馨提示!')) {
+            for (const v of sel) etb.delRow(v)
+            sel.clear()
+            etb.cancelSel()
+            // if (!sel.size) await promisify($.app.dialog.alert, 0)('删除成功!', '温馨提示!')
+            // else await promisify($.app.dialog.alert, 0)('删除失败!', '温馨提示!')
+          }
+        }
+      } catch {}
+    })
+    R = etb
+  } catch (e) {}
+
+  return R
+}
+
+/**
+ * 根据 id 分组合并数据
+ * @param {*[]} list
+ * @returns
+ */
+function groupById(list) {
+  const map = new Map()
+
+  for (const item of list || []) {
+    if (!map.has(item.id)) {
+      map.set(item.id, {
+        id: item.id,
+        idx:[],
+        fieldid: [],
+        val: [],
+        value: [],
+      })
+    }
+
+    const {add, del} = item
+    let {val} = item
+
+    if (!val && (add?.length || del?.length)) {
+      val = {}
+      if (add?.length) val.add = add
+      if (del?.length) val.del = del
+    }
+
+    const group = map.get(item.id)
+    group.idx.push(item.idx)
+    group.fieldid.push(item.fieldid)
+    group.val.push(val)
+    group.value.push(item.value)
+  }
+
+  return Array.from(map.values())
+}
+
+export {DataType, DataTypes, EditTable as default, makeEdit as edit}
+

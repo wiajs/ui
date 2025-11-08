@@ -20,8 +20,8 @@ pnpm add @wiajs/ui
 
 #### 第一个对象为整个数据表设置：
 
-- checkbox: Array，是否带 checkbox 勾选框，对应数据列，空数组或 index。
-  'index'：为数据数组索引。
+- checkbox: Array，是否带 checkbox 勾选框，对应数据列。
+  空数组或 'index'：为数据数组索引。
   对应的数据用于选择后按 对应值（一般为 id） 操作行数据。
 - id: Array，数组第几列为 id 字段，从 0 开始，作为行唯一标记，防止重复添加。
   id 与 checkbox 有类似功能，没有 checkbox 时，id 也能起到数据对应作用。

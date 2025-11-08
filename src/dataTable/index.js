@@ -10,6 +10,9 @@ import Table from '../table'
 
 const log = Log({m: 'dataTable'}) // 创建日志实例
 
+/** @type {*} */
+const {$} = window
+
 const g = {
   /** @type {*} */
   lightbox: null,
@@ -38,7 +41,7 @@ const _cfg = {
 /**
  * f7 DataTable 扩展，根据数据源动态创建表格
  */
-export default class DataTable extends Event {
+class DataTable extends Event {
   _sel = new Set() // 选择
   /** @type {*} */
   _tb = null // f7Table 实例
@@ -82,7 +85,7 @@ export default class DataTable extends Event {
 
     // 容器
     const $el = opt.el || page.view.findNode(opt.selector)
-    if ($el.length === 0) return undefined
+    if ($el.length === 0) return
 
     _.el = $el
 
@@ -163,106 +166,6 @@ export default class DataTable extends Event {
   }
 
   /**
-   * 按数据生成tbHead
-        // <tr>
-        //   <th colspan="2" rowspan="1">合并的前两列</th>
-        //   <th rowspan="2">第三列</th>
-        //   <th rowspan="2">第四列</th>
-        //   <th rowspan="2">第五列</th>
-        // </tr>
-        // <tr>
-        //   <th>第一列</th>
-        //   <th>第二列</th>
-        // </tr>
-   * @param {*} head 表头数据
-   * @returns
-   */
-  th(head) {
-    let R
-    try {
-      // 表头分组
-      const cat = head.some(v => v.cat)
-      if (cat) {
-        const hs1 = [] // 第一行
-        const hs2 = []
-
-        if (head[0].checkbox)
-          // 第二行
-
-          hs1.push(
-            <th rowspan="2" class="checkbox-cell">
-              <label class="checkbox">
-                <input type="checkbox" />
-                <i class="icon-checkbox" />
-              </label>
-            </th>
-          )
-
-        let lastCat = ['', 0]
-        for (let i = 1; i < head.length; i++) {
-          const d = head[i]
-          const cls = [d.type === 'number' ? 'numeric-cell' : 'label-cell']
-          if (d.sort) cls.push('sortable-cell')
-          if (d.cat || lastCat[1]) {
-            if (d.cat) {
-              lastCat = d.cat
-              hs1.push(
-                <th colspan={d.cat[1]} rowspan="1">
-                  {d.cat[0]}
-                </th>
-              )
-            }
-            hs2.push(<th class={cls.join(' ')}>{d.name}</th>)
-
-            // @ts-expect-error
-            lastCat[1]--
-          } else {
-            hs1.push(
-              <th rowspan="2" class={cls.join(' ')}>
-                {d.name}
-              </th>
-            )
-          }
-        }
-        R = (
-          <thead name="tbHead">
-            <tr>{hs1}</tr>
-            <tr>{hs2}</tr>
-          </thead>
-        )
-      } else {
-        const hs = []
-        if (head[0].checkbox)
-          hs.push(
-            <th class="checkbox-cell">
-              <label class="checkbox">
-                <input type="checkbox" />
-                <i class="icon-checkbox" />
-              </label>
-            </th>
-          )
-
-        for (let i = 1; i < head.length; i++) {
-          const d = head[i]
-          const cls = [d.type === 'number' ? 'numeric-cell' : 'label-cell']
-          if (d.sort) cls.push('sortable-cell')
-          hs.push(<th class={cls.join(' ')}>{d.name}</th>)
-        }
-
-        R = (
-          <thead name="tbHead">
-            <tr>{hs}</tr>
-          </thead>
-        )
-      }
-    } catch (e) {
-      log.err(e, 'th')
-    }
-
-    return R
-  }
-
-  /**
    * 按标头配置生成tr td数据模板
    * 支持link、hide参数
    * @param {*} head 表头数据
@@ -283,7 +186,7 @@ export default class DataTable extends Event {
         col-- // 自带value，不消耗数据
         // <a data-tag="edit">编辑</a>
         R.push(
-          <td class="label-cell" data-col={i}>
+          <td class='label-cell' data-col={i}>
             {h.value}
           </td>
         )
@@ -323,51 +226,6 @@ export default class DataTable extends Event {
   }
 
   /**
-   * 按数据生成tr col 控制列宽
-   * 支持hide参数
-   * @param {*} head 表头数据
-   * @returns
-   */
-  col(head) {
-    const R = []
-    const cfg = {..._cfg, ...(head[0] || {})}
-    const {hide, fontSize, padding, icon} = cfg
-
-    let col = -1 // 隐藏字段需跳过
-    for (let i = cfg.checkbox ? 0 : 1, len = head.length; i < len; i++) {
-      col++ // 数据索引从 0 开始
-      // 跳过隐藏列，隐藏列不显示
-      while (hide?.includes(col)) col++
-
-      const d = head[i]
-      /** @type {string[]} */
-      const style = []
-      let {name, type, width, minWidth, maxWidth, sort} = d
-
-      const add = sort ? icon + padding : padding
-      // width 与 minWidth 二选一
-      if (width) width = width * fontSize + add
-      else if (minWidth) minWidth = minWidth * fontSize + add
-      else if (!width) {
-        // checkbox
-        if (i === 0) width = 40
-        // else if (type === 'date') width = (fontSize / 2) * 10 + add
-        else width = fontSize * name.length + add
-      }
-
-      if (maxWidth) maxWidth = maxWidth * fontSize + add
-
-      if (width) style.push(`width: ${width}px`)
-      else if (minWidth) style.push(`min-width: ${minWidth}px`)
-
-      if (maxWidth) style.push(`max-width: ${maxWidth}px`)
-
-      R.push(<col style={style.join(';')} />)
-    }
-    return R
-  }
-
-  /**
    * 按数据生成tfoot的汇总行
    * 支持hide参数
    * @param {*[]} [r] - 汇总数组，接口返回传入，不传则前端计算
@@ -392,20 +250,20 @@ export default class DataTable extends Event {
 
       const rs = []
 
-      if (cfg.checkbox || _.group) rs.push(<td colspan="2" class="label-cell">{`合计：${count}条`}</td>)
-      else rs.push(<td class="label-cell">{`合计：${count}条`}</td>)
+      if (cfg.checkbox || _.group) rs.push(<td colspan='2' class='label-cell'>{`合计：${count}条`}</td>)
+      else rs.push(<td class='label-cell'>{`合计：${count}条`}</td>)
 
       for (let i = 2, len = head.length; i < len; i++) {
         const h = head[i]
-        const {type, sum, idx} = h
+        const {sum, idx} = h
         if (sum) {
           if (sum === 'value') rs.push(<td />)
           else if (sum === true || sum === 'avg') rs.push(<td class={cls}>{r[idx]}</td>)
           else if (sum.includes('${count}')) {
             const val = sum.replace('${count}', count)
-            rs.push(<td class="label-cell">{val}</td>)
+            rs.push(<td class='label-cell'>{val}</td>)
           } else if (sum === 'count') rs.push(<td class={cls}>{count}</td>)
-          else if (typeof sum === 'string') rs.push(<td class="label-cell">{sum}</td>)
+          else if (typeof sum === 'string') rs.push(<td class='label-cell'>{sum}</td>)
         } else rs.push(<td />)
       }
 
@@ -433,13 +291,12 @@ export default class DataTable extends Event {
       for (const d of data) {
         for (const h of head) {
           try {
-            const {idx, div, mul} = h // 表头对应的数据列
+            const {idx} = h // 表头对应的数据列
+            let val = d[idx]
             // 空字符不参与统计
-            if (idx >= 0 && (h.sum === true || h.sum === 'avg') && d[idx] !== '' && d[idx] !== null && d[idx] !== 'null') {
+            if ((h.sum === true || h.sum === 'avg') && isNumber(val)) {
+              R[idx] += Number(val)
               cnt[idx]++
-              if (div && div > 0) R[idx] += Number(d[idx]) / div
-              if (mul && mul > 0) R[idx] += Number(d[idx]) * mul
-              R[idx] += Number(d[idx])
             } else if (idx >= 0 && h.sum === 'value' && !R[idx]) R[idx] = d[idx]
           } catch (e) {
             log.err(e, 'getSum:sum')
@@ -448,10 +305,20 @@ export default class DataTable extends Event {
       }
 
       for (const h of head) {
-        const {idx, unit} = h
-        if (idx >= 0 && h.sum === true) R[idx] = formatNum(R[idx])
-        else if (idx >= 0 && h.sum === 'avg' && cnt[idx]) R[idx] = formatNum(R[idx] / cnt[idx])
+        try {
+          const {idx, sum, unit, div, mul} = h
+          if (idx > 0 && (sum === true || sum === 'avg')) {
+            if (div && div !== 0) R[idx] = R[idx] / div
+            if (mul && mul !== 0) R[idx] = R[idx] * mul
+
+            if (sum === 'avg' && cnt[idx]) R[idx] = R[idx] / cnt[idx]
+
+            R[idx] = formatNum(R[idx])
+          }
         if (unit) R[idx] = `${R[idx]}${unit}`
+        } catch (e) {
+          log.err(e, 'getSum')
+        }
       }
     } catch (e) {}
 
@@ -488,17 +355,17 @@ export default class DataTable extends Event {
       // <i class="icon f7icon text-[16] font-[600] transition-transform duration-300">chevron_down</i>
       if (level === 1)
       rs.push(
-          <td class="group-icon" data-group={value}>
-          <a class="text-blue-400">
-              <i class="icon f7icon text-[16] font-[600]">chevron_down</i>
+          <td class='group-icon' data-group={value}>
+            <a class='text-blue-400'>
+              <i class='icon f7icon text-[16] font-[600]'>chevron_down</i>
           </a>
         </td>
       )
       else if (level === 2)
         rs.push(
-          <td class="group-icon" data-group2={value}>
-            <a class="text-blue-400 transition-transform duration-300">
-              <i class="icon wiaicon text-[16] font-[300]" style="font-size:16px">
+          <td class='group-icon' data-group2={value}>
+            <a class='text-blue-400 transition-transform duration-300'>
+              <i class='icon wiaicon text-[16] font-[300]' style='font-size:16px'>
                 &#xe680;
               </i>
             </a>
@@ -534,23 +401,23 @@ export default class DataTable extends Event {
       const start = 1 //  + (cfg.groupCol ?? 0)
       for (let i = start, len = head.length; i < len; i++) {
         const h = head[i]
-        const {type, sum, idx} = h
+        const {sum, idx} = h
 
         // 分组列
-        if (i === col) rs.push(<td class="label-cell group-cell">{`${value.replace(/\d+-/, '')}(${count})`}</td>)
+        if (i === col) rs.push(<td class='label-cell group-cell'>{`${value.replace(/\d+-/, '')}(${count})`}</td>)
         else if (sum) {
           if (sum === true || sum === 'avg') rs.push(<td class={cls}>{d[idx]}</td>)
           else if (sum.includes('${count}')) {
             const val = sum.replace('${count}', count)
-            rs.push(<td class="label-cell">{val}</td>)
+            rs.push(<td class='label-cell'>{val}</td>)
           } else if (sum === 'count') rs.push(<td class={cls}>{count}</td>)
-          else if (sum === 'value') rs.push(<td class="label-cell">{d[idx]}</td>)
-          else if (typeof sum === 'string') rs.push(<td class="label-cell">{sum}</td>)
+          else if (sum === 'value') rs.push(<td class='label-cell'>{d[idx]}</td>)
+          else if (typeof sum === 'string') rs.push(<td class='label-cell'>{sum}</td>)
         } else rs.push(<td />)
       }
 
       const p = $(
-        <tr name={`${name}-data`} class="data-table-group">
+        <tr name={`${name}-data`} class='data-table-group'>
           {rs}
         </tr>
       )
@@ -601,7 +468,7 @@ export default class DataTable extends Event {
         let el = tb.find('th.group-icon')
         if (!el.dom) {
           el = tb.findNode('th')
-          el.before(<th class="group-icon"></th>)
+          el.before(<th class='group-icon'></th>)
           el = tb.findNode('colgroup')
           el.dom.insertAdjacentHTML('afterbegin', '<col style="width: 40px">')
           el = tb.findNode(`tr[name=${opt.name}-tp]`)
@@ -946,18 +813,17 @@ export default class DataTable extends Event {
       const cfg = {..._cfg, ...(head[0] || {})}
 
       // checkbox
-      let {checkbox: ck, layout, sum, fix} = cfg
+      const {checkbox: ck, layout, sum, fix} = cfg
 
       // 固定表格，上下滚动
-      if (fix.includes('table')) el.append(<div class="data-table-content overflow-auto" />)
-      else el.append(<div class="data-table-content" />)
+      if (fix.includes('table')) el.append(<div class='data-table-content overflow-auto' />)
+      else el.append(<div class='data-table-content' />)
 
       let ckv = ''
       // checkbox
       if (ck) {
         if (Array.isArray(ck) && ck.length) {
-          ck = ck[0]
-          ckv = `\${r[${ck}]}`
+          ckv = `\${r[${ck[0]}]}`
         } else if (ck === 'index') ckv = '${r.index}'
       }
 
@@ -982,24 +848,24 @@ export default class DataTable extends Event {
       tbWrap.append(tb)
 
       // 列宽
-      if (layout === 'fixed') tb.append(<colgroup>{_.col(head)}</colgroup>)
+      if (layout === 'fixed') tb.append(<colgroup>{col(head, _cfg)}</colgroup>)
 
       // <table name="tbLoan">
       // jsx 通过函数调用，实现html生成。
-      let v = this.th(head)
+      let v = th(head)
 
       // 加入到表格
       tb.append(v)
 
       // 表主体
       v = (
-        <tbody name="tbBody">
-          <tr name={`${name}-tp`} style="display: none">
+        <tbody name='tbBody'>
+          <tr name={`${name}-tp`} style='display: none'>
             {ck && (
-              <td class="checkbox-cell">
-                <label class="checkbox">
-                  <input type="checkbox" data-val={ckv} />
-                  <i class="icon-checkbox" />
+              <td class='checkbox-cell'>
+                <label class='checkbox'>
+                  <input type='checkbox' data-val={ckv} />
+                  <i class='icon-checkbox' />
                 </label>
               </td>
             )}
@@ -1012,14 +878,14 @@ export default class DataTable extends Event {
       tb.append(v)
 
       if (sum) {
-        v = <tfoot name="tbFoot" />
+        v = <tfoot name='tbFoot' />
         tb.append(v)
       }
 
       if (cfg.page && !fix.includes('table')) {
         v = (
-          <div class="data-table-footer">
-            <div class="dataTables_paginate paging_simple_numbers" />
+          <div class='data-table-footer'>
+            <div class='dataTables_paginate paging_simple_numbers' />
           </div>
         )
         // 加入到容器，而非表格
@@ -1233,6 +1099,14 @@ export default class DataTable extends Event {
     } catch (e) {
       log.err(e, 'bind')
     }
+  }
+
+  show() {
+    this.el.show()
+  }
+
+  hide() {
+    this.el.hide()
   }
 
   /**
@@ -1499,15 +1373,15 @@ export default class DataTable extends Event {
       if (cnt > plink) cnt = plink
 
       const v = (
-        <ul class="pagination">
+          <ul class='pagination'>
           <li class={`paginate_button page-item previous ${start <= 1 && 'disabled'}`}>
-            <a data-page={`<${start}`} tabindex="0" class="page-link">
+              <a data-page={`<${start}`} tabindex='0' class='page-link'>
               往前
             </a>
           </li>
           {this.pageLink(start, cnt)}
           <li class={`paginate_button page-item next ${len <= plink + start - 1 && 'disabled'}`}>
-            <a data-page={`>${plink + start - 1}`} tabindex="0" class="page-link">
+              <a data-page={`>${plink + start - 1}`} tabindex='0' class='page-link'>
               往后
             </a>
           </li>
@@ -1538,7 +1412,7 @@ export default class DataTable extends Event {
     for (let i = start; i < start + cnt; i++) {
       R.push(
         <li class={`paginate_button page-item ${i === start && 'active'}`}>
-          <a href="" data-page={i} tabindex="0" class="page-link">
+          <a href='' data-page={i} tabindex='0' class='page-link'>
             {i}
           </a>
         </li>
@@ -1714,7 +1588,7 @@ function compareObj(k, desc, type, sub) {
     try {
       let v1 = sub ? o1[sub][k] : o1[k]
       let v2 = sub ? o2[sub][k] : o2[k]
-      type = type ?? 'string'
+      type = getType(type)
 
       // log({v1, v2, type}, 'compareObj')
 
@@ -1745,6 +1619,21 @@ function compareObj(k, desc, type, sub) {
     }
     return R
   }
+}
+
+/**
+ * 返回字段类型
+ * @param {string} type
+ * @returns {string}
+ */
+function getType(type) {
+  let R = 'string'
+  try {
+    if (type === 'number') R = type
+    else if (['date', 'time', 'datetime'].includes(type)) R = 'date'
+  } catch {}
+
+  return R
 }
 
 /**
@@ -1821,6 +1710,8 @@ function attachVal(val, opt) {
   let R = val
 
   try {
+    if (!Array.isArray(val) || !val?.length) return
+
   val.forEach((element, index) => {
     element['_idx'] = index
   })
@@ -1829,15 +1720,15 @@ function attachVal(val, opt) {
       let rt
       if (item.type === 'img') {
         rt = (
-          <div class="attach-item" data-idx={item._idx}>
-            <img src={item.url} loading="lazy" alt="附件图片" />
+          <div class='attach-item' data-idx={item._idx}>
+            <img src={item.url} loading='lazy' alt='附件图片' />
             </div>
         )
       } else if (item.type === 'video') {
         const ext = item.ext ?? 'mp4'
         rt = (
-          <div class="attach-item" data-idx="${item._idx}">
-                <video controls preload="none">
+          <div class='attach-item' data-idx='${item._idx}'>
+            <video controls preload='none'>
               <source src={item.url} type={`${item.type}/${ext}`} />
                 </video>
           </div>
@@ -1845,8 +1736,8 @@ function attachVal(val, opt) {
       } else {
         const src = getThumb(item.ext)
         rt = (
-          <div class="attach-item" data-idx={item._idx}>
-            <img src={src} loading="lazy" />
+          <div class='attach-item' data-idx={item._idx}>
+            <img src={src} loading='lazy' />
           </div>
         )
       }
@@ -1855,10 +1746,10 @@ function attachVal(val, opt) {
     })
 
     R = (
-            <div class="upload-editor-container">
-                <div class="etAttach">
-          <div class="attach-wrap" data-list={JSON.stringify(val)}>
-            <input id="hiddenArray" class="ipu-value" value={JSON.stringify(val)} type="hidden" />
+      <div class='upload-editor-container'>
+        <div class='etAttach'>
+          <div class='attach-wrap' data-list={JSON.stringify(val)}>
+            <input id='hiddenArray' class='ipu-value' value={JSON.stringify(val)} type='hidden' />
             {attachItems}
                     </div>
                 </div>
@@ -1870,6 +1761,7 @@ function attachVal(val, opt) {
 
   return R
 }
+
 /**
  * 是否为数字
  * @param {*} value
@@ -1877,8 +1769,14 @@ function attachVal(val, opt) {
  */
 function isNumber(value) {
   let R = false
+  try {
+    if (value !== undefined && value !== null && value !== '') {
   if (typeof value === 'number') R = true
   else R = Number.isFinite(Number(value)) && value.trim() !== ''
+    }
+  } catch (e) {
+    log.err(e, 'isNumber')
+  }
 
   return R
 }
@@ -1934,3 +1832,153 @@ function formatNum(val, cnt = 2, zero = true) {
   }
   return R
 }
+
+/**
+ * 按数据生成tr col 控制列宽
+ * 支持hide参数
+ * @param {*} head 表头数据
+ * @param {*} [cfg] 表头数据
+ * @returns
+ */
+function col(head, cfg = {}) {
+  const R = []
+  cfg = {...cfg, ...(head[0] || {})}
+  const {hide, fontSize, padding, icon} = cfg
+
+  let col = -1 // 隐藏字段需跳过
+  for (let i = cfg.checkbox ? 0 : 1, len = head.length; i < len; i++) {
+    col++ // 数据索引从 0 开始
+    // 跳过隐藏列，隐藏列不显示
+    while (hide?.includes(col)) col++
+
+    const d = head[i]
+    /** @type {string[]} */
+    const style = []
+    let {name, type, width, minWidth, maxWidth, sort} = d
+
+    const add = sort ? icon + padding : padding
+    // width 与 minWidth 二选一
+    if (width) width = width * fontSize + add
+    else if (minWidth) minWidth = minWidth * fontSize + add
+    else if (!width) {
+      // checkbox
+      if (i === 0) width = 40
+      // else if (type === 'date') width = (fontSize / 2) * 10 + add
+      else width = fontSize * name.length + add
+    }
+
+    if (maxWidth) maxWidth = maxWidth * fontSize + add
+
+    if (width) style.push(`width: ${width}px`)
+    else if (minWidth) style.push(`min-width: ${minWidth}px`)
+
+    if (maxWidth) style.push(`max-width: ${maxWidth}px`)
+
+    R.push(<col style={style.join(';')} />)
+  }
+  return R
+}
+
+/**
+   * 按数据生成tbHead
+        // <tr>
+        //   <th colspan="2" rowspan="1">合并的前两列</th>
+        //   <th rowspan="2">第三列</th>
+        //   <th rowspan="2">第四列</th>
+        //   <th rowspan="2">第五列</th>
+        // </tr>
+        // <tr>
+        //   <th>第一列</th>
+        //   <th>第二列</th>
+        // </tr>
+   * @param {*} head 表头数据
+   * @returns
+   */
+function th(head) {
+  let R
+  try {
+    // 表头分组
+    const cat = head.some(v => v.cat)
+    if (cat) {
+      const hs1 = [] // 第一行
+      const hs2 = []
+
+      if (head[0].checkbox)
+        // 第二行
+
+        hs1.push(
+          <th rowspan='2' class='checkbox-cell'>
+            <label class='checkbox'>
+              <input type='checkbox' />
+              <i class='icon-checkbox' />
+            </label>
+          </th>
+        )
+
+      let lastCat = ['', 0]
+      for (let i = 1; i < head.length; i++) {
+        const d = head[i]
+        const cls = [d.type === 'number' ? 'numeric-cell' : 'label-cell']
+        if (d.sort) cls.push('sortable-cell')
+        if (d.cat || lastCat[1]) {
+          if (d.cat) {
+            lastCat = d.cat
+            hs1.push(
+              <th colspan={d.cat[1]} rowspan='1'>
+                {d.cat[0]}
+              </th>
+            )
+          }
+          hs2.push(<th class={cls.join(' ')}>{d.name}</th>)
+
+          // @ts-expect-error
+          lastCat[1]--
+        } else {
+          hs1.push(
+            <th rowspan='2' class={cls.join(' ')}>
+              {d.name}
+            </th>
+          )
+        }
+      }
+
+      R = (
+        <thead name='tbHead'>
+          <tr>{hs1}</tr>
+          <tr>{hs2}</tr>
+        </thead>
+      )
+    } else {
+      const hs = []
+      if (head[0].checkbox)
+        hs.push(
+          <th class='checkbox-cell'>
+            <label class='checkbox'>
+              <input type='checkbox' />
+              <i class='icon-checkbox' />
+            </label>
+          </th>
+        )
+
+      for (let i = 1; i < head.length; i++) {
+        const d = head[i]
+        const cls = [d.type === 'number' ? 'numeric-cell' : 'label-cell']
+        if (d.sort) cls.push('sortable-cell')
+        hs.push(<th class={cls.join(' ')}>{d.name}</th>)
+      }
+
+      R = (
+        <thead name='tbHead'>
+          <tr>{hs}</tr>
+        </thead>
+      )
+    }
+  } catch (e) {
+    log.err(e, 'th')
+  }
+
+  return R
+}
+
+export {col, DataTable as default, th}
+

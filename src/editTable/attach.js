@@ -22,17 +22,16 @@ const g = {
 
 /**
  * 按分类渲染附件
- * @param {EditTable} _
- * @param {*} r
+ * @param {EditTable} _ -组件实例
  * @param {{_idx: number, id: number, cat:string, name:string,abb:string, url:string, status?:string, type:string, ext?:string}[]} value - 数据卡 值，对象数组
  * @param {*} tr - 行 或 td
- * @param {{cat: string, col: number}[]} cats - 分类数组，null 无分类，使用 td
- * @param {number} idx - editTable 的数据索引
+ * @param {{cat: string, col: number}[]} [cats] - 分类数组，null 无分类，使用 td
+ * @param {boolean} [read] - 只读
+ * @param {number} [idx] - Kv编辑数据索引或表格编辑字段索引
+ * @param {number} [idy] - 表格编辑时的数据行索引
  */
-function fillAttach(_, r, value, tr, cats, idx) {
+function fillAttach(_, value, tr, cats, read = false, idx = 0, idy = 0) {
   try {
-    const {read} = r
-
     let td
     if (!cats) td = tr // 无分类，普通显示
 
@@ -45,11 +44,12 @@ function fillAttach(_, r, value, tr, cats, idx) {
     }
 
     if (!cats) {
-      fillTd(_, td, null, null, value, read, idx)
+      fillTd(_, td, null, null, value, read, idx, idy)
       const $td = $(td)
       $td.click(attachClick) // 点击浏览大图
       td.attachData = value
       $td.data('idx', idx) // td 保存 EditTable 的数据索引
+      $td.data('idy', idy) // td 保存 EditTable 的数据行索引
     }
     // const tr = thead.lastChild().clone()
     // let {catid} = cats // 数据数组索引
@@ -65,8 +65,9 @@ function fillAttach(_, r, value, tr, cats, idx) {
 
       const $td = $(td)
       $td.data('idx', idx) // td 保存 EditTable 的数据索引
+        $td.data('idy', idy) // td 保存 EditTable 的数据行索引
 
-        fillTd(_, td, cat, cats, value, read, idx)
+        fillTd(_, td, cat, cats, value, read, idx, idy)
 
         tr.append(td)
         // // 插入到空行前
@@ -81,7 +82,7 @@ function fillAttach(_, r, value, tr, cats, idx) {
 }
 
 /**
- *
+ * 填充 td 附件内容
  * @param {*} _ - editDable 实例
  * @param {*} td
  * @param {string} cat
@@ -89,12 +90,15 @@ function fillAttach(_, r, value, tr, cats, idx) {
  * @param {*} value
  * @param {boolean} read
  * @param {number} idx - EditTable 数组数据索引
+ * @param {number} idy - EditTable 数组数据索引
  */
-function fillTd(_, td, cat, cats, value, read, idx) {
+function fillTd(_, td, cat, cats, value, read, idx, idy) {
   try {
-    const {data, opt} = _
-    const {field} = data[idx]
-    let {upload} = data[idx]
+    const {fields, opt} = _
+
+    const {field} = fields[idx] || {}
+    let {upload} = fields[idx] || {}
+
     upload = upload ?? opt.upload
 
     const $td = $(td)
@@ -112,9 +116,9 @@ function fillTd(_, td, cat, cats, value, read, idx) {
       //   } else acc[v.cat] = {data: [v], count: 1}
       //   return acc
       // }, {})
-      if (cat) att.append(<div class="attach-cat">{cat}</div>)
+    if (cat) att.append(<div class="attach-cat">{cat}</div>)
 
-      att.append(<div class="attach-wrap" />)
+    att.append(<div class="attach-wrap" />)
       // 封装层，超出左右滑动
       const wrap = att.find('.attach-wrap')
       // 分类
@@ -146,7 +150,10 @@ function fillTd(_, td, cat, cats, value, read, idx) {
       )
 
       if (_.Uploader) {
-        const {dir, url, token} = upload
+        const {dir, url} = upload
+        let {token} = upload
+        token = token ?? 'token'
+
         const ud = new _.Uploader({
           // dir: `prj/${cat}`, // 图片存储路径
           dir, // 图片存储路径
@@ -206,18 +213,35 @@ function fillTd(_, td, cat, cats, value, read, idx) {
           // FileEl.data('id', file.id)
         })
       }
-      }
-
     if (!opt.edit) wrap.find('._choose').hide()
+    }
   } catch (e) {
     log.err(e, 'fillTd')
   }
 }
 
 /**
+ *
+ * @param {*} tb
+ */
+function edit(tb) {
+  const wrap = tb.find('.attach-item.wia_uploader')
+  wrap.find('._choose').show()
+}
+
+/**
+ *
+ * @param {*} tb
+ */
+function view(tb) {
+  const wrap = tb.find('.attach-item.wia_uploader')
+  wrap.find('._choose').hide()
+}
+
+/**
  * 添加子项
  * @param {*} wrap
- * @param {string} field
+ * @param {string} field - 字段名
  * @param {string} type
  * @param {string} ext - 后缀
  * @param {string} name - 名称
@@ -286,10 +310,11 @@ function addItem(wrap, field, type, ext, name, abb, url, idx) {
  * @param {Dom} att - 附件（.attach-item）
  * @param {Dom} wrap - 新增 ._wrap
  * @param {string} field - 字段名
- * @param {*} value - 附件数据值
- * @param {number} idx - EditTable data 索引
+ * @param {{id:number, url:string}} value - 附件数据值
+ * @param {number} idx - EditTable data 列索引
+ * @param {number} idy - EditTable data 行索引
  */
-function delItem(td, att, wrap, field, value, idx) {
+function delItem(td, att, wrap, field, value, idx, idy) {
   try {
     if (att.dom) {
       // 新增附件删除
@@ -305,6 +330,7 @@ function delItem(td, att, wrap, field, value, idx) {
       // 保存被删除元素的信息：DOM克隆、父节点、前一个兄弟节点（用于还原位置）
       el.dom.attachDel.push({
         idx,
+          idy,
         field,
         value,
         att,
@@ -349,37 +375,48 @@ function cancelDel(el) {
  * 还原所有被删除的元素
  * @param {*} el - EditTable
  * @param {*} data - EditTable data
+ * @param {boolean} kv - kv 数据
+ * @param {*[]} fields - 字段数组
  * @returns {{idx: number, field: string, del:[id: number, url: string, value: *]}[]}
  */
-function getDel(el, data) {
+function getDel(el, data, kv, fields) {
   let R
   try {
     const es = el.find('.etAttach')
-    for (const e of es.get()) {
+    for (const e of es) {
       if (!e.attachDel) continue
 
       // 遍历所有需要还原的元素
       const rs = []
       for (const r of e.attachDel) {
         if (r.att && r.parent) {
-          const {idx, field, value} = r
+          const {idx, idy, field} = r
+          let {value} = r
           const {id, url} = value
-          rs.push({idx, field, id, url, value: data[idx].value})
+          if (kv) {
+            value = data[idx].value
+            rs.push({idx, idy, field, fieldid: idx, id, url, value})
+          } else {
+            const i = fields[idx].idx
+            value = data[idy][i]
+            rs.push({idx: i, idy, field, fieldid: idx, id, url, value})
+          }
         }
       }
 
       if (rs.length) {
         const map = new Map()
-        for (const {idx, field, id, url, value} of rs) {
-          if (!map.has(idx)) map.set(idx, {idx, field, value, del: []})
-          map.get(idx).del.push({id, url})
+        for (const {idx, idy, field, fieldid, id, url, value} of rs) {
+          const key = `${idx}-${idy}`
+          if (!map.has(key)) map.set(key, {idx, idy, field, fieldid, value, del: []})
+          map.get(key).del.push({id, url})
         }
 
         R = Array.from(map.values())
       }
     }
   } catch (e) {
-    log.err(e, 'cancelDel')
+    log.err(e, 'getDel')
   }
 
   return R
@@ -472,7 +509,8 @@ async function attachClick(ev) {
     if (ev.target.type === 'file') return
 
   const td = $(ev).upper('td')
-  const idx = td.data('idx') // EditTable data 索引
+    const idx = td.data('idx') // EditTable data 列索引
+    const idy = td.data('idy') // EditTable data 行索引
 
     let value = td?.dom?.attachData
 
@@ -489,7 +527,7 @@ async function attachClick(ev) {
 
   const btnDel = $(ev).upper('.attach-delete')
   // 删除
-    if (btnDel.dom) delItem(td, att, wrap, field, value[i], idx)
+    if (btnDel.dom) delItem(td, att, wrap, field, value[i], idx, idy)
   else if (att.dom && tr.dom) {
       // 新增附件没有idx，使用 src
       let src = ''
@@ -582,4 +620,4 @@ function getThumb(ext, url) {
   return R
 }
 
-export {fillAttach, getRowCat, getThumb, cancelDel, getDel}
+export {cancelDel, edit, fillAttach, getDel, getRowCat, getThumb, view}

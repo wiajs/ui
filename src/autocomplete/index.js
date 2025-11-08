@@ -11,12 +11,12 @@ const log = Log({m: 'autoComplete'}) // 创建日志实例
  */
 
 /** @typedef {object} Opts
- * @prop {string | Dom} el -
+ * @prop {Dom} el - 容器元素
  * @prop {boolean} [status] - 状态
  * @prop {boolean} [search] - 搜索
  * @prop {boolean} [clear] - 清除
  * @prop {number} [maxItems] - 显示数量，避免性能问题
- * @prop {*[]} [data] - 数据
+ * @prop {*[]} [data] - 初始数据
  * @prop {HTMLElement[]} [refEl] - 关联元素，点击不关闭列表
  * @prop {{url:string, token:string}} [source] - 显示数量，避免性能问题
  * @prop {string} [addUrl] - 新增网址
@@ -76,7 +76,7 @@ export default class Autocomplete extends Event {
   /**
    * 构造
    * @param {Page} page 页面实例
-   * @param {*} opts 选项，激活名称
+   * @param {Opts} opts 选项，激活名称
    */
   constructor(page, opts) {
     /** @type{Opt} */
@@ -296,29 +296,35 @@ export default class Autocomplete extends Event {
   /**
    * 查询选项
    * @param {*} source
-   * @param {string} inputValue
+   * @param {string} value
    */
-  async search(source, inputValue) {
+  async search(source, value) {
     const _ = this
     try {
       if (!source?.url) return
 
       // 显示加载状态
       _.showStatus('查询中...')
-      const {url, token} = source
-      let {param} = source
-      const tk = token ? $.store.get(token) : ''
 
-      if (param) param.value = inputValue
-      else param = {value: inputValue}
+      const {url} = source
+      let {token} = source
+      token = token ?? 'token'
+
+      let {param} = source
+      const tk = $.store.get(token)
+
+      if (value) {
+        if (param) param.value = value
+        else param = {value}
+      }
 
       const rs = await $.post(url, param, {'x-wia-token': tk})
 
       // 输入完成后再触发查询
       if (rs) {
         _.data = rs
-        const filteredData = _.filter(inputValue)
-        _.showList(filteredData, inputValue)
+        const filteredData = _.filter(value)
+        _.showList(filteredData, value)
         _.hideStatus()
       }
     } catch (e) {
@@ -365,7 +371,8 @@ export default class Autocomplete extends Event {
     const _ = this
 
     if (data?.length) _.data = data
-    data = _.data
+    else data = _.data
+
     if (!data?.length) return
 
     // 限制显示数量，避免性能问题
@@ -411,7 +418,7 @@ export default class Autocomplete extends Event {
   }
 
   /**
-   * 显示结果函数
+   * 显示查询结果
    * @param {string[]} data
    * @param {*} inputValue
    * @returns
@@ -435,6 +442,7 @@ export default class Autocomplete extends Event {
       /** @type {string|number} */
       let key
       let val = r
+      // kv 二维数组
       if (Array.isArray(r) && r.length > 1) {
         ;[key, val] = r
         $(el).data('key', key)

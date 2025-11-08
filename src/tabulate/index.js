@@ -750,7 +750,10 @@ fileUploadEditor(index,read,cell) {
     </div>
   )
   // 初始化Uploader组件
-    const {dir, url, token} = this.upload
+        const {dir, url} = this.upload
+        let {token} = this.upload
+        token = token ?? 'token'
+
   const uploader = new Ud({
       dir, // 图片存储路径
       url, // 图片上传网址
