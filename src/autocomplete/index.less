@@ -17,8 +17,11 @@
 
   font-size: var(--autocomplete-font-size); // 17
 
+  /* 输入框容器样式（确保输入框本身样式正常） */
   .ac-wrapper {
     position: relative;
+    display: inline-block;
+    width: 100%;
 
     .ac-input {
       width: 100%;
@@ -30,6 +33,7 @@
       transition: all 0.3s ease;
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
       background: #fff;
+      box-sizing: border-box;
 
       height: 31px;
       min-width: 120px;
@@ -45,12 +49,25 @@
       }
     }
 
-    .ac-status {
+    /* 按钮样式（避免遮挡输入框） */
+    .ac-status,
+    .ac-clear,
+    .ac-search,
+    .ac-add {
       position: absolute;
-      // right: 20px;
-      right: calc(30px + var(--add-button-offset)); /* 动态计算位置 */
       top: 50%;
       transform: translateY(-50%);
+
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 16px;
+      color: #999;
+    }
+
+    .ac-status {
+      // right: 20px;
+      right: calc(30px + var(--add-button-offset)); /* 动态计算位置 */
       // font-size: 0.9rem;
       font-size: var(--autocomplete-status-font-size);
       color: #7f8c8d;
@@ -65,20 +82,15 @@
     }
 
     .ac-clear {
-      position: absolute;
       // right: 15px;
       right: calc(30px + var(--add-button-offset)); /* 动态计算位置 */
-      top: 50%;
-      transform: translateY(-50%);
       background: none;
-      border: none;
       color: #aaa;
       font-size: var(--autocomplete-clear-font-size);
-      cursor: pointer;
       opacity: 0;
       transition: all 0.3s ease;
-      width: 30px;
-      height: 30px;
+      width: 20px !important;
+      height: 20px !important;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -100,15 +112,10 @@
     }
 
     .ac-search {
-      position: absolute;
       right: calc(5px + var(--add-button-offset)); /* 动态计算位置 */
-      top: 50%;
-      transform: translateY(-50%);
       background: linear-gradient(135deg, #3498db, #2980b9);
       color: white;
-      border: none;
       font-size: var(--autocomplete-search-font-size);
-      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -130,15 +137,10 @@
     }
 
     .ac-add {
-      position: absolute;
       right: 5px; /* 最右侧位置 */
-      top: 50%;
-      transform: translateY(-50%);
       background: linear-gradient(135deg, #27ae60, #219a52);
       color: white;
-      border: none;
       font-size: var(--autocomplete-search-font-size);
-      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -247,4 +249,60 @@
   //     font-size: 0.85rem;
   //   }
   // }
+}
+
+/* 下拉列表基础样式 */
+.ac-list {
+  position: absolute;
+  display: block;
+  background: #fff; // 避免继承透明背景
+  border: 1px solid #eee;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow-y: auto; // 超出部分滚动
+  min-width: 100px; // 最小宽度兜底
+  max-height: 300px; // 限制最大高度，避免超出视口
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  z-index: 9999; // 最高层级（确保在page.view内部最上层）
+
+  /* 列表项样式 */
+  .ac-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &:hover,
+    &.highlighted {
+      background: #f5f7fa;
+    }
+
+    .ac-highlight {
+      color: #1890ff;
+      font-weight: bold;
+    }
+  }
+}
+
+/* 加载动画 */
+.loading-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  border: 2px solid #ccc;
+  border-top-color: #1890ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

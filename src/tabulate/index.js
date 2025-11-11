@@ -376,7 +376,7 @@ export default class Tabulate {
         field: fieldIndex.toString(),
         editor: editor,
         ...(item.editor === 'upload' && {
-          formatter: (...args) => this.fileUploadEditor(fieldIndex, true, ...args)
+            formatter: (...args) => this.fileUploadEditor(fieldIndex, true, ...args),
         }),
         ...(item.type === 'date' && {
             formatter: cell => {
@@ -532,9 +532,9 @@ deleteRow(row) {
         const parent = table.parentNode
         const tTableDiv = parent.querySelector('div[name="t-table"]')
         const addButton = parent.querySelector('button[name="add-button"]')
-      // @ts-ignore
+        // @ts-expect-error
         tTableDiv.style.display = 'none'
-      // @ts-ignore
+        // @ts-expect-error
       addButton.style.display = 'none'
     })
     } catch (error) {
@@ -715,7 +715,7 @@ fileUploadEditor(index,read,cell) {
       const cellValue = cell.getValue() || []
       const row = cell.getRow()
       const rowId = row.getData().id
-  // @ts-ignore
+      // @ts-expect-error
   this.fileObj[`${rowId}-${index}`] = this.fileObj[`${rowId}-${index}`]  ??  cellValue
   console.log(cellValue,'value')
       const i = -1
@@ -812,8 +812,8 @@ fileUploadEditor(index,read,cell) {
   if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
         const processed = {}
       for (const key in data) {
-          if (data.hasOwnProperty(key)) {
-              // @ts-ignore
+          if (Object.hasOwn(data, key)) {
+            // @ts-expect-error
             processed[key] = this.processData(data[key]) // 递归处理子属性
           }
       }
@@ -927,9 +927,9 @@ async attachClick(ev,index,cell) {
         window.open(url, '_blank')
       } else if (type === 'img' || type === 'video') {
         if (!g.lightbox) {
-          // @ts-ignore
+            // @ts-expect-error
           // if (!g.anime) g.anime = await import('https://cdn.jsdelivr.net/npm/animejs@4/+esm')
-          // @ts-ignore
+            // @ts-expect-error
           // const m = await import('https://cdn.jsdelivr.net/npm/glightbox@3/+esm')
           const m = await import('https://cos.wia.pub/wiajs/glightbox.mjs')
           g.lightbox = m.default

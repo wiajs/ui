@@ -7,6 +7,7 @@ import {isDate, promisify} from '@wiajs/core/util/tool'
 import {log as Log} from '@wiajs/util'
 import DataTable, {col, th} from '../dataTable'
 import {cancelDel, edit as editAttach, fillAttach, getDel, view as viewAttach} from './attach'
+import * as chip from './chip'
 import * as tool from './tool'
 
 const log = Log({m: 'editTable'}) // 创建日志实例
@@ -399,7 +400,7 @@ class EditTable extends Event {
 
       // <table name="tbLoan">
       // jsx 通过函数调用，实现html生成。
-      let v = th(head)
+      let v = th(head, false)
 
       // 加入到表格
       tb.append(v)
@@ -587,7 +588,7 @@ class EditTable extends Event {
             })
 
             sel.focus(ev => {
-              // 关联查询
+              // 关联参数发生编号，重新查询
               _.fillOption(r, td, sel, value, idy)
             })
           }
@@ -612,44 +613,41 @@ class EditTable extends Event {
             })
         } else if ((type === DataType.search || type === DataTypes.search) && _.Autocomplete) {
           const span = td.find('span')
+          // 切换到编辑模式
           if (span.css('display') !== 'none') {
             span.hide()
-            let tx = td.find('.ac-input')
             let dvAc = td.find('.autocomplete')
 
-            if (!tx.dom) {
+            let ac = dvAc.dom?._wiaAutocomplete
+            // 创建Ac
+            if (!ac) {
               const {source, field, addUrl} = r
-              let {placeholder, option} = r
-              if (!option) option = [value]
-              else if (Array.isArray(option) && !option.includes(value)) option.push(value)
+              const {placeholder} = r
+              // td.append()
+              dvAc = $(<div class="autocomplete" />).appendTo(td)
 
-              r.option = option
-              placeholder = placeholder ?? '请输入'
-              td.append(
-                <div class="autocomplete">
-                  <div class="ac-wrapper">
-                    <input type="text" name={field} class="ac-input" placeholder={placeholder} autocomplete="off" />
-                  </div>
-                </div>
-              )
-              tx = td.find('.ac-input')
-              dvAc = td.find('.autocomplete')
+              // 保存当前字段 search回来的数据，表编辑时 其它行共享
+              if (!r.option) r.option = []
 
+              // r.option = option // 不保存到字段定义，避免污染
               // tx.addClass('dy-input')
-              const ac = new _.Autocomplete(_.page, {
+              ac = new _.Autocomplete(_.page, {
                 el: dvAc,
-                data: option, // 设置初始数据
-                refEl: [span.dom], // 关联元素，点击不关闭列表，否则会关闭列表
+                data: r.option, // 设置初始数据、缓存查询数据，不传则不缓存
+                name: field, // input name，用于获取字段值
+                value, // 原始值 用于初始选中
+                placeholder,
+                // refEl: [span.dom], // 点击该关联元素不关闭下拉列表，点击其他地方，关闭列表
                 source,
                 addUrl,
               })
 
-              tx.blur(() => {
+              ac.on('blur', () => {
                 // 选择赋值在 blur 后
                 setTimeout(() => {
-                  const val = tx.val()
+                  const val = ac.val() //tx.val()
                   if (`${val}` === `${value}` || val === '') {
-                    dvAc.hide()
+                    ac.hide()
                     span.eq(0).html(value) // 还原值
                     span.show()
                   } else {
@@ -660,16 +658,8 @@ class EditTable extends Event {
               })
             }
 
-            // tx.val(span.eq(0).html())
-            dvAc.show()
-            const input = tx.dom
-            const {ac} = dvAc.dom
-            tx.focus() // 自动触发下拉
-            // 触发datalist下拉显示（需要特殊处理）
-            // setTimeout(() => {
-            //   input.focus()
-            //   ac.showAllList()
-            // }, 0)
+            ac.show()
+            ac.focus() // 自动触发下拉
           }
         } else if (type === DataType.bool || type === DataTypes.bool) {
           const span = td.find('span')
@@ -889,6 +879,8 @@ class EditTable extends Event {
 
   /**
    * 填充select option
+   * 每次点击下拉时，检查关联参数是否变化，变化则重新获取选项
+   * 根据选项，重新生成select 内容，不缓存
    * @param {*} r - 字段定义
    * @param {Dom} td
    * @param {Dom} sel - select
@@ -904,7 +896,7 @@ class EditTable extends Event {
       // 查询参数 可引用其他字段值
       param = _.parseRef(param, idy)
 
-      // 引用字段
+      // 引用字段值是否变化
       let change
       const curParam = JSON.stringify(param)
       const lastParam = r.lastSourceParam
@@ -940,30 +932,33 @@ class EditTable extends Event {
       // 关联字段变化或无选项，动态获取
       if (source && (change || !option?.length)) {
         sel.html('')
-
-        // 数据字典
+        // 数据字典查询
         // 默认 name = field
         if (!name) name = r.field
 
         // source.param.name = name
         option = await getOption(source, name)
+        r.option = option // 保存选项到字段定义，避免重复查询
+        let cnt = 0
 
-        log({option}, 'getOption')
+        if (Array.isArray(option)) cnt = option.length
+        else if (typeof option === 'object') cnt = Object.keys(option).length
+
+        log({source, name, cnt}, 'fillOption.getOption')
       }
 
-      if (!option?.length && value) option = [value]
+      // 插入当前值，保存后需清除
+      if (!option && value) option = [value]
 
         if (option) {
-        if (Array.isArray(option) && !option.includes(value)) option.push(value)
-
-        r.option = option // 保存到字段定义
-
           let key
           const span = td.find('span')
-          const val = span.html()
+        const val = span.html() // 当前显示值
           // 添加选项
           let htm = []
-          if (Array.isArray(option))
+        if (Array.isArray(option)) {
+          if (!option.includes(value)) option.unshift(value) // 加入原始值
+
             htm = option.map(v => {
               let rt
               if (v === val)
@@ -975,7 +970,10 @@ class EditTable extends Event {
               else rt = <option value={v}>{v}</option>
               return rt
             })
-          else if (typeof option === 'object') {
+        } else if (typeof option === 'object') {
+          const has = Object.values(option).some(v => `${v}` === `${value}`)
+          if (!has) option[value] = value // 加入原始值
+
             if (!val) {
               htm.push(
               <option selected value="">
@@ -983,6 +981,7 @@ class EditTable extends Event {
                 </option>
               )
             }
+
             for (const k of Object.keys(option)) {
               const v = option[k]
               if (v === val) {
@@ -995,6 +994,7 @@ class EditTable extends Event {
               } else htm.push(<option value={k}>{v}</option>)
             }
           }
+        // r.option = option // 不保存到字段定义，避免污染
 
           sel.html(htm.join(''))
 
@@ -1005,6 +1005,8 @@ class EditTable extends Event {
       log.err(e, 'fillOption')
     }
   }
+
+  clearOption() {}
 
   /**
    * 解析引用字段
@@ -1330,6 +1332,7 @@ class EditTable extends Event {
     _.editModeTable()
 
       editAttach(_.tb)
+      chip.edit(_.tb)
 
       // _.bind()
     } catch (e) {
@@ -1377,6 +1380,7 @@ class EditTable extends Event {
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
       _.tabulate?.togglePreview()
       viewAttach(_.tb)
+      chip.view(_.tb)
 
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
@@ -1448,6 +1452,7 @@ class EditTable extends Event {
 
       _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
       viewAttach(_.tb)
+      chip.view(_.tb)
 
       if (!kv) {
         _.saveTb()
@@ -1469,7 +1474,7 @@ class EditTable extends Event {
 
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
-      for (const td of tds.get()) {
+        for (const td of tds) {
           try {
         const $td = $(td)
         const idx = $td.data('idx') // 数据索引
@@ -1640,6 +1645,7 @@ class EditTable extends Event {
 
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
       viewAttach(_.tb)
+      chip.view(_.tb)
 
       if (kv) {
         // 存在内嵌表格
@@ -2974,18 +2980,7 @@ class EditTable extends Event {
                                         <a href="${val}" target="_blank" style="cursor:pointer;">点击跳转链接</a>
                                     </span>`
                 } else if ([DataType.chip, DataTypes.chip].includes(type)) {
-                  const htm = val?.map(v => {
-                // <a class="chip-delete"></a>
-                  const rt = (
-                      <div class="chip">
-                    <div class={`chip-media bg-color-${v.color}`}>{v.media}</div>
-                        <div class="chip-label">{v.val}</div>
-                  </div>
-                )
-
-                return rt // + v
-              })
-                  if (htm) td.innerHTML = `<span name="tx" class="etChip">${htm.join('')}</span>`
+                  chip.fillChip(_, value, td, c.read, idx)
             } else if (unit)
                   td.innerHTML = `<div class=etNumber><span name="tx" class="etValue">${val}</span><span class="etSuffix">${unit}</span></div>`
                 else {
@@ -3246,7 +3241,7 @@ class EditTable extends Event {
   /**
    * 获得kv的val
    * @param {*} r - 数据对象
-   * @param {*} [fv]
+   * @param {*} [fv] - 字段数据，用于字段引用
    * @returns {*}
    */
   getKv(r, fv) {
@@ -3258,6 +3253,8 @@ class EditTable extends Event {
       let {type, value, unit, qian, decimal, zero} = r
 
       type = type ?? DataType.text
+      if ([DataType.chip, DataTypes.chip].includes(type)) return value
+
       value = value ?? ''
 
       // option: {1: '小型', 2: '中旬', 3: '大型'}
@@ -3319,6 +3316,7 @@ class EditTable extends Event {
       const rs = []
       const ck = []
       const attach = []
+      const chips = []
 
       // 隐藏内嵌表
       const hs = tb.find('.data-table-content table.edit-table')
@@ -3329,10 +3327,10 @@ class EditTable extends Event {
         h.remove()
       }
 
-      // input
+      // 查找所有 input，获取修改值
       let els = tb.find('input')
       for (const el of els) {
-        // 跳过上传的文件input
+        // 跳过上传的文件input 和 没有名字的
         if (el.type === 'file' || !el.name) continue
 
         // 通过输入input获得新旧值
@@ -3342,6 +3340,8 @@ class EditTable extends Event {
           if (r.checked) ck.push(r.data)
           else if (name?.endsWith('-attach-add')) {
             if (r.data.val) attach.push(r.data)
+          } else if (name?.endsWith('-chip-add')) {
+            if (r.data.val) chips.push(r.data)
           } else rs.push(r.data)
         }
       }
@@ -3397,6 +3397,35 @@ class EditTable extends Event {
       const dels = getDel(tb, _.data, opt.kv, fields) // 获取删除的附件
       atts = mergeAttach(adds, dels)
 
+      // 合并chip值 到 add 字段
+      // chips = chips.reduce((acc, r) => {
+      //   const {idx, idy, field, fieldid, key, value} = r
+      //   let {val} = r
+
+      //   if (val) {
+      //     try {
+      //       val = JSON.parse(val)
+      //       const v = `${idx}-${idy}-${field}`
+      //       const o = acc[v]
+      //       if (o) o.add.push(...val)
+      //       else acc[v] = {idx, idy, field, fieldid, value, add: val}
+      //     } catch (e) {
+      //       log.err(e, 'getVal attach JSON解析错误')
+      //     }
+      //   }
+
+      //   return acc
+      // }, {})
+
+      // const adds = []
+      // for (const k of Object.keys(atts)) {
+      //   const v = atts[k]
+      //   adds.push(v)
+      // }
+
+      // const delChips = chip.getDel(tb, _.data, opt.kv, fields) // 获取删除的chip
+      // chips = mergeAttach(adds, delChips)
+
       for (const h of hs) {
         if (h._next) {
           h._parent.insertBefore(h, h._next)
@@ -3428,17 +3457,22 @@ class EditTable extends Event {
       const {kv} = opt
 
       const $el = $(el)
-      const name = $el.attr('name').replace(/-attach-add$/, '')
+      let name = $el.attr('name').replace(/-attach-add$/, '')
+      name = name.replace(/-chip-add$/, '')
       const td = $el.upper('td')
       const idx = td.data('idx') // 非Kv时 字段索引，kv时，数据索引
       const idy = td.data('idy') // 非kv时 行索引
-      // 原始值
+
       const r = fields[idx]
       if (r) {
         const {type, div, mul} = r
+
+        // 原始值
         let value
         if (kv) value = r.value
         else value = _.data[idy][r.idx]
+
+        if ([DataType.chip, DataTypes.chip].includes(type)) debugger
 
         let val = $el.val()
       const key = $el.data('key') // key:val
@@ -4401,23 +4435,32 @@ function groupById(list) {
     }
 
     const {add, del} = item
-    let {val} = item
+    let {val, value} = item
 
+    // 附件处理
     if (!val && (add?.length || del?.length)) {
-      val = {}
-      if (add?.length) val.add = add
-      if (del?.length) val.del = del
+      val = value.map(v => v.id)
+      if (del?.length) {
+        for (const d of del) {
+          const di = val.indexOf(d.id)
+          if (di > -1) val.splice(di, 1)
+        }
+      }
+      if (add?.length) {
+        for (const a of add) {
+          val.push(a.id)
+        }
+      }
     }
 
     const group = map.get(item.id)
-    group.idx.push(item.idx)
-    group.fieldid.push(item.fieldid)
-    group.val.push(val)
-    group.value.push(item.value)
+    group.idx.push(item.idx ?? '')
+    group.fieldid.push(item.fieldid ?? '')
+    group.val.push(val ?? '')
+    group.value.push(item.value ?? '')
   }
 
   return Array.from(map.values())
 }
 
 export {DataType, DataTypes, EditTable as default, makeEdit as edit}
-

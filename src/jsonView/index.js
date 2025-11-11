@@ -216,7 +216,7 @@ export default class JsonView {
     try {
       const jsonValue = JSON.parse(this.$jsonEditor.val())
       this.renderJsonTree(jsonValue)
-      // @ts-ignore
+      // @ts-expect-error
       this.showMessage('')
     } catch (error) {
       log.err(error, 'updatePreview')
@@ -231,7 +231,7 @@ export default class JsonView {
   renderJsonTree(jsonData) {
     try {
       this.$treeView.html('')
-      // @ts-ignore
+      // @ts-expect-error
       const tree = this.createTreeElement(jsonData)
       this.$treeView.append(tree)
     } catch (error) {
@@ -321,8 +321,11 @@ export default class JsonView {
 
         const _id = newJson._id
 
-        // @ts-ignore
-        const {url, token} = this.source
+        // @ts-expect-error
+        const {url} = this.source
+        let {token} = this.source
+        token = token ?? 'token'
+
         const tk = token ? $.store.get(token) : ''
         console.log(tk, 'tk')
         const param = {

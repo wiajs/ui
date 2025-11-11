@@ -132,6 +132,18 @@
     border-bottom: 1px solid #ccc; /* 灰色下划线 */
   }
 
+  td:has(> .etChip) {
+    border-bottom: 1px solid #ccc; /* 灰色下划线 */
+  }
+
+  td:has(> .etCheckbox) {
+    border-bottom: 1px solid #ccc; /* 灰色下划线 */
+  }
+
+  td:has(> .etRadio) {
+    border-bottom: 1px solid #ccc; /* 灰色下划线 */
+  }
+
   td:has(> .etNumber) {
     border-bottom: 1px solid #ccc; /* 灰色下划线 */
   }
@@ -427,4 +439,5 @@
   }
 
   @import './attach.less';
+  @import './chip.less';
 }

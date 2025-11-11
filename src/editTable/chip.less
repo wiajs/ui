@@ -1,0 +1,157 @@
+.etChip {
+  --wia-icon-gap: 2px;
+  --wia-add-box-size: 30px;
+  --wia-add-btn-size: 15px;
+  --edit-table-attach-img: 30px;
+
+  [class*='text-color-'] {
+    color: var(--f7-theme-color-text-color) !important;
+  }
+
+  [class*='bg-color-'] {
+    background-color: var(--f7-theme-color-bg-color) !important;
+  }
+
+  [class*='border-color-'] {
+    border-color: var(--f7-theme-color-border-color) !important;
+  }
+
+  width: 100%;
+  display: flex;
+  // flex-wrap: wrap;
+  // overflow: hidden;
+  /* #e0e0e0; */
+  // border: 1px solid rgba(0, 0, 0, 0.125);
+  // border-left: 1px solid rgba(0, 0, 0, 0.125);
+  // border-right: 1px solid rgba(0, 0, 0, 0.125);
+  /* #e0e0e0; */
+  // background-color: rgb(248, 249, 250);
+
+  .chip-wrap {
+    flex: auto;
+    display: flex;
+    overflow-x: auto; // 滑动
+    flex-wrap: nowrap;
+    // width: 100%; /* 或指定具体宽度 */
+
+    .chip {
+      flex: none;
+      margin: 2px 4px 2px 0;
+
+      .chip-delete {
+        opacity: 0; // 隐藏
+      }
+
+      .chip-delete-xx {
+        text-align: center;
+        cursor: pointer;
+        flex-shrink: 0;
+        background-repeat: no-repeat;
+        width: 24px;
+        height: 24px;
+        color: var(--f7-chip-delete-button-color);
+        opacity: 0.54;
+        position: relative;
+
+        &:after {
+          font-family: framework7-core-icons;
+          font-weight: 400;
+          font-style: normal;
+          line-height: 1;
+          letter-spacing: normal;
+          text-transform: none;
+          white-space: nowrap;
+          word-wrap: normal;
+          direction: ltr;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+          -moz-osx-font-smoothing: grayscale;
+          font-feature-settings: 'liga';
+          text-align: center;
+          display: block;
+          width: 100%;
+          height: 100%;
+          font-size: 20px;
+          line-height: 24px;
+        }
+      }
+
+      .chip-delete-x {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        width: 12px;
+        height: 12px;
+        background: #e74c3c;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        cursor: pointer;
+        // font-size: 16px;
+        opacity: 0; // 隐藏
+        pointer-events: none; // 不可点击
+        transform: scale(0.8);
+        transition: all 0.3s ease;
+        z-index: 100;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
+
+        i.icon.wiaicon {
+          font-size: 12px;
+        }
+      }
+
+      .chip-delete:hover {
+        transform: scale(1.3) !important;
+      }
+    }
+
+    .wia-add {
+      .add-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        height: 100%;
+
+        // 带+号文件选择按钮
+        .add-btn {
+          position: relative;
+          margin-right: 8px;
+          // margin-bottom: 8px;
+          width: var(--wia-add-box-size); // 86px;
+          height: var(--wia-add-box-size); // 86px;
+          box-sizing: border-box;
+          background-color: #ededed;
+
+          &:before,
+          &:after {
+            content: ' ';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #a3a3a3;
+          }
+
+          &:before {
+            width: 2px;
+            height: var(--wia-add-btn-size);
+          }
+
+          &:after {
+            width: var(--wia-add-btn-size);
+            height: 2px;
+          }
+        }
+      }
+    }
+  }
+}
+
+.etEdit .etChip .chip-wrap .chip .chip-delete {
+  opacity: 0.54;
+  pointer-events: auto;
+  transform: scale(1);
+}

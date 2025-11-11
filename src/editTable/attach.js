@@ -550,10 +550,10 @@ async function attachClick(ev) {
 
       if (type === 'img' || type === 'video') {
       if (!g.lightbox) {
-        // @ts-ignore
+          // @ts-expect-error
         // if (!g.anime) g.anime = await import('https://cdn.jsdelivr.net/npm/animejs@4/+esm')
 
-        // @ts-ignore
+          // @ts-expect-error
         // const m = await import('https://cdn.jsdelivr.net/npm/glightbox@3/+esm')
         const m = await import('https://cos.wia.pub/wiajs/glightbox.mjs')
         g.lightbox = m.default
