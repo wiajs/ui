@@ -2,9 +2,9 @@
 // import {Event} from '@wiajs/core'
 // import {Page} from '@wiajs/core'
 import Compress from '@wiajs/lib/compress'
-// @ts-ignore
-import * as css from './index.less'
 import {log as Log} from '@wiajs/util'
+// @ts-expect-error
+import * as css from './index.less'
 
 const log = Log({m: 'uploader'}) // 创建日志实例
 
@@ -523,7 +523,7 @@ class Uploader {
     const file = this.files.find(f => f.idx == idx)
     if (file && blob) {
       file.status = 'croped'
-      // @ts-ignore
+      // @ts-expect-error
       blob.name = file.name.replace(/\.\w+$/i, '.jpg')
       file.ext = '.jpg'
       file.size = blob.size
@@ -739,19 +739,22 @@ class Uploader {
    * 多个文件，每个文件单独触发！
    */
   updateInput() {
+    try {
     const _ = this
     const {opt, files} = _
-    try {
+      const {input} = opt
       // 已上传成功文件
       const fs = files.filter(f => f.status === 'upload')
       // console.log({fs}, 'updateInput')
 
-      const el = opt.input
-      el.dom.uploadData = []
+      input.dom.uploadData = []
 
+      let val = ''
+      /** @type {*[]} */
+      let rs = []
       if (fs.length > 0) {
-        const rs = fs.map(f => ({id: f.id, url: f.url}))
-        el.val(JSON.stringify(rs))
+        rs = fs.map(f => ({id: f.id, url: f.url}))
+        val = JSON.stringify(rs)
         opt.val = rs
         for (const f of fs) {
           const {id, type, name, url} = f
@@ -759,12 +762,30 @@ class Uploader {
           ext = ext.replace('.', '')
           const {abb} = opt.data || {}
           // 方便点击浏览
-          el.dom.uploadData.push({id, url, type, ext, name, abb})
+          input.dom.uploadData.push({id, url, type, ext, name, abb})
         }
-      } else this.opt.input.val('')
+      }
+
+      input.val(val)
+      _.callEvent('val', {val, rs})
     } catch (e) {
       log.err(e, 'updateInput')
     }
+  }
+
+  getVal() {
+    let R
+    try {
+      const _ = this
+      const {opt} = _
+      const {input} = opt
+      const {uploadData} = input.dom
+      R = {val: input.val(), rs: uploadData}
+    } catch (e) {
+      log.err(e, 'getVal')
+    }
+
+    return R
   }
 
   /**

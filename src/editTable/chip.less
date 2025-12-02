@@ -107,8 +107,9 @@
       }
     }
 
-    .wia-add {
-      .add-box {
+    // 内部样式，加下划线避免污染、冲突
+    ._add {
+      ._box {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -116,7 +117,7 @@
         height: 100%;
 
         // 带+号文件选择按钮
-        .add-btn {
+        ._btn {
           position: relative;
           margin-right: 8px;
           // margin-bottom: 8px;

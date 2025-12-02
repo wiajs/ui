@@ -1,6 +1,6 @@
 /** @jsxImportSource @wiajs/core */
 /**
- * editTable 中的附件模块
+ * editTable 中的chip模块
  */
 
 import {log as Log} from '@wiajs/util'
@@ -18,8 +18,8 @@ const log = Log({m: 'chip'}) // 创建日志实例
 /**
  * 填充Chip
  * @param {EditTable} _ - 组件实例
- * @param {{_idx: number, id: number, cat:string, name:string,abb:string, url:string, status?:string, type:string, ext?:string}[]} value - 数据卡 值，对象数组
- * @param {*} td - td
+ * @param {*[][]} value - 二维数组
+ * @param {HTMLElement} td - td
  * @param {boolean} [read] - 只读
  * @param {number} [idx] - Kv编辑数据索引或表格编辑字段索引
  * @param {number} [idy] - 表格编辑时的数据行索引
@@ -29,48 +29,12 @@ function fillChip(_, value, td, read = false, idx = 0, idy = 0) {
     const $td = $(td)
     $td.data('idx', idx) // td 保存 EditTable 的数据索引
     $td.data('idy', idy) // td 保存 EditTable 的数据行索引
-    td._chipValue = value
+    // @ts-expect-error
+    td._value = value // 原值
     $td.click(chipClick)
     fillTd(_, td, value, read, idx, idy)
   } catch (e) {
     log.err(e, 'fillChip')
-  }
-}
-
-/**
- * 点击tr、td 浏览大图或删除附件
- * @param {*} ev
- */
-async function chipClick(ev) {
-  try {
-    const btnAdd = $(ev).upper('.add-btn')
-    const td = $(ev).upper('td')
-    if (td.dom && btnAdd.dom) {
-      const chip = td.find('.etChip')
-      chip?.hide()
-      const dvAc = td.find('.autocomplete')
-      const ac = dvAc.dom?._wiaAutocomplete
-      ac?.show()
-      ac?.focus() // 自动触发下拉
-    }
-
-    const btnDel = $(ev).upper('.chip-delete')
-    // 删除
-    if (btnDel.dom) {
-      const chip = $(ev).upper('.chip')
-      const key = chip.data('key')
-
-      const td = $(ev).upper('td')
-      const field = td.data('field')
-      const idx = td.data('idx') // EditTable data 列索引
-      const idy = td.data('idy') // EditTable data 行索引
-
-      const value = td?.dom?._chipValue
-
-      delItem(td, chip, field, key, value, idx, idy)
-    }
-  } catch (e) {
-    log.err(e, 'attachClick')
   }
 }
 
@@ -110,10 +74,10 @@ function fillTd(_, td, value, read, idx, idy = 0) {
     // 新增
     if (!read) {
       wrap.append(
-        <div class="wia-add">
-          <input name={`${field}-chip-add`} type="hidden" />
-          <div class="add-box">
-            <div name="btnAdd" class="add-btn" />
+        <div class="_add">
+          <input name={`${field}-chip-add`} class="_addVal" type="hidden" />
+          <div class="_box">
+            <div name="btnAdd" class="_btn" />
           </div>
         </div>
       )
@@ -158,7 +122,7 @@ function fillTd(_, td, value, read, idx, idy = 0) {
         ac.hide()
       }
 
-      if (!opt.edit) wrap.find('.add-box').hide()
+      if (!opt.edit) wrap.find('._add').hide()
     }
   } catch (e) {
     log.err(e, 'fillTd')
@@ -190,7 +154,7 @@ function fillItem(vs, wrap, opts) {
 
     const htm = vs?.map(v => {
       const rt = (
-        <div class={`chip ${add ? '_addVal' : ''}`} data-key={v.key}>
+        <div class={`chip ${add ? '_addChip' : ''}`} data-key={v.key} data-val={v.val}>
           <div class={`chip-media bg-color-${v.color}`}>{v.media}</div>
           <div class="chip-label">{v.val}</div>
           <a class="chip-delete" />
@@ -199,7 +163,7 @@ function fillItem(vs, wrap, opts) {
       return rt // + v
     })
 
-    const addBtn = wrap.find('.wia-add')
+    const addBtn = wrap.find('._add')
 
     if (addBtn?.length) addBtn.before(htm)
     else wrap.append(htm)
@@ -216,70 +180,51 @@ function fillItem(vs, wrap, opts) {
  */
 function addItem(vs, wrap, opts) {
   try {
-    const {field} = opts
-    debugger
-    const el = wrap.upper('.etChip')
-    if (!el.dom._chipAdd) el.dom._chipAdd = new Set()
-    const {_chipAdd} = el.dom
+    const td = wrap.upper('td')
+    const input = wrap.find('input._addVal')
+    if (!input.dom._add) input.dom._add = new Set()
+    const {_add, _del} = input.dom
 
     // 保存新增
-    for (const v of vs) _chipAdd.add(v)
+    for (const v of vs) _add.add(v)
 
-    // 保存到 input，方便 getVal 获取
-    let input = el.find('input._addVal')
-    if (!input?.length) input = $(<input name={`${field}-chip-add`} class="_addVal" type="hidden" value=""></input>).appendTo(el)
-    input.val(JSON.stringify([..._chipAdd]))
+    if (_add?.size || _del?.size) td.addClass('etChange')
+    else td.removeClass('etChange')
   } catch (e) {
     log.err(e, 'addItem')
   }
 }
 
 /**
- * 处理附件删除
- * @param {Dom} td - td
- * @param {Dom} chip - 附件（.attach-item）
- * @param {string} field - 字段名
- * @param {string} key - 字段键值
- * @param {{id:number, url:string}} value - 附件数据值
- * @param {number} idx - EditTable data 列索引
- * @param {number} idy - EditTable data 行索引
+ * 删除
+ * @param {Dom} chip -
  */
-function delItem(td, chip, field, key, value, idx, idy) {
+function delItem(chip) {
   try {
     if (chip.dom) {
-      // 新增附件删除
-      if (chip.hasClass('_addVal')) {
-        const el = chip.upper('.etChip')
-        const {_chipAdd} = el.dom
-        const key = chip.data('key')
+      const td = chip.upper('td')
+      const input = td.find('input._addVal')
+      const {_add} = input.dom
+      let {_del} = input.dom
 
-        for (const item of _chipAdd) {
-          if (Array.isArray(item) && item[0] === key) _chipAdd.delete(item)
+      const key = chip.data('key')
+      const val = chip.data('val')
+
+      // 新增附件删除
+      if (chip.hasClass('_addChip')) {
+        for (const item of _add) if (Array.isArray(item) && item[0] === key) _add.delete(item)
+      } else {
+        if (!_del) {
+          _del = new Set()
+          input.dom._del = _del
         }
 
-        // 保存到 input，方便 getVal 获取
-        let input = el.find('input._addVal')
-        if (!input) input = $(<input name={`${field}-chip-add`} class="_addVal" type="hidden" value=""></input>).appendTo(el)
-        input.val(JSON.stringify([..._chipAdd]))
-
-        chip.remove()
-      } else {
-        const el = chip.upper('.etChip')
-
-        if (!el.dom._chipDel) el.dom._chipDel = []
-
-        // 保存被删除元素的信息：DOM克隆、父节点、前一个兄弟节点（用于还原位置）
-        el.dom._chipDel.push({
-          idx,
-          idy,
-          field,
-          key,
-          value,
-          chip,
-          parent: chip.parentNode(), //.dom.parentElement,
-        })
-        chip.remove() // 移除DOM元素
+        _del.add([key, val])
       }
+      chip.remove()
+
+      if (_add?.size || _del?.size) td.addClass('etChange')
+      else td.removeClass('etChange')
     }
   } catch (e) {
     log.err(e, 'delItem')
@@ -287,80 +232,32 @@ function delItem(td, chip, field, key, value, idx, idy) {
 }
 
 /**
- * 还原所有被删除的元素
- * @param {*} el - EditTable
+ * 点击tr、td 浏览大图或删除附件
+ * @param {*} ev
  */
-function cancelDel(el) {
+async function chipClick(ev) {
   try {
-    const es = el.find('.etChip')
-    for (const e of es) {
-      if (!e._chipDel) continue
+    const btnAdd = $(ev).upper('._btn')
 
-      // 遍历所有需要还原的元素
-      for (const r of e._chipDel) {
-        if (r.chip && r.parent) {
-          const {parent, chip} = r
-          const add = parent.findNode('.wia_add')
-          if (add.dom) add.before(chip)
-          else parent.append(chip)
-        }
-      }
-      e._chipDel = []
-    }
-  } catch (e) {
-    log.err(e, 'cancelDel')
-  }
-}
-
-/**
- * 还原所有被删除的元素
- * @param {*} el - EditTable
- * @param {*} data - EditTable data
- * @param {boolean} kv - kv 数据
- * @param {*[]} fields - 字段数组
- * @returns {{idx: number, field: string, del:[id: number, url: string, value: *]}[]}
- */
-function getDel(el, data, kv, fields) {
-  let R
-  try {
-    const es = el.find('.etChip')
-    for (const e of es) {
-      if (!e._chipDel) continue
-
-      // 遍历所有需要还原的元素
-      const rs = []
-      for (const r of e._chipDel) {
-        if (r.att && r.parent) {
-          const {idx, idy, field} = r
-          let {value} = r
-          const {id, url} = value
-          if (kv) {
-            value = data[idx].value
-            rs.push({idx, idy, field, fieldid: idx, id, url, value})
+    if (btnAdd.dom) {
+      const td = btnAdd.upper('td')
+      const chip = td.find('.etChip')
+      chip?.hide()
+      const dvAc = td.find('.autocomplete')
+      const ac = dvAc.dom?._wiaAutocomplete
+      ac?.show()
+      ac?.focus() // 自动触发下拉
           } else {
-            const i = fields[idx].idx
-            value = data[idy][i]
-            rs.push({idx: i, idy, field, fieldid: idx, id, url, value})
-          }
-        }
-      }
-
-      if (rs.length) {
-        const map = new Map()
-        for (const {idx, idy, field, fieldid, id, url, value} of rs) {
-          const key = `${idx}-${idy}`
-          if (!map.has(key)) map.set(key, {idx, idy, field, fieldid, value, del: []})
-          map.get(key).del.push({id, url})
-        }
-
-        R = Array.from(map.values())
+      const btnDel = $(ev).upper('.chip-delete')
+      if (btnDel.dom) {
+        // 删除
+        const chip = btnDel.upper('.chip')
+        delItem(chip)
       }
     }
   } catch (e) {
-    log.err(e, 'getDel')
+    log.err(e, 'chipClick')
   }
-
-  return R
 }
 
 /**
@@ -369,7 +266,7 @@ function getDel(el, data, kv, fields) {
  */
 function edit(tb) {
   const wrap = tb.find('.chip-wrap')
-  wrap.find('.add-box').show()
+  wrap.find('._add').show()
 }
 
 /**
@@ -378,7 +275,7 @@ function edit(tb) {
  */
 function view(tb) {
   const wrap = tb.find('.chip-wrap')
-  wrap.find('.add-box').hide()
+  wrap.find('._add').hide()
 }
 
 /**
@@ -404,4 +301,4 @@ function firstLetter(ch, upper = false) {
   return ''
 }
 
-export {cancelDel, edit, fillChip, getDel, view}
+export {edit, fillChip, view}

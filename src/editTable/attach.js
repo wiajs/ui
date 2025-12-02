@@ -141,7 +141,7 @@ function fillTd(_, td, cat, cats, value, read, idx, idy) {
       // 添加附件上传
       wrap.append(
         <div class="attach-item wia_uploader">
-          <input name={`${field}-attach-add`} type="hidden" />
+          <input name={`${field}-attach-add`} class="_addVal" type="hidden" />
           <div class="_choose">
             <div name="btnAdd" class="_input" />
             {cat && <p>新增</p>}
@@ -184,6 +184,14 @@ function fillTd(_, td, cat, cats, value, read, idx, idy) {
         })
 
         td.uploader = ud
+
+        // 是否修改
+        ud.on('val', (val, rs) => {
+          const input = $td.find('._addVal')
+          const {_del} = input.dom
+          if (val || _del?.size) $td.addClass('etChange')
+          else $td.removeClass('etChange')
+        })
 
         ud.on('choose', async files => {
           const abb = cat ? `${cat}1` : ''
@@ -306,68 +314,37 @@ function addItem(wrap, field, type, ext, name, abb, url, idx) {
 
 /**
  * 处理附件删除
- * @param {Dom} td - td
- * @param {Dom} att - 附件（.attach-item）
+ * @param {Dom} item - 附件（.attach-item）
  * @param {Dom} wrap - 新增 ._wrap
- * @param {string} field - 字段名
- * @param {{id:number, url:string}} value - 附件数据值
- * @param {number} idx - EditTable data 列索引
- * @param {number} idy - EditTable data 行索引
  */
-function delItem(td, att, wrap, field, value, idx, idy) {
+function delItem(item, wrap) {
   try {
-    if (att.dom) {
-      // 新增附件删除
-      // if (field.endsWith('-attach-add')) {
+    if (item.dom) {
+      const td = item.upper('td')
+      const input = td.find('input._addVal')
+      let {_del} = input.dom
+
+      // 新增附件删除 uploader 维护
       if (wrap.dom) {
         const src = wrap.find('._file').data('src')
-        // uploader 维护 input
         if (src) td.dom.uploader?.remove({url: src})
       } else {
-      const el = att.upper('.etAttach')
-      if (!el.dom.attachDel) el.dom.attachDel = []
+        if (!_del) {
+          _del = new Set()
+          input.dom._del = _del
+        }
 
-      // 保存被删除元素的信息：DOM克隆、父节点、前一个兄弟节点（用于还原位置）
-      el.dom.attachDel.push({
-        idx,
-          idy,
-        field,
-        value,
-        att,
-          parent: att.parentNode(),
-        prev: att.dom.previousSibling,
-      })
-      att.remove() // 移除DOM元素
+        const idx = item.data('idx') // 附件数据索引，新增附件没有
+        _del.add(idx)
+        item.remove() // 移除DOM元素
     }
+
+      const {val, rs} = td.dom.uploader?.getVal() || {}
+      if (val || _del?.size) td.addClass('etChange')
+      else td.removeClass('etChange')
     }
   } catch (e) {
     log.err(e, 'delItem')
-  }
-}
-
-/**
- * 还原所有被删除的元素
- * @param {*} el - EditTable
- */
-function cancelDel(el) {
-  try {
-    const es = el.find('.etAttach')
-    for (const e of es) {
-      if (!e.attachDel) continue
-
-      // 遍历所有需要还原的元素
-      for (const r of e.attachDel) {
-        if (r.att && r.parent) {
-          const {parent, att} = r
-          const up = parent.findNode('.wia_uploader')
-          if (up.dom) up.before(att)
-          else parent.append(att)
-        }
-      }
-      e.attachDel = []
-    }
-  } catch (e) {
-    log.err(e, 'cancelDel')
   }
 }
 
@@ -468,38 +445,6 @@ function getRowCat(cats, cols, max, catid) {
 }
 
 /**
- * 自动换行时补全格线
- * @param {*} row
- */
-function attachLast(row) {
-  const attach = row.find('.etAttach')
-  const rs = [...attach.dom.children]
-  rs.forEach((r, i) => {
-    r.classList.remove('attach-last')
-    const p = rs[i - 1]
-    const pre = p?.getBoundingClientRect()
-    const cur = r.getBoundingClientRect()
-    // if (prev && r.offsetTop > prev.offsetTop) {
-    if (cur.top > pre?.top) p.classList.add('attach-last')
-    if (i === rs.length - 1) r.classList.add('attach-last')
-  })
-}
-
-/**
- * 添加数据到 data，用于点击浏览
- * @param {*[]} value - 附件值
- * @param {{id: number, url: string, cat: string, type: string, ext:string, name: string, abb:string}} item
- */
-function addValue(value, item) {
-  try {
-    value.push(item)
-    value.at(-1)._idx = value.length - 1
-  } catch (e) {
-    log.err(e, 'addValue')
-  }
-}
-
-/**
  * 点击tr、td 浏览大图或删除附件
  * @param {*} ev
  */
@@ -519,16 +464,15 @@ async function attachClick(ev) {
 
     value = value ?? []
 
-  const att = $(ev).upper('.attach-item')
+    const item = $(ev).upper('.attach-item')
     const wrap = $(ev).upper('._wrap')
 
-    let i = att.data('idx') // 附件数据索引，新增附件没有
-  const field = att.data('field')
+    let i = item.data('idx') // 附件数据索引，新增附件没有
 
   const btnDel = $(ev).upper('.attach-delete')
   // 删除
-    if (btnDel.dom) delItem(td, att, wrap, field, value[i], idx, idy)
-  else if (att.dom && tr.dom) {
+    if (btnDel.dom) delItem(item, wrap)
+    else if (item.dom && tr.dom) {
       // 新增附件没有idx，使用 src
       let src = ''
       if (wrap.dom) src = wrap.find('._file').data('src')
@@ -620,4 +564,5 @@ function getThumb(ext, url) {
   return R
 }
 
-export {cancelDel, edit, fillAttach, getDel, getRowCat, getThumb, view}
+export {edit, fillAttach, getDel, getRowCat, getThumb, view}
+

@@ -295,7 +295,9 @@ class DataTable extends Event {
             const val = d[idx]
             // 空字符不参与统计
             if ((h.sum === true || h.sum === 'avg') && isNumber(val)) {
-              R[idx] += Number(val)
+              const numVal = Number(val)
+              if (h.sum === 'avg' && numVal === 0) continue
+              R[idx] += numVal
               cnt[idx]++
             } else if (idx >= 0 && h.sum === 'value' && !R[idx]) R[idx] = d[idx]
           } catch (e) {

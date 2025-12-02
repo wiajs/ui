@@ -6,7 +6,7 @@ import {Event} from '@wiajs/core'
 import {isDate, promisify} from '@wiajs/core/util/tool'
 import {log as Log} from '@wiajs/util'
 import DataTable, {col, th} from '../dataTable'
-import {cancelDel, edit as editAttach, fillAttach, getDel, view as viewAttach} from './attach'
+import {edit as editAttach, fillAttach, view as viewAttach} from './attach'
 import * as chip from './chip'
 import * as tool from './tool'
 
@@ -508,7 +508,11 @@ class EditTable extends Event {
               if (`${val}` === `${value}`) {
                 tx.hide()
               span.show()
-              } else vals[idy][r.field] = val
+                td.removeClass('etChange')
+              } else {
+                vals[idy][r.field] = val
+                td.addClass('etChange')
+              }
             })
           }
           tx.val(span.eq(0).html())
@@ -540,7 +544,11 @@ class EditTable extends Event {
               tx.value = val
               if (`${val}` === `${value}`) {
                 span.removeClass('edit') // span 可编辑
-              } else vals[idy][r.field] = val
+                td.removeClass('etChange')
+              } else {
+                vals[idy][r.field] = val
+                td.addClass('etChange')
+              }
             })
             span.focus()
 
@@ -581,9 +589,11 @@ class EditTable extends Event {
                 sel.hide()
                 span.html(value) // 还原值
                 span.show()
+                td.removeClass('etChange')
               } else {
                 span.html(val) // 修改值
                 vals[idy][r.field] = val
+                td.addClass('etChange')
               }
             })
 
@@ -650,9 +660,11 @@ class EditTable extends Event {
                     ac.hide()
                     span.eq(0).html(value) // 还原值
                     span.show()
+                    td.removeClass('etChange')
                   } else {
                     span.eq(0).html(val) // 修改值
                     vals[idy][r.field] = val
+                    td.addClass('etChange')
                   }
                 }, 200)
               })
@@ -707,7 +719,11 @@ class EditTable extends Event {
               if (`${val}` === `${value}`) {
               tx.hide()
                 span.show()
-              } else vals[idy][r.field] = val
+                td.removeClass('etChange')
+              } else {
+                vals[idy][r.field] = val
+                td.addClass('etChange')
+              }
             })
           }
           tx.show()
@@ -724,9 +740,8 @@ class EditTable extends Event {
           }, 100)
 
           // tx.click()
-        }
+        } else if (type === DataType.url || type === DataTypes.url) {
                 // urlChange
-                else if (type === DataType.url || type === DataTypes.url) {
           const span = td.find('span')
           span.hide()
           let tx = td.find('input')
@@ -745,7 +760,11 @@ class EditTable extends Event {
                             if (`${val}` === `${value}`) {
                 tx.hide()
                 span.show()
-              } else vals[idy][r.field] = val
+                td.removeClass('etChange')
+              } else {
+                vals[idy][r.field] = val
+                td.addClass('etChange')
+              }
             })
                     }
                     // urlChange
@@ -766,6 +785,32 @@ class EditTable extends Event {
     // 处理checkbox
     _.tb.on('change', '.checkbox-cell input[type="checkbox"]', function (ev) {
       _.handleCheck(ev, this)
+    })
+
+    _.tb.on('change', '.etCheckbox input[type="checkbox"]', ev => {
+      const td = $(ev).upper('td')
+      const idx = td?.data('idx') // 数据或字段索引
+      const r = fields?.[idx]
+      const {type} = r
+
+      if ([DataType.checkbox, DataTypes.checkbox].includes(type)) {
+        const {val, value} = _.getVal(td)?.[0] || {}
+        if (JSON.stringify(val) !== JSON.stringify(value)) td.addClass('etChange')
+        else td.removeClass('etChange')
+      }
+    })
+
+    _.tb.on('change', '.etRadio input[type="radio"]', ev => {
+      const td = $(ev).upper('td')
+      const idx = td?.data('idx') // 数据或字段索引
+      const r = fields?.[idx]
+      const {type} = r
+
+      if ([DataType.radio, DataTypes.radio].includes(type)) {
+        const {val, value} = _.getVal(td)?.[0] || {}
+        if (JSON.stringify(val) !== JSON.stringify(value)) td.addClass('etChange')
+        else td.removeClass('etChange')
+      }
     })
   }
 
@@ -1011,7 +1056,7 @@ class EditTable extends Event {
   /**
    * 解析引用字段
    * @param {*} src
-   * @param {number} [idy]
+   * @param {number} [idy] - 表数据行索引
    * @param {*} [fv] - 字段值，外部传入可加快速度
    * @returns
    */
@@ -1020,7 +1065,7 @@ class EditTable extends Event {
 
     const _ = this
     try {
-      const {data, opt, vals} = _
+      const {data, opt, vals, fields} = _
       const {kv} = opt
 
       let ref = false
@@ -1036,7 +1081,7 @@ class EditTable extends Event {
       if (ref) {
         if (!fv) {
         /** @type {*} */
-          fv = {} // 当前行最新数据
+          fv = {} // 获取当前行最新数据
         if (kv) {
           for (const d of data) {
             const {field, type} = d
@@ -1044,7 +1089,7 @@ class EditTable extends Event {
               if (['number', DataType.number].includes(type) && isNumber(fv[field])) fv[field] = Number(fv[field])
           }
         } else {
-          for (const f of _.field) {
+            for (const f of fields) {
             const {field, idx, type} = f
             const val = data[idy][idx]
               fv[field] = vals[idy][field] ?? val
@@ -1626,16 +1671,14 @@ class EditTable extends Event {
   }
 
   /**
-   * 取消修改，还原值
+   * 取消修改，还原
+   * 根据data重置组件
    */
   cancel() {
     const _ = this
     try {
       const {opt} = _
       const {kv} = opt
-
-      // 取消附件删除
-      cancelDel(_.tb)
 
       if (_.state === State.json) {
         _.tb.parent().find('.json-view-box').hide()
@@ -2195,7 +2238,7 @@ class EditTable extends Event {
       }
 
       /** @type {*} */
-      const fv = {}
+      const fv = {} // 获取当前行每个字段最新值
       for (const c of r) {
         const {field, type} = c
         fv[field] = _.vals[idy][field] ?? c.value
@@ -2552,7 +2595,7 @@ class EditTable extends Event {
       // index 需对数组添加index属性
       if (cfg.checkbox === 'index')
         _.data.forEach((v, x) => {
-          if (!v.index) v.index = x
+          if (!v?.index) v.index = x
         })
 
       el.find('.data-table-count')?.text(_.data.length - _.del.size)
@@ -3241,7 +3284,7 @@ class EditTable extends Event {
   /**
    * 获得kv的val
    * @param {*} r - 数据对象
-   * @param {*} [fv] - 字段数据，用于字段引用
+   * @param {*} [fv] - fieldVal 字段值，用于字段引用
    * @returns {*}
    */
   getKv(r, fv) {
@@ -3253,7 +3296,7 @@ class EditTable extends Event {
       let {type, value, unit, qian, decimal, zero} = r
 
       type = type ?? DataType.text
-      if ([DataType.chip, DataTypes.chip].includes(type)) return value
+      if ([DataType.attach, DataTypes.attach, DataType.chip, DataTypes.chip].includes(type)) return value
 
       value = value ?? ''
 
@@ -3302,33 +3345,32 @@ class EditTable extends Event {
   }
 
   /**
-   * 获得输入值
+   * 获得容器元素中的输入值
+   * @param {*} el
    * @returns
    */
-  getVal() {
+  getVal(el) {
     let R
     const _ = this
 
     try {
       const {tb, opt, fields} = _
+      el = el ?? tb
 
       // 将data存入 value，方便FormData读取
       const rs = []
       const ck = []
-      const attach = []
-      const chips = []
 
       // 隐藏内嵌表
-      const hs = tb.find('.data-table-content table.edit-table')
-      for (const h of hs) {
-        h._parent = h.parentElement
-        h._next = h.nextSibling // 删除前记录下一个节点
-
-        h.remove()
+      const tbs = tb.find('.data-table-content table.edit-table')
+      for (const t of tbs) {
+        t._parent = t.parentElement
+        t._next = t.nextSibling // 删除前记录下一个节点
+        t.remove()
       }
 
       // 查找所有 input，获取修改值
-      let els = tb.find('input')
+      let els = el.find('input')
       for (const el of els) {
         // 跳过上传的文件input 和 没有名字的
         if (el.type === 'file' || !el.name) continue
@@ -3336,13 +3378,8 @@ class EditTable extends Event {
         // 通过输入input获得新旧值
         const r = _.getCellVal(el)
         if (r !== undefined) {
-          const name = $(el).attr('name')
           if (r.checked) ck.push(r.data)
-          else if (name?.endsWith('-attach-add')) {
-            if (r.data.val) attach.push(r.data)
-          } else if (name?.endsWith('-chip-add')) {
-            if (r.data.val) chips.push(r.data)
-          } else rs.push(r.data)
+          else rs.push(r.data)
         }
       }
 
@@ -3353,88 +3390,28 @@ class EditTable extends Event {
       }
 
       // 合并checkbox多选值
-      const vs = ck.reduce((acc, r) => {
+      const cks = ck.reduce((acc, r) => {
         const {idx, idy, field, value, val} = r
-        const v = `${idx}-${idy}-${field}`
-        const o = acc[v]
-        if (o) o.val.push(r.val)
-        else acc[v] = {idx, idy, field, value, val: [r.val]}
+        const k = `${idx}-${idy}-${field}`
+        const v = acc[k]
+        if (v) v.val.push(val)
+        else acc[k] = {idx, idy, field, value, val: [val]}
 
         return acc
       }, {})
 
-      for (const k of Object.keys(vs)) {
-        const v = vs[k]
-        rs.push(v)
+      for (const v of Object.values(cks)) {
+        const {value, val} = v
+        if (JSON.stringify(value) !== JSON.stringify(val)) rs.push(v)
       }
 
-      // 合并attach值 到 add 字段
-      let atts = attach.reduce((acc, r) => {
-        const {idx, idy, field, fieldid, value} = r
-        let {val} = r
-
-        if (val) {
-          try {
-            val = JSON.parse(val)
-            const v = `${idx}-${idy}-${field}`
-            const o = acc[v]
-            if (o) o.add.push(...val)
-            else acc[v] = {idx, idy, field, fieldid, value, add: val}
-          } catch (e) {
-            log.err(e, 'getVal attach JSON解析错误')
-          }
-        }
-
-        return acc
-      }, {})
-
-      const adds = []
-      for (const k of Object.keys(atts)) {
-        const v = atts[k]
-        adds.push(v)
+      // 恢复内嵌表
+      for (const t of tbs) {
+        if (t._next) t._parent.insertBefore(t, t._next)
+        else t._parent.appendChild(t) // 如果 nextSibling 是 null，说明原来在最后
       }
 
-      const dels = getDel(tb, _.data, opt.kv, fields) // 获取删除的附件
-      atts = mergeAttach(adds, dels)
-
-      // 合并chip值 到 add 字段
-      // chips = chips.reduce((acc, r) => {
-      //   const {idx, idy, field, fieldid, key, value} = r
-      //   let {val} = r
-
-      //   if (val) {
-      //     try {
-      //       val = JSON.parse(val)
-      //       const v = `${idx}-${idy}-${field}`
-      //       const o = acc[v]
-      //       if (o) o.add.push(...val)
-      //       else acc[v] = {idx, idy, field, fieldid, value, add: val}
-      //     } catch (e) {
-      //       log.err(e, 'getVal attach JSON解析错误')
-      //     }
-      //   }
-
-      //   return acc
-      // }, {})
-
-      // const adds = []
-      // for (const k of Object.keys(atts)) {
-      //   const v = atts[k]
-      //   adds.push(v)
-      // }
-
-      // const delChips = chip.getDel(tb, _.data, opt.kv, fields) // 获取删除的chip
-      // chips = mergeAttach(adds, delChips)
-
-      for (const h of hs) {
-        if (h._next) {
-          h._parent.insertBefore(h, h._next)
-        } else {
-          h._parent.appendChild(h) // 如果 nextSibling 是 null，说明原来在最后
-        }
-      }
-
-      R = [...rs, ...atts]
+      R = rs
 
       log({R}, 'getVal')
     } catch (e) {
@@ -3444,8 +3421,8 @@ class EditTable extends Event {
   }
 
   /**
-   * 获得变化的输入值和原值
-   * @param {HTMLElement} el
+   * 通过input/select 输入 元素获得变化的输入值和原值
+   * @param {*} el
    * @returns {*}
    */
   getCellVal(el) {
@@ -3460,7 +3437,8 @@ class EditTable extends Event {
       let name = $el.attr('name').replace(/-attach-add$/, '')
       name = name.replace(/-chip-add$/, '')
       const td = $el.upper('td')
-      const idx = td.data('idx') // 非Kv时 字段索引，kv时，数据索引
+      let idx = td.data('idx') // 非Kv时 字段索引，kv时，数据索引
+      const fieldid = idx
       const idy = td.data('idy') // 非kv时 行索引
 
       const r = fields[idx]
@@ -3472,8 +3450,7 @@ class EditTable extends Event {
         if (kv) value = r.value
         else value = _.data[idy][r.idx]
 
-        if ([DataType.chip, DataTypes.chip].includes(type)) debugger
-
+        /** @type {*} */
         let val = $el.val()
       const key = $el.data('key') // key:val
 
@@ -3492,14 +3469,55 @@ class EditTable extends Event {
       else if ([DataType.radio, DataTypes.radio].includes(type)) skip = !el.checked
       else if ([DataType.checkbox, DataTypes.checkbox].includes(type)) {
         checked = el.checked
-        skip = !checked
+          skip = !checked // 只收集选中项
       } else if ([DataType.search, DataTypes.search].includes(type)) {
         val = key
+        } else if ([DataType.chip, DataTypes.chip].includes(type)) {
+          // chip 单独处理
+          const {_add, _del} = el
+          if (!_add?.size && !_del?.size) skip = true
+          if (!skip) {
+            skip = true
+            val = []
+            if (Array.isArray(value)) val = value.map(v => v[0])
+            if (_del?.size) for (const v of _del) val.splice(val.indexOf(v[0]), 1)
+            if (_add?.size) for (const v of _add) val.push(v[0])
+
+            if (!kv) idx = r.idx // 数据索引
+            R = {data: {idx, idy, field: name, fieldid, value, val}}
+          }
+        } else if ([DataType.attach, DataTypes.attach].includes(type)) {
+          // attach 单独处理
+          const {_del} = el
+          let add = [],
+            del = []
+          if (val) add = JSON.parse(val)
+          if (!add?.length && !_del?.size) skip = true
+
+          if (!skip) {
+            skip = true
+            val = []
+            if (Array.isArray(value)) val = value.map(v => v.id)
+            if (_del?.size) {
+              for (const i of _del) {
+                val.splice(val.indexOf(value[i].id), 1)
+                del.push({id: value[i].id, url: value[i].url})
+              }
+            }
+
+            if (add?.length) {
+              for (const v of add) val.push(v.id)
+              add = add.map(v => ({id: v.id, url: v.url}))
+            }
+
+            if (!kv) idx = r.idx // 数据索引
+            R = {data: {idx, idy, field: name, fieldid, value, val, add, del}}
+          }
       }
 
-        if (!skip && `${val}` !== `${value}`) {
-          if (kv) R = {data: {idx, idy, field: name, fieldid: idx, value, val}, checked}
-          else R = {data: {idx: r.idx, idy, field: name, fieldid: idx, value, val}, checked}
+        if (!skip && (checked || `${val}` !== `${value}`)) {
+          if (!kv) idx = r.idx // 数据索引
+          R = {data: {idx, idy, field: name, fieldid, value, val}, checked}
         }
 
       log({R}, 'getCellVal')
@@ -4259,40 +4277,6 @@ function getTime(date) {
 }
 
 /**
- * 合并附件
- * @param {*} adds
- * @param {*} dels
- * @returns
- */
-function mergeAttach(adds, dels) {
-  let R
-  try {
-    const map = new Map()
-
-    // 处理 addList
-    for (const {idx, idy, field, fieldid, value, add} of adds || []) {
-      const key = `${idx}-${idy}`
-      if (!map.has(key)) map.set(key, {idx, idy, field, fieldid, value, del: [], add: []})
-
-      map.get(key).add = add
-    }
-
-    // 处理 delList
-    for (const {idx, idy, field, fieldid, value, del} of dels || []) {
-      const key = `${idx}-${idy}`
-      if (!map.has(key)) map.set(key, {idx, idy, field, fieldid, value, del: [], add: []})
-
-      map.get(key).del = del
-    }
-
-    R = Array.from(map.values())
-  } catch (e) {
-    log.err(e, 'mergeAttach')
-  }
-  return R
-}
-
-/**
  * 查询选项
  * @param {*} source
  * @param {string} name
@@ -4435,23 +4419,7 @@ function groupById(list) {
     }
 
     const {add, del} = item
-    let {val, value} = item
-
-    // 附件处理
-    if (!val && (add?.length || del?.length)) {
-      val = value.map(v => v.id)
-      if (del?.length) {
-        for (const d of del) {
-          const di = val.indexOf(d.id)
-          if (di > -1) val.splice(di, 1)
-        }
-      }
-      if (add?.length) {
-        for (const a of add) {
-          val.push(a.id)
-        }
-      }
-    }
+    const {val, value} = item
 
     const group = map.get(item.id)
     group.idx.push(item.idx ?? '')

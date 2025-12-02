@@ -117,6 +117,7 @@
     // display: flex;
     // justify-content: stretch; // 充满
   }
+
   .data-table td {
     vertical-align: middle;
   }
@@ -148,11 +149,6 @@
     border-bottom: 1px solid #ccc; /* 灰色下划线 */
   }
 
-  /* 包含 etLabel 的 td 取消下划线 */
-  td:has(> .etChange) {
-    border-bottom: 1px solid rgb(255, 193, 7); /* 灰色下划线 */
-  }
-
   td:has(> .etAttach) {
     border-bottom: 1px solid #ccc; /* 灰色下划线 */
     padding-bottom: 3px;
@@ -161,6 +157,10 @@
   td:has(> .etAttach.etCap) {
     border: 1px solid rgba(0, 0, 0, 0.125);
     padding-top: 5px;
+  }
+
+  td.etChange {
+    border-bottom: 1px solid rgb(255, 193, 7); /* 灰色下划线 */
   }
 
   /* editTable 独有的，跟 行 底色一致,与TD类似 */
