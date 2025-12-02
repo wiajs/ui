@@ -639,6 +639,15 @@ class EditTable extends Event {
               // 保存当前字段 search回来的数据，表编辑时 其它行共享
               if (!r.option) r.option = []
 
+              // 处理 source.param 中的 ${} 引用（与 select 组件保持一致）
+              let processedSource = source
+              if (source && typeof source === 'object' && source.param) {
+                let {param = {}} = source
+                // 查询参数 可引用其他字段值
+                param = _.parseRef(param, idy)
+                processedSource = {...source, param}
+              }
+
               // r.option = option // 不保存到字段定义，避免污染
               // tx.addClass('dy-input')
               ac = new _.Autocomplete(_.page, {
@@ -648,7 +657,7 @@ class EditTable extends Event {
                 value, // 原始值 用于初始选中
                 placeholder,
                 // refEl: [span.dom], // 点击该关联元素不关闭下拉列表，点击其他地方，关闭列表
-                source,
+                source: processedSource,
                 addUrl,
               })
 
@@ -1060,6 +1069,56 @@ class EditTable extends Event {
    * @param {*} [fv] - 字段值，外部传入可加快速度
    * @returns
    */
+  /**
+   * 递归检查对象中是否包含 ${} 引用
+   * @param {*} obj 要检查的对象
+   * @returns {boolean} 是否包含引用
+   */
+  hasRef(obj) {
+    // 处理 null/undefined
+    if (obj == null) return false
+    // 字符串类型：直接检查
+    if (typeof obj === 'string') {
+      return /\$\{[^}]*\}/.test(obj)
+    }
+    // 对象类型（排除数组）：递归检查
+    if (typeof obj === 'object' && !Array.isArray(obj)) {
+      for (const k of Object.keys(obj)) {
+        if (this.hasRef(obj[k])) return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * 递归解析对象中的 ${} 引用（直接修改原对象）
+   * @param {*} obj 要解析的对象
+   * @param {*} fv 字段值对象
+   * @returns {*} 解析后的值或对象
+   */
+  parseRefRecursive(obj, fv) {
+    // 处理 null/undefined：直接返回
+    if (obj == null) return obj
+    // 字符串类型：检查并解析
+    if (typeof obj === 'string') {
+      if (/\$\{[^}]*\}/.test(obj)) {
+        const val = Function('r', `return \`${obj}\``)(fv)
+        log({src: obj, val}, 'parseRef')
+        return val
+      }
+      return obj
+    }
+    // 对象类型（排除数组）：递归解析每个属性
+    if (typeof obj === 'object' && !Array.isArray(obj)) {
+      for (const k of Object.keys(obj)) {
+        obj[k] = this.parseRefRecursive(obj[k], fv)
+      }
+      return obj
+    }
+    // 其他类型（数组、数字等）：直接返回
+    return obj
+  }
+
   parseRef(src, idy = 0, fv = null) {
     let R = src
 
@@ -1068,15 +1127,8 @@ class EditTable extends Event {
       const {data, opt, vals, fields} = _
       const {kv} = opt
 
-      let ref = false
-      if (typeof src === 'object') {
-        for (const k of Object.keys(src)) {
-          if (/\$\{[^}]*\}/.test(src[k])) {
-            ref = true
-            break
-          }
-        }
-      } else ref = typeof src === 'string' && /\$\{[^}]*\}/.test(src)
+      // 使用递归方法检查是否包含引用
+      const ref = _.hasRef(src)
 
       if (ref) {
         if (!fv) {
@@ -1098,14 +1150,10 @@ class EditTable extends Event {
           }
         }
 
-        if (typeof src === 'object') {
-          for (const k of Object.keys(src)) {
-            if (/\$\{[^}]*\}/.test(src[k])) {
-              const val = Function('r', `return \`${src[k]}\``)(fv)
-              log({idy, src: src[k], val}, 'parseRef')
-              src[k] = val
-            }
-          }
+        // 使用递归方法解析引用（直接修改原对象）
+        if (typeof src === 'object' && !Array.isArray(src)) {
+          _.parseRefRecursive(src, fv)
+          R = src
         } else {
           const val = Function('r', `return \`${src}\``)(fv)
           R = val

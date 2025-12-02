@@ -159,8 +159,8 @@ export default class Autocomplete extends Event {
     // 处理初始数据，转为[key, value]格式并去重
     _.data = _.mergeAndDeduplicateData([], opt.data)
 
-    const {el} = opt
-    if (typeof el === 'string') el = $(opt.el)
+    let {el} = opt
+    if (typeof el === 'string') el = $(el)
 
     if (el?.dom) {
       _.el = el
@@ -182,6 +182,22 @@ export default class Autocomplete extends Event {
         _.lastValue = _.optValueKv[1]
     }
       _.upClearButton()
+
+      // 如果 param 中有 q 参数，初始化时先调用一次 search
+      if (opt.source?.param && 'q' in opt.source.param) {
+        ;(async () => {
+          try {
+            _.showStatus('查询中...')
+            await _.search(opt.source, '')
+            // 查询完成后显示列表
+            _.showAllList()
+          } catch (e) {
+            log.err(e, 'init search')
+          } finally {
+            _.hideStatus()
+          }
+        })()
+      }
     }
   }
 
@@ -208,7 +224,10 @@ export default class Autocomplete extends Event {
    */
   mergeAndDeduplicateData(existingData, newData) {
     const _ = this
-    // 处理新数据格式
+    // 处理新数据格式：如果 newData 为空或未定义，直接返回空数组
+    if (!newData || (Array.isArray(newData) && newData.length === 0)) {
+      return existingData
+    }
     const processedNewData = (Array.isArray(newData) ? newData : [newData]).map(item => _.convertToKvArray(item)).filter(kv => kv[0] && kv[1]) // 过滤空数据
 
     // 合并原有数据和新数据
@@ -589,7 +608,7 @@ export default class Autocomplete extends Event {
    * @returns {[string, string][]} 过滤后的[key, value]数组（去重）
    */
   filter(input) {
-    let R
+    let R = []
     const _ = this
     try {
       const inputLower = input.toLowerCase()
@@ -597,7 +616,7 @@ export default class Autocomplete extends Event {
 
       // 处理空值：将 null/undefined 转为空数组，避免过滤报错
       const dataList = _.data || []
-      const optValueKvList = [_.optValueKv || []]
+      const optValueKvList = _.optValueKv ? [_.optValueKv] : []
 
       // 统一过滤规则：val 转小写后包含输入值小写
       // @ts-expect-error
@@ -608,14 +627,25 @@ export default class Autocomplete extends Event {
       const filteredData = dataList.filter(fun)
       const filteredOptValueKv = optValueKvList.filter(fun)
 
-      // 合并并去重（基于 key 去重，保留先出现的条目）
-      const mergedMap = new Map([
-        ...filteredData, // 先放 _.data 的结果，优先级更高（可根据需求调整顺序）
-        ...filteredOptValueKv, // 后放 optValueKv 的结果，重复 key 会被覆盖
-      ])
+      // 合并并去重（基于 key+value 组合去重，保留先出现的条目）
+      const mergedMap = new Map()
+      // 先放 _.data 的结果，优先级更高
+      filteredData.forEach(kv => {
+        const uniqueKey = `${kv[0]}_${kv[1]}`
+        if (!mergedMap.has(uniqueKey)) {
+          mergedMap.set(uniqueKey, kv)
+        }
+      })
+      // 后放 optValueKv 的结果，重复的会被忽略
+      filteredOptValueKv.forEach(kv => {
+        const uniqueKey = `${kv[0]}_${kv[1]}`
+        if (!mergedMap.has(uniqueKey)) {
+          mergedMap.set(uniqueKey, kv)
+        }
+      })
 
       // 转回 [key, value] 数组格式
-      R = Array.from(mergedMap.entries())
+      R = Array.from(mergedMap.values())
     } catch (e) {}
 
     return R
@@ -665,7 +695,9 @@ export default class Autocomplete extends Event {
         const el = $('<div class="ac-item"></div>')
           .text(val)
           .data('key', key)
-          .mousedown(() => (_.btnTrigger = true))
+          .mousedown(() => {
+            _.btnTrigger = true
+          })
           .click(() => {
             _.selTrigger = true
             _.input.val(val).data('key', key).focus()
@@ -677,7 +709,7 @@ export default class Autocomplete extends Event {
     }
 
       // 添加超出数量提示
-      if (rs.length > maxItems) {
+      if (displayData.length > maxItems) {
         const infoEl = $('<div class="ac-item"></div>').html(`<i class="fas fa-info-circle"></i> 显示前 ${maxItems} 条，共 ${displayData.length} 条`)
         _.dvList.append(infoEl)
     }
@@ -715,7 +747,9 @@ export default class Autocomplete extends Event {
       const el = $('<div class="ac-item"></div>')
         .html(highlightedText)
         .data('key', key)
-        .mousedown(() => (_.btnTrigger = true))
+        .mousedown(() => {
+          _.btnTrigger = true
+        })
         .on('click', () => {
           _.selTrigger = true
           _.input.val(val).data('key', key).focus()
@@ -844,8 +878,10 @@ export default class Autocomplete extends Event {
       if (listTop < 0) listTop = 0
 
       // 防止列表超出pageContent底部边界（向下弹出时兜底）
-      if (!needUpward && inputRect.bottom + gap + listHeight > contentRect.height)
-        listMaxHeight = contentRect.height - inputRect.bottom - gap - listHeight
+      if (!needUpward && inputRect.bottom + gap + listHeight > contentRect.height) {
+        const calculatedHeight = contentRect.height - inputRect.bottom - gap
+        listMaxHeight = Math.max(50, calculatedHeight) // 确保最小高度为50px
+      }
 
       // 6. 强制列表样式，确保与input对齐且跟随滚动
       _.dvList.css({
