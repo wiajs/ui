@@ -1,0 +1,323 @@
+// 分类图片网格组件样式
+// 在 editTable 的 td 中使用的容器样式
+.etCatAttach-td {
+  padding: 0 !important;
+  vertical-align: top !important;
+
+  // 确保内部的 grid 容器正常显示
+  > div.grid {
+    width: 100%;
+    margin: 0;
+  }
+}
+
+.etCatAttach {
+  border: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+  border-radius: 20px; // 每个块都有圆角
+  transition: all 0.2s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; // 防止内容溢出
+  min-height: 280px !important; // 设置整个 item 的最小高度，参考UI图比例
+  .etCatAttach-header {
+    background-color: #f2f3f7;
+    padding: 15px 12px;
+    min-height: 40px;
+    flex-shrink: 0; // 防止 header 被压缩
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    .etCatAttach-title {
+      font-size: 18px;
+      color: #444;
+      font-weight: 500;
+      white-space: nowrap;
+      margin: 0;
+    }
+
+    // 图标切换按钮
+    .etCatAttach-icon-btn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      z-index: 10;
+      margin: 0;
+
+      .icon {
+        font-size: 18px;
+        color: #444;
+      }
+
+      &:hover:not(.disabled) {
+        opacity: 0.7;
+      }
+
+      &.disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+
+        .icon {
+          color: #999;
+        }
+      }
+    }
+  }
+
+  .etCatAttach-content {
+    flex: 1;
+    background-color: #fff;
+    min-height: 240px !important; // 增加内容区域高度，参考UI图比例
+    max-height: 240px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative; // 为导航按钮定位
+    padding: 0;
+    width: 100%;
+
+    .etCatAttach-gallery-item-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .etCatAttach-gallery-item {
+      width: 100%;
+      height: 70px; // 固定高度，确保3行能显示9个
+      min-height: 70px;
+      max-height: 70px;
+      position: relative; // 为删除按钮定位
+      cursor: pointer;
+      transition: opacity 0.2s;
+      border-radius: 6px; // 添加小圆角
+      overflow: hidden; // 确保圆角生效
+
+      &:hover {
+        opacity: 0.8;
+      }
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        pointer-events: none; // 防止图片本身阻止点击事件
+        border-radius: 6px; // 图片也添加圆角
+      }
+    }
+
+    // 图片下方的 abb 文字（图集模式和轮播模式共用）
+    .etCatAttach-abb-text {
+      margin: 5px 0 8px 0; // 上边距5px，下边距8px，避免贴底边
+      color: rgb(29, 33, 41);
+      font-size: 12px;
+      text-align: center;
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex-shrink: 0; // 防止文字被压缩
+    }
+
+    // 新增按钮
+    .etCatAttach-add-btn {
+      width: 100%;
+      height: 70px; // 固定高度，与图片项一致
+      min-height: 70px;
+      max-height: 70px;
+      background-color: #f2f3f7;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      .icon {
+        font-size: 24px;
+        color: #666;
+      }
+
+      &:hover {
+        background-color: #e8e9ed;
+      }
+    }
+
+    // 删除按钮
+    .etCatAttach-delete-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 20px;
+      height: 20px;
+      background-color: #ff4444;
+      border-radius: 50%;
+      display: none; // 默认隐藏，悬停时显示
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.2s;
+
+      .icon {
+        font-size: 12px;
+        color: #fff;
+      }
+
+      &:hover {
+        background-color: #ff0000;
+      }
+    }
+
+    // 图集模式下，悬停时显示删除按钮
+    .etCatAttach-gallery-item:hover .etCatAttach-delete-btn {
+      display: flex;
+    }
+    // 图片容器包装器（轮播模式，包含图片和文字）
+    .etCatAttach-image-container-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start; // 改为从顶部开始，确保图片在上，文字在下
+      width: 100%;
+      height: 100%;
+      min-height: 0; // 允许flex子元素缩小
+    }
+
+    // 图片容器
+    .etCatAttach-image-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      min-height: 0; // 允许flex子元素缩小
+
+      .etCatAttach-image {
+        width: auto; // 由内容自适应宽度
+        height: auto; // 由内容自适应高度
+        max-width: 100%; // 最大不超过容器宽度
+        max-height: 100%; // 最大不超过容器高度
+        object-fit: contain; // 保持比例放大，避免左右拉伸
+        cursor: pointer;
+        transition: opacity 0.2s;
+
+        &:hover {
+          opacity: 0.9;
+        }
+      }
+
+      // 图片模式下，悬停时显示删除按钮
+      &:hover .etCatAttach-delete-btn {
+        display: flex;
+      }
+    }
+
+    // 导航按钮
+    .etCatAttach-nav-btn {
+      position: absolute !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      max-width: 32px !important;
+      border: none !important;
+      background-color: rgba(255, 255, 255, 0.9) !important;
+      border-radius: 50% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      transition: all 0.2s !important;
+      z-index: 10 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-sizing: border-box !important;
+
+      .icon {
+        font-weight: bold;
+        font-size: 16px !important;
+        color: #000;
+      }
+
+      &:hover:not(.disabled) {
+        background-color: rgba(255, 255, 255, 1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      &.disabled {
+        cursor: not-allowed;
+        opacity: 0.4;
+
+        .icon {
+          color: #999;
+        }
+      }
+    }
+
+    .etCatAttach-nav-prev {
+      left: 10px !important;
+      right: auto !important;
+    }
+
+    .etCatAttach-nav-next {
+      right: 10px !important;
+      left: auto !important;
+    }
+
+    .etCatAttach-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      min-height: 240px;
+      color: #999;
+      font-size: 12px;
+      text-align: center; // 确保文字居中
+
+      .icon {
+        font-size: 40px;
+        color: #ccc;
+        margin-bottom: 8px;
+        display: block; // 确保图标是块级元素
+      }
+
+      span {
+        color: #999;
+        text-align: center; // 确保文字居中
+        display: block; // 确保是块级元素
+        width: 100%; // 占满宽度以便居中
+      }
+    }
+
+    &.grid-mode {
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 8px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      // 保持原来的高度，确保能显示3行（9个）：3行 × 70px + 2个gap + padding = 约240px
+      min-height: 240px !important;
+      max-height: 240px !important;
+    }
+
+    // 当显示空状态时，不显示滚动条
+    &.grid-mode:has(.etCatAttach-empty) {
+      overflow: hidden !important;
+    }
+  }
+}

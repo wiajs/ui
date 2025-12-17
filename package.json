@@ -1,7 +1,7 @@
 {
   "name": "@wiajs/ui",
-  "version": "1.7.10",
-  "description": "wia app ui packages",
+  "version": "1.7.11",
+  "description": "wia ui packages",
   "main": "",
   "scripts": {
     "build": "node copy-assets.js",
@@ -43,6 +43,8 @@
     "./swiper": "./dist/swiper/index.js",
     "./tabulate/*": "./dist/tabulate/*",
     "./tabulate": "./dist/tabulate/index.js",
+    "./catAttach/*": "./dist/catAttach/*",
+    "./catAttach": "./dist/catAttach/index.js",
     "./uploader": "./dist/uploader/index.js",
     "./verify": "./dist/verify/index.js"
   },

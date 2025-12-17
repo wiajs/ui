@@ -1427,6 +1427,23 @@ class EditTable extends Event {
       editAttach(_.tb)
       chip.edit(_.tb)
 
+      // 更新所有 CatAttach 实例的编辑状态和图集模式
+      const catAttachTds = _.tb.find('td[catAttachField]')
+      for (const td of catAttachTds) {
+        const $td = $(td)
+        const instance = $td.data('catAttach')
+        if (instance) {
+          // 进入编辑模式时，先切换到图集模式
+          if (typeof instance.setAllToGridMode === 'function') {
+            instance.setAllToGridMode()
+          }
+          // 然后设置编辑状态
+          if (typeof instance.setEditMode === 'function') {
+            instance.setEditMode(true)
+          }
+        }
+      }
+
       // _.bind()
     } catch (e) {
       log.err(e, 'edit')
@@ -1474,6 +1491,16 @@ class EditTable extends Event {
       _.tabulate?.togglePreview()
       viewAttach(_.tb)
       chip.view(_.tb)
+
+      // 更新所有 CatAttach 实例的编辑状态
+      const catAttachTds = _.tb.find('td[catAttachField]')
+      for (const td of catAttachTds) {
+        const $td = $(td)
+        const instance = $td.data('catAttach')
+        if (instance && typeof instance.setEditMode === 'function') {
+          instance.setEditMode(false)
+        }
+      }
 
     if (_.data) {
       const tds = _.tb.find('td[data-idx]')
@@ -1674,6 +1701,16 @@ class EditTable extends Event {
     try {
       const {data, cfg, opt} = _
       const {checkbox: ck, api} = cfg
+
+      // 在保存前，更新所有 CatAttach 实例的隐藏 input
+      const catAttachTds = _.tb.find('td[catAttachField]')
+      for (const td of catAttachTds) {
+        const $td = $(td)
+        const instance = $td.data('catAttach')
+        if (instance && typeof instance._updateEditTableInput === 'function') {
+          instance._updateEditTableInput()
+        }
+      }
 
       const up = _.getVal()
       const del = [..._.del]
@@ -2873,17 +2910,19 @@ class EditTable extends Event {
       let {type, col, row, subCol, catCol, cat} = d
       if (catCol && !subCol) subCol = catCol // 兼容旧字段
 
-      // 缺省一列、一行
+      // 缺省Label、Data各占一列
       col = col ?? [1, 1]
       if (Array.isArray(subCol)) d.subCol = subCol.map(v => v * opt.colRatio) // 兼容旧模式，2倍
 
+      // 有设置
       if (typeof col === 'number') {
-        col *= opt.colRatio // 兼容旧模式，2倍
+        col *= opt.colRatio // 兼容旧模式，2倍，2 -> 4
         if (col > 1) {
           const cats = [DataType.attach, DataTypes.attach].includes(type) && cat
+          // 子表、子视图、子页面，数据列为 0，换行，占据整行
           if (cats || [DataType.table, DataType.view, DataType.page, DataTypes.table, DataTypes.view, DataTypes.page].includes(type)) {
             col = [col, 0]
-          } else col = [1, col - 1]
+          } else col = [1, col - 1] // label 占一列，其他为数据列
         }
       } else if (Array.isArray(col) && col.length === 1) col.push(1)
 
@@ -2992,7 +3031,7 @@ class EditTable extends Event {
             }
           }
 
-          // value
+          // data，table、view、page 跳过
           const vcol = col[1]
           if (vcol > 0) {
             let types = type
@@ -3027,7 +3066,7 @@ class EditTable extends Event {
 
           // 换行
                 td.innerHTML = `${val}`
-              } else if ([DataType.table, DataType.attach, DataTypes.table, DataTypes.attach].includes(type)) {
+              } else if ([DataType.attach, DataTypes.attach].includes(type)) {
                 if (cat) td.innerHTML = `<span name="tx"/>`
                 else fillAttach(_, value, td, null, c.read, idx)
               } else {
@@ -3114,7 +3153,6 @@ class EditTable extends Event {
 
             _.hasTable = true // 存在内嵌表，编辑时，需切换内嵌表编辑
             const el = $td.find('div.data-table')
-            // @ts-expect-error
             const dtb = new DataTable(_.page, {
               el,
               name: `dtb${field}`, // datatable 名称
@@ -3127,6 +3165,14 @@ class EditTable extends Event {
             tbody.dom.insertBefore(tr.dom, null)
             tr.show()
           } else if ([DataType.attach, DataTypes.attach].includes(type) && cat) {
+            // 检查是否已经渲染过这个字段（避免重复渲染）
+            // 通过检查 tbody 中是否已经存在相同 field 的 CatAttach 容器来判断
+            const existingTd = tbody.find(`td[catAttachField="${c.field}"]`)
+            if (existingTd.length > 0) {
+              // 已经渲染过，跳过
+              continue
+            }
+
             if (hasTd) tr = thead.lastChild().clone()
 
             let {cat, subCol, subCols} = c
@@ -3140,19 +3186,17 @@ class EditTable extends Event {
               cats.push({cat: cat[i], col: subCol[i]})
             }
 
-            // cat.catid = 0
+            // 带分类的附件，检查是否注册了 CatAttach 插件
+            if (_.CatAttach) {
+              // 计算 colSpan：占据整行的列数（label + value 列）
+              const colSpan = opt.col
 
-            // let cats
-            // let catid = 0
-            // do {
-            //   cats = getRowCat(cat, catCol, opt.col, catid)
-            //   if (cats?.length) {
-            //     fillAttach(_, value, thead, tbody, cats, catCol, idx)
-            //     catid = cats.catid + cats.length
-            //   }
-            // } while (cats?.length)
-            // 按 cats 分类填充
+              _.CatAttach.fillAttach(_, c, value, tr, cat, colSpan, idx)
+            } else {
+              // 原来的 fillAttach 逻辑
             fillAttach(_, value, tr, cats, c.read, idx)
+            }
+
             // 插入到空行前
             tbody.dom.insertBefore(tr.dom, null)
             tr.show()
@@ -3417,11 +3461,116 @@ class EditTable extends Event {
         t.remove()
       }
 
-      // 查找所有 input，获取修改值
+      // 关键修复：在查找其他 input 之前，先处理所有 CatAttach 实例的 input
+      // 直接从实例获取 input，而不是依赖 tb.find('input') 的查找结果
+      const catAttachTds = tb.find('td[catAttachField]')
+      const catAttachInputs = new Set() // 记录已处理的 input，避免重复处理
+      for (const td of catAttachTds) {
+        const $td = $(td)
+        const instance = $td.data('catAttach')
+        if (instance && typeof instance._updateEditTableInput === 'function') {
+          // 更新 input 的值
+          instance._updateEditTableInput()
+
+          // 直接从实例获取 input 并处理
+          // 注意：这里直接使用 $td（container）和字段信息，手动构造返回结果
+          // 避免调用 getCellVal（因为 getCellVal 可能找不到 td）
+          if (instance._editTableInputDom) {
+            const input = instance._editTableInputDom
+            // 避免重复处理同一个 input
+            if (!catAttachInputs.has(input)) {
+              catAttachInputs.add(input)
+
+              // 从 td 获取索引信息
+              const idx = $td.data('idx') // 字段索引（kv 模式下是数据索引）
+              const idy = $td.data('idy') || 0 // 数据行索引（kv 模式下为 0）
+              const field = instance._editTableField // 字段名
+
+              // 从 fields 中获取字段配置
+              const fieldConfig = fields[idx]
+              if (fieldConfig && fieldConfig.field === field) {
+                // 获取原始值（确保是数组）
+                const value = Array.isArray(fieldConfig.value) ? fieldConfig.value : []
+
+                // 解析 input 的值（新增的附件）
+                let add = []
+                try {
+                  const val = input.value
+                  if (val && val.trim()) {
+                    add = JSON.parse(val)
+                  }
+                } catch (e) {
+                  console.error('[getVal] CatAttach parse error:', e)
+                  add = []
+                }
+                // 确保 add 格式与 getCellVal 一致（只包含 id 和 url）
+                // getCellVal 中：add = add.map(v => ({id: v.id, url: v.url}))
+                add = add.map(v => ({id: v.id, url: v.url || ''}))
+
+                // 获取删除的附件索引
+                // @ts-expect-error
+                const _del = input._del || new Set()
+                // 将索引数组转换为对象数组，格式与 getCellVal 一致
+                // getCellVal 中：del.push({id: value[i].id, url: value[i].url})
+                const del = Array.from(_del)
+                  .map(i => {
+                    if (value[i] && value[i].id) {
+                      return {id: value[i].id, url: value[i].url || ''}
+                    }
+                    return null
+                  })
+                  .filter(item => item !== null) // 过滤掉无效的项
+
+                // 检查是否有变化
+                const hasChanges = (add && add.length > 0) || (del && del.length > 0)
+
+                if (hasChanges) {
+                  // 构造返回结果，格式与 getCellVal 返回的格式一致
+                  const result = {
+                    idx: idx,
+                    idy: idy,
+                    field: field,
+                    fieldid: idx,
+                    value: value,
+                    val: value, // 对于 attach 类型，val 通常是 valueid，但这里我们保持 value
+                    add: add, // 新增的附件数组（对象数组，包含 id、url 等）
+                    del: del, // 删除的附件数组（对象数组，包含 id、url）
+                  }
+
+                  rs.push(result)
+                }
+              } else {
+                console.error('[getVal] CatAttach 找不到字段配置:', {idx, field, fieldsLength: fields.length})
+              }
+            }
+          }
+        }
+      }
+
+      // 查找所有 input，获取修改值（排除已处理的 CatAttach input）
       let els = el.find('input')
       for (const el of els) {
         // 跳过上传的文件input 和 没有名字的
         if (el.type === 'file' || !el.name) continue
+
+        // 跳过已经处理过的 CatAttach input
+        if (catAttachInputs.has(el)) continue
+
+        // 如果是 attach.js 创建的 input（有 _addVal class 且 name 包含 -attach-add），
+        // 检查是否有对应的 CatAttach input，如果有则跳过这个
+        if (el.classList.contains('_addVal') && el.name && el.name.includes('-attach-add')) {
+          // 查找对应的 CatAttach input（没有 _addVal class 的）
+          const fieldName = el.name.replace(/-attach-add$/, '')
+          const $el = $(el)
+          const $td = $el.closest('td')
+          if ($td.length > 0) {
+            const catAttachInput = $td.find(`input[name="${fieldName}-attach-add"]:not(._addVal)`)
+            if (catAttachInput.length > 0) {
+              // 如果存在 CatAttach 的 input，跳过 attach.js 创建的
+              continue
+            }
+          }
+        }
 
         // 通过输入input获得新旧值
         const r = _.getCellVal(el)
@@ -3536,10 +3685,19 @@ class EditTable extends Event {
           }
         } else if ([DataType.attach, DataTypes.attach].includes(type)) {
           // attach 单独处理
-          const {_del} = el
+          const {_del} = el || {}
           let add = [],
             del = []
-          if (val) add = JSON.parse(val)
+
+          if (val && val.trim() !== '') {
+            try {
+              add = JSON.parse(val)
+            } catch (e) {
+              log.err(e, 'getCellVal attach parse')
+              add = []
+            }
+          }
+
           if (!add?.length && !_del?.size) skip = true
 
           if (!skip) {
@@ -3560,6 +3718,7 @@ class EditTable extends Event {
 
             if (!kv) idx = r.idx // 数据索引
             R = {data: {idx, idy, field: name, fieldid, value, val, add, del}}
+            log({name, val, add, del}, 'getCellVal attach result')
           }
       }
 
@@ -3569,7 +3728,7 @@ class EditTable extends Event {
         }
 
       log({R}, 'getCellVal')
-      }
+      } else log({name, idx, fieldsLength: fields.length, tdHasIdx: !!td.data('idx'), td: td[0]?.className}, 'getCellVal no field')
     } catch (e) {
       log.err(e, 'getCellVal')
     }
@@ -4479,4 +4638,4 @@ function groupById(list) {
   return Array.from(map.values())
 }
 
-export {DataType, DataTypes, EditTable as default, makeEdit as edit}
+export {DataType, DataTypes, EditTable as default, makeEdit as edit, State}
