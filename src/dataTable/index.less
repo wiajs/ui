@@ -7,6 +7,40 @@
   --f7-table-card-header-height: 48px;
   --f7-table-head-cell-height: 40px;
 
+  /* texts 类型：固定三行 + 展开按钮，仅作用于 .data-table-texts-cell，不影响其他列 */
+  table tbody td.data-table-texts-cell {
+    white-space: normal;
+    overflow: visible;
+    vertical-align: top;
+  }
+
+  .data-table-texts-content {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  td.data-table-texts-cell.data-table-texts-expanded .data-table-texts-content {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+
+  .data-table-texts-toggle {
+    display: none;
+    margin-top: 4px;
+    padding: 0 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #2563eb;
+    background: none;
+    border: none;
+    cursor: pointer;
+    outline: none;
+  }
+
   .edit-table {
     span {
       padding: 0;

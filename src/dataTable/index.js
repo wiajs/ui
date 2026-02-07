@@ -206,6 +206,15 @@ class DataTable extends Event {
               {`\${$.dataTb.attachVal(r[${col}], ${opt})}`}
             </td>
           )
+        } else if (h.type === 'texts') {
+          R.push(
+            <td class={`${cls} data-table-texts-cell`} data-col={i}>
+              <span class="data-table-texts-content">{`\${$.dataTb.formatVal(r[${col}], ${opt})}`}</span>
+              <button type="button" class="data-table-texts-toggle">
+                展开
+              </button>
+            </td>
+          )
         } else if (h.link || link?.includes(i)) {
           if (!h.link) h.link = ''
           R.push(
@@ -983,6 +992,24 @@ class DataTable extends Event {
           window.open(url, '_blank')
         }
       })
+
+      // texts 类型：展开/收起按钮
+      el.findNode('tbody').on('click', '.data-table-texts-toggle', function (ev) {
+        ev.preventDefault()
+        ev.stopPropagation()
+        const $btn = $(this)
+        const $cell = $btn.closest('td.data-table-texts-cell')
+        if (!$cell.length) return
+        const expanded = $cell.hasClass('data-table-texts-expanded')
+        if (expanded) {
+          $cell.removeClass('data-table-texts-expanded')
+          $btn.text('展开')
+        } else {
+          $cell.addClass('data-table-texts-expanded')
+          $btn.text('收起')
+        }
+      })
+
       // 头部指定的 link 字段，包含在上面link中，link值为空
       // el.findNode('tbody').click('td[data-col]', (ev, sender) => {
       //   const n = $(sender)
@@ -1285,6 +1312,9 @@ class DataTable extends Event {
       else _.tb.setView(_.data, {idx, ...opts})
       // view.setView.bind(tb)(_.data, {idx, ...opts})
 
+      // texts 类型：根据内容是否超出三行显示/隐藏展开按钮（分页时在 paging 内也会调用）
+      _.initTextsCells()
+
       // 识别并处理数据中的指令
       const ns = tb.find('code.data-table')
       for (const n of ns.get()) {
@@ -1304,6 +1334,37 @@ class DataTable extends Event {
       if (cfg.sum) _.setSum()
     } catch (ex) {
       console.error('setView exp:', ex.message)
+    }
+  }
+
+  /**
+   * texts 类型单元格：根据内容是否超出三行显示/隐藏展开按钮，并重置展开状态
+   */
+  initTextsCells() {
+    const _ = this
+    try {
+      // 调试：断点此处表示触发了 dataTable 的 texts 展示（三行 + 展开按钮）
+      debugger
+      const cells = _.tb.find('td.data-table-texts-cell')
+      for (const cell of cells) {
+        const $cell = $(cell)
+        const $content = $cell.find('.data-table-texts-content')
+        const $btn = $cell.find('.data-table-texts-toggle')
+        if (!$content.length || !$btn.length) continue
+
+        $cell.removeClass('data-table-texts-expanded')
+        $btn.text('展开').hide()
+
+        // 下一帧测量，确保 DOM 已渲染
+        requestAnimationFrame(() => {
+          const el = $content[0]
+          if (!el) return
+          const overflow = el.scrollHeight > el.clientHeight
+          if (overflow) $btn.show()
+        })
+      }
+    } catch (e) {
+      log.err(e, 'initTextsCells')
     }
   }
 
@@ -1444,6 +1505,7 @@ class DataTable extends Event {
 
       if (add) tb.addView(rs, {idx})
       else tb.setView(rs, {idx})
+      _.initTextsCells()
       _.reCheck(rs)
     } catch (e) {}
   }
@@ -1673,6 +1735,7 @@ function formatVal(val, opt) {
     type = type ?? 'string'
 
     if (type === 'string') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : val
+    else if (type === 'texts') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : val
     else if (type === 'date') {
       R = val === '' || val === undefined || val === null || val === 'null' ? '-' : $.date('yyyy-MM-dd', val)
     } else if (type === 'time') R = val === '' || val === undefined || val === null || val === 'null' ? '-' : $.date('hh:mm:ss', val)
@@ -1984,4 +2047,3 @@ function th(head, numRight = true) {
 }
 
 export { col, DataTable as default, th }
-
