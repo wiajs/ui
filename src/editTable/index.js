@@ -17,6 +17,191 @@ const log = Log({m: 'editTable'}) // 创建日志实例
  * @typedef {JQuery} Dom
  */
 
+/**
+ * HTML 清理函数，防止 XSS 攻击
+ * 允许的标签和属性白名单
+ * @param {string} html - 待清理的 HTML 字符串
+ * @returns {string} 清理后的安全 HTML
+ */
+function sanitizeHTML(html) {
+  if (!html || typeof html !== 'string') return ''
+
+  try {
+    // 创建临时容器
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+
+    // 允许的标签白名单
+    const allowedTags = [
+      'p',
+      'br',
+      'strong',
+      'b',
+      'em',
+      'i',
+      'u',
+      's',
+      'strike',
+      'span',
+      'div',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'ul',
+      'ol',
+      'li',
+      'blockquote',
+      'pre',
+      'code',
+      'a',
+    ]
+
+    // 允许的属性白名单
+    const allowedAttrs = {
+      a: ['href', 'title', 'target'],
+      span: ['style'],
+      div: ['style'],
+      p: ['style'],
+      h1: ['style'],
+      h2: ['style'],
+      h3: ['style'],
+      h4: ['style'],
+      h5: ['style'],
+      h6: ['style'],
+    }
+
+    // 递归清理节点
+    function cleanNode(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.cloneNode(true)
+      }
+
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const tagName = node.tagName.toLowerCase()
+
+        // 如果标签不在白名单中，只保留文本内容
+        if (!allowedTags.includes(tagName)) {
+          const textNode = document.createTextNode(node.textContent || '')
+          return textNode
+        }
+
+        // 创建新节点
+        const newNode = document.createElement(tagName)
+
+        // 复制允许的属性
+        const attrs = allowedAttrs[tagName] || []
+        for (const attr of attrs) {
+          const value = node.getAttribute(attr)
+          if (value) {
+            // 对 href 进行额外验证，防止 javascript: 协议
+            if (attr === 'href') {
+              if (value.startsWith('javascript:') || value.startsWith('data:')) {
+                continue
+              }
+            }
+            // 对 style 进行简单验证，移除危险属性
+            if (attr === 'style') {
+              const safeStyle = value.replace(/javascript:|on\w+\s*=/gi, '')
+              if (safeStyle) newNode.setAttribute(attr, safeStyle)
+            } else {
+              newNode.setAttribute(attr, value)
+            }
+          }
+        }
+
+        // 递归处理子节点
+        for (const child of Array.from(node.childNodes)) {
+          const cleanedChild = cleanNode(child)
+          if (cleanedChild) newNode.appendChild(cleanedChild)
+        }
+
+        return newNode
+      }
+
+      return null
+    }
+
+    // 清理所有子节点
+    const cleaned = document.createDocumentFragment()
+    for (const child of Array.from(tmp.childNodes)) {
+      const cleanedChild = cleanNode(child)
+      if (cleanedChild) cleaned.appendChild(cleanedChild)
+    }
+
+    // 转换为 HTML 字符串
+    const result = Array.from(cleaned.childNodes)
+      .map(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          return node.textContent
+        }
+        return node.outerHTML
+      })
+      .join('')
+
+    return result || html // 如果清理后为空，返回原值（可能是纯文本）
+  } catch (e) {
+    log.err(e, 'sanitizeHTML')
+    // 出错时返回转义的纯文本
+    return html.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  }
+}
+
+/**
+ * 检测字符串是否包含 HTML 标签
+ * @param {string} str - 待检测的字符串
+ * @returns {boolean} 是否包含 HTML 标签
+ */
+function hasHTMLTags(str) {
+  if (!str || typeof str !== 'string') return false
+  // 简单的 HTML 标签检测正则
+  return /<[a-z][\s\S]*>/i.test(str)
+}
+
+/**
+ * 将纯文本转换为 HTML（换行符转 <br>）
+ * @param {string} text - 纯文本
+ * @returns {string} HTML 字符串
+ */
+function textToHTML(text) {
+  if (!text || typeof text !== 'string') return ''
+  return text.replace(/\n/g, '<br>')
+}
+
+/**
+ * 在 contenteditable 内插入 HTML（用于 Tab 缩进等）：
+ * - 优先使用 execCommand（兼容旧内核）
+ * - 不支持时使用 Range 手动插入
+ * @param {string} html
+ */
+function insertHtmlAtCursor(html) {
+  try {
+    if (!html) return
+    // 兼容旧内核（你们项目里已在多处使用 execCommand）
+    if (document.queryCommandSupported?.('insertHTML')) {
+      document.execCommand('insertHTML', false, html)
+      return
+    }
+    const sel = window.getSelection?.()
+    if (!sel || sel.rangeCount === 0) return
+    const range = sel.getRangeAt(0)
+    range.deleteContents()
+    const el = document.createElement('span')
+    el.innerHTML = html
+    const frag = document.createDocumentFragment()
+    while (el.firstChild) frag.appendChild(el.firstChild)
+    range.insertNode(frag)
+    // 将光标移动到插入内容后
+    sel.removeAllRanges()
+    const r2 = document.createRange()
+    r2.selectNodeContents(range.endContainer)
+    r2.collapse(false)
+    sel.addRange(r2)
+  } catch {}
+}
+
 /** @typedef {object} Opts
  * @prop {Dom} [el] - contain
  * @prop {Dom} [tb] - $table
@@ -440,6 +625,23 @@ class EditTable extends Event {
     const {opt, fields, vals} = _
     const {kv} = opt
 
+    // texts 类型：展开/收起按钮（与 dataTable 一致，供 kv=false 展示模式使用）
+    _.tb.on('click', '.data-table-texts-toggle', function (ev) {
+      ev.preventDefault()
+      ev.stopPropagation()
+      const $btn = $(this)
+      const $cell = $btn.closest('td.data-table-texts-cell')
+      if (!$cell.length) return
+      const expanded = $cell.hasClass('data-table-texts-expanded')
+      if (expanded) {
+        $cell.removeClass('data-table-texts-expanded')
+        $btn.text('展开')
+      } else {
+        $cell.addClass('data-table-texts-expanded')
+        $btn.text('收起')
+      }
+    })
+
     // 表格点击事件
     // 编辑元素（input） 不能 focus，不能 onblur？原因：pointer-events: none
     _.tb.click(async ev => {
@@ -524,38 +726,73 @@ class EditTable extends Event {
           // }, 50)
         } else if (type === DataType.texts || type === DataTypes.texts) {
           const span = td.find('span')
-          if (!span.hasClass('edit')) {
-            let tx = td.find('input')
+          if (!span.hasClass('edit') && !span.hasClass('edit-rich')) {
+            // 检查是否启用富文本编辑（渐进增强）
+            const isRich = r.rich === true
+
+            // 保持原有 texts 编辑方式：直接编辑 span（高度随换行自动增长）
+            // 仅增强：rich=true 时入库保存 HTML（保留空行/换行），避免被 viewCell 转成纯文本
+
+            // 隐藏 input：用于 getVal/saveTb 提交
+            let tx = td.find('input[type="hidden"].etTextsInput')
             if (!tx.dom) {
               tx = document.createElement('input')
+              tx.type = 'hidden'
+              tx.className = 'etTextsInput'
               tx.name = r.field
-              tx.value = span.html()
-              tx.hidden = true
               td.append(tx)
+              tx = $(tx)
             }
 
+            // 标记 rich，供 viewCell 判断是否保留 HTML
+            if (isRich) tx.attr('data-rich', '1')
+            else tx.removeAttr('data-rich')
+
+            // rich 基础能力：Tab 插入缩进（4 个 nbsp），不引入工具栏
+            span.off('.etRich')
+            if (isRich) {
+              span.on('keydown.etRich', ev => {
+                try {
+                  if (ev.key === 'Tab') {
+                    ev.preventDefault()
+                    insertHtmlAtCursor('&nbsp;&nbsp;&nbsp;&nbsp;')
+                  }
+                } catch {}
+              })
+            }
+
+            // 进入编辑态：统一加 edit 类以使用相同蓝色边框样式；rich 时再加 edit-rich 并设 contentEditable；td 加 et-texts-editing 以隐藏展开按钮
+            td.addClass('et-texts-editing')
             span.dom.tabIndex = '-1'
-            // span 可编辑
-            // span.focus(ev => span.addClass('edit'))
             span.addClass('edit')
-            span.blur(ev => {
-              // _.viewCell()
-              const val = span.html()
-              tx.value = val
-              if (`${val}` === `${value}`) {
-                span.removeClass('edit') // span 可编辑
-                td.removeClass('etChange')
-              } else {
-                vals[idy][r.field] = val
-                td.addClass('etChange')
+            if (isRich) {
+              span.addClass('edit-rich')
+              span.dom.contentEditable = 'true'
               }
-            })
             span.focus()
 
-            // span.dom.addEventListener('focusout', ev => {
-            //   tx.value = span.html()
-            //   span.removeClass('edit') // span 可编辑
-            // })
+            // 失焦保存：rich 保存 HTML；非 rich 按原逻辑保存
+            span.blur(() => {
+              if (isRich) span.dom.contentEditable = 'false'
+              let html = span.html() ?? ''
+              if (isRich) html = sanitizeHTML(html)
+
+              // 回写到隐藏 input：保证 saveTb/getVal 取到 HTML
+              tx.val(html)
+              span.html(html)
+
+              td.removeClass('et-texts-editing')
+              span.removeClass('edit edit-rich')
+              span.off('.etRich')
+
+              if (`${html}` === `${value}`) td.removeClass('etChange')
+              else {
+                vals[idy][r.field] = html
+                td.addClass('etChange')
+              }
+              // 保存后重新检测是否超出三行，更新展开按钮显示
+              _.initTextsCells()
+            })
           }
         } else if (type === DataType.select || type === DataTypes.select) {
           const span = td.find('span')
@@ -1427,6 +1664,9 @@ class EditTable extends Event {
       editAttach(_.tb)
       chip.edit(_.tb)
 
+      // texts：编辑模式下不要 hover 展开，统一全量展开展示（移除 etClamp）
+      _.tb.find('span.etTexts').removeClass('etClamp')
+
       // 更新所有 CatAttach 实例的编辑状态和图集模式
       const catAttachTds = _.tb.find('td[catAttachField]')
       for (const td of catAttachTds) {
@@ -1492,6 +1732,9 @@ class EditTable extends Event {
       viewAttach(_.tb)
       chip.view(_.tb)
 
+      // texts：浏览模式恢复三行收起 + hover 展开（恢复 etClamp）
+      _.tb.find('span.etTexts').addClass('etClamp')
+
       // 更新所有 CatAttach 实例的编辑状态
       const catAttachTds = _.tb.find('td[catAttachField]')
       for (const td of catAttachTds) {
@@ -1531,7 +1774,10 @@ class EditTable extends Event {
         ) {
           const span = $td.find('span')
           if (span) {
-            span.removeClass('edit')
+                $td.removeClass('et-texts-editing')
+                span.removeClass('edit edit-rich')
+                const el = span.dom || span[0]
+                if (el && 'contentEditable' in el) el.contentEditable = 'false'
             span.show()
           }
               let tx = $td.find('input')
@@ -1573,6 +1819,8 @@ class EditTable extends Event {
       _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
       viewAttach(_.tb)
       chip.view(_.tb)
+      // texts：保存后切回浏览模式，恢复三行收起 + hover 展开
+      _.tb.find('span.etTexts').addClass('etClamp')
 
       if (!kv) {
         _.saveTb()
@@ -1648,7 +1896,10 @@ class EditTable extends Event {
               const tx = $td.find('input')
                             if (span) {
                 span.eq(0).find('a').attr('href', tx.val())
-                span.removeClass('edit')
+                $td.removeClass('et-texts-editing')
+                span.removeClass('edit edit-rich')
+                const el = span.dom || span[0]
+                if (el && 'contentEditable' in el) el.contentEditable = 'false'
                 span.show()
                             }
                             if (tx.dom) {
@@ -1670,7 +1921,10 @@ class EditTable extends Event {
         ) {
           const span = $td.find('span')
           if (span) {
-            span.removeClass('edit')
+                $td.removeClass('et-texts-editing')
+                span.removeClass('edit edit-rich')
+                const el = span.dom || span[0]
+                if (el && 'contentEditable' in el) el.contentEditable = 'false'
             span.show()
           }
 
@@ -1774,6 +2028,8 @@ class EditTable extends Event {
     _.tb.tag('tbody').addClass('etView').removeClass('etEdit')
       viewAttach(_.tb)
       chip.view(_.tb)
+      // texts：取消后切回浏览模式，恢复三行收起 + hover 展开
+      _.tb.find('span.etTexts').addClass('etClamp')
 
       if (kv) {
         // 存在内嵌表格
@@ -1956,11 +2212,15 @@ class EditTable extends Event {
       const txTo = tool.childTag(tx.parentNode, 'input')
 
       let val = tx.innerHTML.replace(/^~~.*~~/, '')
-      // 对输入字符进行处理
+      // rich 模式：隐藏 input 标记了 data-rich=1，则保持 HTML，不要转纯文本
+      const isRich = txTo?.getAttribute && txTo.getAttribute('data-rich') === '1'
+      if (!isRich) {
+        // 对输入字符进行处理（纯文本模式）
       val = val.replace(/<br>/g, '\n')
       // val = val.replace(/&gt;/g, '>');
       // val = val.replace(/&lt;/g, '<');
       val = val.replace(/&nbsp;/g, ' ')
+      }
 
       if (!val || /^[\s\n\r]+$/.exec(val)) {
         if (tx.className === 'imgTitle')
@@ -1980,7 +2240,10 @@ class EditTable extends Event {
         const img = tool.childTag(txTo.parentNode, 'img')
         if (img) {
           txTo.value = tool.format('![%s](%s)', val || '', img.getAttribute('src'))
-        } else txTo.value = val
+        } else {
+          // rich：保持 HTML；非 rich：保持纯文本
+          txTo.value = isRich ? sanitizeHTML(tx.innerHTML) : val
+        }
       }
     }
 
@@ -2409,9 +2672,21 @@ class EditTable extends Event {
             } else if (unit)
               td.innerHTML = `<div class=etNumber><span name="tx" class="etValue">${val}</span><span class="etSuffix">${unit}</span></div>`
             else {
-              td.innerHTML = `<span name="tx" class="etValue">${val ?? ''}</span>`
+              // texts 类型：与 dataTable 一致，使用 data-table-texts-cell 结构以支持三行 + 展开/收起按钮
+              if (type === DataType.texts || type === DataTypes.texts) {
+                let displayVal = val ?? ''
 
-              if (type === DataType.texts || type === DataTypes.texts) $td.find('span').addClass('etClamp')
+                if (displayVal && !hasHTMLTags(displayVal)) {
+                  displayVal = textToHTML(displayVal)
+                } else if (displayVal && hasHTMLTags(displayVal)) {
+                  displayVal = sanitizeHTML(displayVal)
+                }
+
+                $td.addClass('data-table-texts-cell')
+                td.innerHTML = `<span name="tx" class="data-table-texts-content etValue etTexts">${displayVal}</span><button type="button" class="data-table-texts-toggle">展开</button>`
+              } else {
+                td.innerHTML = `<span name="tx" class="etValue">${val ?? ''}</span>`
+              }
             }
 
             // else td.innerHTML = `<input name="tx" class="etValue dy-input" value=${val}></input>`
@@ -2433,8 +2708,43 @@ class EditTable extends Event {
       } // for
       // 插入到空行前
       tbody.dom.insertBefore(tr.dom, null)
+      // texts 类型：根据内容是否超出三行显示/隐藏展开按钮（与 dataTable 一致）
+      _.initTextsCells()
     } catch (e) {
       log.err(e, 'fillRow')
+    }
+  }
+
+  /**
+   * texts 类型单元格：根据内容是否超出三行显示/隐藏展开按钮（与 dataTable 逻辑一致，供 kv=false 展示模式使用）
+   */
+  initTextsCells() {
+    const _ = this
+    try {
+      // 调试：断点此处表示触发了 editTable 的 texts 展示（kv=false 时的三行 + 展开按钮）
+      debugger
+      const cells = _.tb.find('td.data-table-texts-cell')
+      for (const cell of cells) {
+        const $cell = $(cell)
+        const $content = $cell.find('.data-table-texts-content')
+        const $btn = $cell.find('.data-table-texts-toggle')
+        if (!$content.length || !$btn.length) continue
+
+        $cell.removeClass('data-table-texts-expanded')
+        $btn.text('展开').hide()
+
+        const checkOverflow = () => {
+          const el = $content[0]
+          if (!el) return
+          const overflow = el.scrollHeight > el.clientHeight
+          if (overflow) $btn.show()
+        }
+        requestAnimationFrame(checkOverflow)
+        // 延迟再测一次：确保样式应用、布局完成后再判断是否溢出（避免“触发了但未隐藏”）
+        setTimeout(checkOverflow, 100)
+      }
+    } catch (e) {
+      log.err(e, 'initTextsCells')
     }
   }
 
@@ -3114,9 +3424,21 @@ class EditTable extends Event {
             } else if (unit)
                   td.innerHTML = `<div class=etNumber><span name="tx" class="etValue">${val}</span><span class="etSuffix">${unit}</span></div>`
                 else {
-                  td.innerHTML = `<span name="tx" class="etValue">${val ?? ''}</span>`
+                  // texts 类型：与 fillRow 一致，使用 data-table-texts-cell 结构以支持三行 + 展开/收起按钮
+                  if (type === DataType.texts || type === DataTypes.texts) {
+                    let displayVal = val ?? ''
 
-                  if (type === DataType.texts || type === DataTypes.texts) $td.find('span').addClass('etClamp')
+                    if (displayVal && !hasHTMLTags(displayVal)) {
+                      displayVal = textToHTML(displayVal)
+                    } else if (displayVal && hasHTMLTags(displayVal)) {
+                      displayVal = sanitizeHTML(displayVal)
+                    }
+
+                    $td.addClass('data-table-texts-cell')
+                    td.innerHTML = `<span name="tx" class="data-table-texts-content etValue etTexts">${displayVal}</span><button type="button" class="data-table-texts-toggle">展开</button>`
+                  } else {
+                    td.innerHTML = `<span name="tx" class="etValue">${val ?? ''}</span>`
+                  }
                 }
 
                 // else td.innerHTML = `<input name="tx" class="etValue dy-input" value=${val}></input>`
@@ -3207,6 +3529,8 @@ class EditTable extends Event {
           log.err(e, 'fillKv')
         }
       } // for
+      // texts 类型：根据内容是否超出三行显示/隐藏展开按钮（与 fillRow 一致）
+      _.initTextsCells()
     } catch (e) {
       log.err(e, 'fillKv')
     }

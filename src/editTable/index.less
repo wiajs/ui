@@ -247,11 +247,12 @@
       text-orientation: upright; /* 保持文字直立（中文/日文适用） */
     }
 
+    /* 三行截断：用 !important 覆盖同选择器下 span 的 display:inline-flex，否则无法生效 */
     &.etClamp {
-      display: -webkit-box;
-      -webkit-line-clamp: 3; // 只显示三行
+      display: -webkit-box !important;
+      -webkit-line-clamp: 3 !important;
       -webkit-box-orient: vertical;
-      overflow: hidden;
+      overflow: hidden !important;
       text-overflow: ellipsis;
       max-height: 5em; // 1em = font-size
       cursor: pointer;
@@ -264,19 +265,73 @@
       max-height: none;
     }
 
-    // span 可编辑
+    // span 可编辑（底色与 text 输入框一致）
     &.edit {
       display: block;
-      // contenteditable = plaintext-only"; // 编辑，但是无法获得光标位置,插入图片需要光标位置!
+      background: #fff;
       -webkit-user-modify: read-write-plaintext-only;
       user-modify: read-write-plaintext-only;
-      // border: 1px solid #2563eb !important; // rgb(0, 123, 255)
       border: 1px solid #80bdff !important;
 
       -webkit-line-clamp: unset;
       overflow: visible;
       max-height: none;
     }
+
+    // 富文本编辑模式：样式与 .edit 完全一致，仅 user-modify 不同（允许 HTML）
+    &.edit-rich {
+      display: block;
+      background: #fff;
+      -webkit-user-modify: read-write;
+      user-modify: read-write;
+      border: 1px solid #80bdff !important;
+
+      -webkit-line-clamp: unset;
+      overflow: visible;
+      max-height: none;
+    }
+  }
+
+  /* texts：不再使用独立编辑层，沿用 span.edit / span.edit-rich 的原始编辑交互 */
+
+  /* texts 类型：与 dataTable 一致，固定三行 + 展开按钮（kv=false 展示模式，表格在 .data-table-content 内非 .data-table 下，需在此重复样式） */
+  td.data-table-texts-cell {
+    white-space: normal;
+    overflow: visible;
+    vertical-align: top;
+  }
+
+  /* 三行截断：用 !important 覆盖 .edit-table span 的 display:inline-flex，否则无法生效 */
+  td.data-table-texts-cell .data-table-texts-content {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical;
+    overflow: hidden !important;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  td.data-table-texts-cell.data-table-texts-expanded .data-table-texts-content {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+
+  td.data-table-texts-cell .data-table-texts-toggle {
+    display: none;
+    margin-top: 4px;
+    padding: 0 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #2563eb;
+    background: none;
+    border: none;
+    cursor: pointer;
+    outline: none;
+  }
+
+  /* 编辑态下隐藏展开按钮（通过 JS 给 td 加 .et-texts-editing 实现，避免 :has() 导致 Less 编译报错） */
+  td.data-table-texts-cell.et-texts-editing .data-table-texts-toggle {
+    display: none !important;
   }
 
   .etNumber {
