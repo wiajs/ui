@@ -177,6 +177,10 @@ class Uploader {
     /** @type {*[]} */
     _.files = []
 
+    // 初始化并发控制变量
+    _.uploadingCount = 0; // 当前正在上传的数量
+    _.maxConcurrency = 3; // 最大并发数，防止 ERR_INSUFFICIENT_RESOURCES
+
     _.input = this.initInput(opt)
     _.page = opt.el.parentNode('.page')
 
@@ -332,10 +336,24 @@ class Uploader {
       }
     )
 
-    // 点击容器，没有点图片则选择图片，点图片则预览，
+    // 点击容器，没有点图片则选择图片，点图片则预览；点删除则移除该文件(需调用删除服务器文件接口)
     if (opt.el) {
       opt.el.click(
         /** @param {*}ev */ ev => {
+          // 点击列表项删除图标（opt.delete 时显示）
+          const del = $(ev.target).closest('.attach-delete')
+          if (del.length > 0 && opt.delete) {
+            ev.stopPropagation()
+            ev.preventDefault()
+            const wrap = $(ev.target).closest(`.${css._wrap}`)
+            const file = wrap.find(`.${css._file}`)
+            if (file.length > 0) {
+              const idx = file.data('fileid')
+              if (idx !== undefined) this.remove(idx)
+            }
+            return
+          }
+
           const file = $(ev.target).closest(`.${css._file}`)
           // console.log('el click', {file, ev, _file: styles._file});
           // 点击图片，预览或裁剪
@@ -343,9 +361,9 @@ class Uploader {
             const f = this.getFile(file.data('fileid'))
             // 进入裁剪页面
             if (f && f.status === 'crop' && opt.crop) {
-            // el 上设置，手机可以触发选择文件，pc失效
-            ev.stopPropagation() // 阻止冒泡，避免上层 choose再次触发
-            ev.preventDefault() // 阻止缺省行为，可能导致层缺省行为无效
+              // el 上设置，手机可以触发选择文件，pc失效
+              ev.stopPropagation() // 阻止冒泡，避免上层 choose再次触发
+              ev.preventDefault() // 阻止缺省行为，可能导致层缺省行为无效
               $.go(opt.crop, {
                 src: 'crop',
                 idx: f.idx,
@@ -691,8 +709,14 @@ class Uploader {
         _.callEvent('load', f, _.files)
         console.log({f, files: _.files}, 'load')
 
-        opt.upload && _.upload()
+        // [Modified] 移除此处直接调用 upload，避免循环触发并发爆炸
+        // opt.upload && _.upload()
       }
+    }
+
+    // 循环结束后，统一触发上传调度
+    if (opt.upload) {
+      _.upload();
     }
   }
 
@@ -740,8 +764,8 @@ class Uploader {
    */
   updateInput() {
     try {
-    const _ = this
-    const {opt, files} = _
+      const _ = this
+      const {opt, files} = _
       const {input} = opt
       // 已上传成功文件
       const fs = files.filter(f => f.status === 'upload')
@@ -849,34 +873,70 @@ class Uploader {
   }
 
   /**
-   * 非裁剪、上传状态文件，进入上传流程
-   * @param {*} file
+   * 非裁剪、上传状态文件，进入上传流程（prePost）
+   * 增加并发控制调度逻辑
+   * @param {*} file - (可选) 强制指定某个文件，通常不传，由调度器自动处理
    * @returns
    */
   upload(file) {
-    if (!this.files.length && !file) return
-
+    const _ = this;
+    
+    // 如果指定了具体文件（例如失败重试），确保其状态被重置，方便调度器选取
     if (file) {
-      const target = this.files.find(item => item.idx === file.idx || item.idx === file)
-      target && target.status !== 'upload' && target.status !== 'crop' && this.prePost(target)
-    } else {
-      const fs = this.files.filter(f => f.status !== 'upload' && f.status !== 'crop')
-      fs.forEach(f => {
-        this.prePost(f)
-      })
+      const target = _.files.find(item => item.idx === file.idx || item.idx === file);
+      if (target && target.status !== 'upload' && target.status !== 'crop' && target.status !== 'uploading') {
+          // 仅重置状态，等待调度器选取
+          target.status = 'load';
+      }
+    }
+
+    // 核心调度逻辑：
+    // 1. 找出所有等待上传的文件 (status === 'load')
+    const pendingFiles = _.files.filter(f => f.status === 'load');
+
+    // 2. 只要当前上传数小于最大并发数，且还有等待的文件，就继续触发，小批量上传
+    while (_.uploadingCount < _.maxConcurrency && pendingFiles.length > 0) {
+      const nextFile = pendingFiles.shift(); // 取出第一个等待的文件
+      
+      // 标记为正在上传，防止被重复取出
+      nextFile.status = 'uploading'; 
+      _.uploadingCount++; 
+      
+      // 执行压缩和上传，增加catch防止计数器死锁
+      _.prePost(nextFile).catch(e => {
+          console.error('Upload schedule error:', e);
+          _.uploadingCount--;
+          nextFile.status = 'error';
+          // 尝试调度下一个
+          _.upload(); 
+      });
     }
   }
 
   /**
-   * 压缩文件
+   * 上传前，压缩文件
    * @param {*} file
    */
   async prePost(file) {
     const _ = this
+    try {
     if (_.opt.compress) {
       const f = await _.compress(file)
-      _.post(f)
-    } else this.post(file)
+      if (f) _.post(f)
+      else {
+           // 压缩未返回文件(可能已存在或无需压缩等特殊情况)，释放名额
+           // 如果 compress 返回 undefined 表示跳过上传，则需要释放计数
+           // 视具体 compress 逻辑而定，这里假设如果不返回 f 则不上传
+           console.warn('Compress returned nothing', file);
+           // 如果确定不传了，需要释放名额并继续下一个
+           _.uploadingCount--;
+           _.upload();
+      }
+    } else _.post(file)
+    } catch (e) {
+      // 抛出错误给 upload 中的 catch 处理
+      throw e;
+    }
   }
 
   /**
@@ -888,7 +948,13 @@ class Uploader {
     const _ = this
     const {opt} = _
 
-    if (!file.rawFile || file.status === 'upload') return
+    // [Check] 确保正在上传状态
+    if (!file.rawFile || file.status === 'upload') {
+        // 异常情况，释放名额
+        if(file.status === 'upload') _.uploadingCount--;
+
+       return
+    }
 
     console.log({file}, 'post')
 
@@ -949,7 +1015,11 @@ class Uploader {
       }
 
     xhr.onreadystatechange = () => {
-      if (xhr.readyState === 4)
+      if (xhr.readyState === 4) {
+        
+        // [New] 释放并发名额
+        _.uploadingCount--;
+
         if (xhr.status === 200) {
           // {code: 200, data:{}}
           const rs = parseSuccess(xhr.responseText)
@@ -1016,13 +1086,23 @@ class Uploader {
           file.status = 'error'
           _.callEvent('error', parseError(xhr), file, this.files)
         }
+
+        // [New] 无论成功失败，尝试触发下一个文件
+        _.upload();
+      }
     }
 
     xhr.onerror = e => {
+      // [New] 释放并发名额
+      _.uploadingCount--;
+
       file.status = 'error'
       _.callEvent('error', parseError(xhr), file, _.files)
 
       _.showChoose()
+
+      // [New] 尝试触发下一个文件
+      _.upload();
     }
 
     // 数据发送进度，前50%展示该进度,后50%使用模拟进度!
