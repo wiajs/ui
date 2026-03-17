@@ -312,8 +312,8 @@
   }
 
   td.data-table-texts-cell.data-table-texts-expanded .data-table-texts-content {
-    -webkit-line-clamp: unset;
-    overflow: visible;
+    -webkit-line-clamp: unset !important;
+    overflow: visible !important;
   }
 
   td.data-table-texts-cell .data-table-texts-toggle {
@@ -327,11 +327,18 @@
     border: none;
     cursor: pointer;
     outline: none;
+    float: right;
   }
 
   /* 编辑态下隐藏展开按钮（通过 JS 给 td 加 .et-texts-editing 实现，避免 :has() 导致 Less 编译报错） */
   td.data-table-texts-cell.et-texts-editing .data-table-texts-toggle {
     display: none !important;
+  }
+
+  /* 编辑态下取消三行截断，仅影响 texts 类型且正在编辑的单元格，避免 rich 等多行内容仍显示省略号 */
+  td.data-table-texts-cell.et-texts-editing .data-table-texts-content {
+    -webkit-line-clamp: unset !important;
+    overflow: visible !important;
   }
 
   .etNumber {
