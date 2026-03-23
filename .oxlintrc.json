@@ -1,0 +1,105 @@
+{
+  "$schema": "https://unpkg.com/oxlint/configuration_schema.json",
+  "plugins": ["unicorn", "typescript", "oxc", "react"],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2022": true,
+    "jquery": true,
+  },
+  "globals": {
+    "XMLHttpRequest": "readonly",
+    "Blob": "readonly",
+    "Document": "readonly",
+    "FormData": "readonly",
+    "Dom": "readonly", // 你项目中自定义的全局变量
+    "document": "readonly",
+    "window": "readonly",
+  },
+  "categories": {
+    "correctness": "error", // 代码正确性相关的规则，必须修复
+    "perf": "error", // 性能相关的规则，建议修复
+    "suspicious": "error", // 可能存在问题的代码模式，建议修复
+    "pedantic": "off", // 推荐设为 off：避免因为琐碎的规则干扰开发流程。
+    "style": "off", // 代码风格相关的规则，保持一致性，建议修复
+    "restriction": "off", // 可能限制开发者的规则，视项目需求开启
+  },
+  "extends": ["recommended"],
+  "rules": {
+    // --- 变量与赋值 ---
+    "no-param-reassign": ["warn", {"props": false}], // 函数参数进行重新赋值, 允许修改参数的属性
+    "no-use-before-define": ["error", {"functions": false, "classes": true}], // 禁止在变量定义之前使用它们
+    "no-unused-expressions": ["error", {"allowShortCircuit": true}], // 禁止出现无意义的未使用表达式
+    "no-cond-assign": ["error", "except-parens"], // 禁止在 if/while 的条件语句中出现赋值操作
+    "no-return-assign": ["error", "except-parens"], // 禁止在 return 语句中进行赋值操作（如 return a = 1;），同样为了防止将 == 误写为 =。
+    "func-names": ["error", "never"], // 禁止给匿名函数强制命名（如 const foo = function bar() {}），保持代码简洁。
+
+    // --- 代码风格 ---
+    "curly": ["error", "multi-or-nest"], // 紧凑风格：单行不加大括号，多行嵌套才加
+    "eqeqeq": ["error", "always", {"null": "ignore"}], // 强制全等，但允许对 null 进行模糊匹配
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-debugger": "off", // 开发阶段允许 debugger
+
+    /* --- 兼容旧版项目中的特殊处理 --- */
+    "no-console": "off", // 开发阶段允许 console
+    "eslint-plugin-unicorn/prefer-array-find": "off", // .filter()[0]
+    "eslint/no-shadow": "off", // 局部变量覆盖外层变量名
+    "eslint/no-await-in-loop": "off", // 循环中的 await
+    "eslint/no-new": "off",
+    "eslint/no-unmodified-loop-condition": "error", // 防止死循环
+    "typescript/no-unnecessary-boolean-literal-compare": "off", // 禁止不必要的布尔比较
+    "typescript/no-unsafe-type-assertion": "off", // as 给 TS 留一点“逃生舱”
+    "typescript/no-extraneous-class": "off", // 只包含静态成员的类
+    "typescript/no-explicit-any": "warn", // 禁止使用 any 类型
+
+    /* --- 性能与现代语法优化 (Unicorn & OXC) --- */
+    "oxc/no-accumulating-spread": "off", // 允许在迭代中使用解构（平衡性能与可读性）
+    "oxc/no-async-endpoint-handlers": "warn", // 异步后端处理函数中可能的未捕获错误
+    "oxc/no-map-spread": "off", // .map() 回调中直接返回解构的对象
+    "unicorn/consistent-function-scoping": "off", // 函数提升到最外层
+    "unicorn/prefer-module": "off", // 强制使用 ES 模块
+    "unicorn/require-post-message-target-origin": "warn", // 基本的安全防范
+    "unicorn/prefer-array-to-sorted": "off", // 数组排序时直接调用 .sort()，不需要先创建新数组
+    "unicorn/no-array-sort": "off", // 允许使用 .sort()，性能更好
+    "object-shorthand": ["warn", "always"], // 强制对象简写，保持代码紧凑
+    "arrow-body-style": ["warn", "as-needed"], // 只有必要时才写 return，缩短函数长度
+
+    /* --- React 适配 --- */
+    "react/jsx-filename-extension": ["warn", {"extensions": [".js", ".jsx"]}], // 限制包含 JSX 语法的代码只能写在 .js 或 .jsx 文件中，规范项目结构。
+    // 强制 <label> 标签必须关联到一个表单控件（input等）。
+    // nesting 或 id 意味着：要么把控件嵌套在 label 里面，要么通过 htmlFor="id" 关联，这对屏幕阅读器和点击扩大区域非常重要。
+    "jsx-a11y/label-has-associated-control": [
+      "error",
+      {
+        "required": {"some": ["nesting", "id"]},
+      },
+    ],
+    "react/jsx-no-undef": "error",
+    "react/react-in-jsx-scope": "off", // 现代 React (Next.js/Bun) 不需要 import React
+    "react/jsx-key": "error",
+
+    /* --- 变量管理 --- */
+    "no-unused-vars": [
+      "warn",
+      {
+        "vars": "local",
+        "args": "after-used",
+        "argsIgnorePattern": "^_", // 允许下划线开头的未用参数
+        "ignoreRestSiblings": true,
+      },
+    ],
+  },
+  // 排除检查的文件/目录
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/vendor/**",
+    "**/assets/**",
+    "**/*.min.js",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "package-lock.json",
+  ],
+}

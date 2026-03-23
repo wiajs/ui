@@ -1,0 +1,58 @@
+{
+  "$schema": "https://unpkg.com/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "semi": false, // 强制去除分号，保持 JS/TS 的现代感与简洁
+  "singleQuote": true, // 推荐使用单引号，视觉干扰比双引号少
+  "arrowParens": "avoid",
+  "bracketSameLine": true,
+  "bracketSpacing": false, // 去除对象字面量中的空格，保持紧凑
+  "jsxBracketSameLine": true,
+  "jsxSingleQuote": true,
+  "trailingComma": "es5", // 去除尾逗号，保持代码简洁
+  "endOfLine": "lf", // Linux 风格的换行符
+  "quoteProps": "as-needed", // 对象属性仅在必要时加引号，保持极度紧凑
+  // 导入排序：极度紧凑
+  "sortImports": {
+    "newlinesBetween": false, // 核心：去除不同组导入之间的空行，压缩垂直空间
+    "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
+    "caseSensitive": false,
+  },
+  // Package.json 排序：工程标准化
+  "sortPackageJson": {
+    "sortScripts": true, // 必须：脚本有序化，方便维护
+  },
+  // 3. Tailwind 类名排序：样式一致性
+  "sortTailwindcss": {
+    // 1. 覆盖所有类名可能出现的逻辑场景
+    "functions": ["clsx", "cn", "cva", "twMerge", "tw"],
+    // 2. 适配所有可能的属性（如某些库使用的 tw 属性）
+    "attributes": ["class", "className", "tw"],
+    // 3. 保持紧凑：自动去重，自动压缩空格
+    "preserveDuplicates": false,
+    "preserveWhitespace": false,
+    // 4. 如果是 Tailwind v4，指向你的 CSS 入口
+    // "stylesheet": "src/index.css"
+  },
+  "css": {
+    "selectorList": {
+      "compact": true,
+      "compactThreshold": 4,
+    },
+  },
+  "ignorePatterns": [
+    "apps/",
+    "assets/",
+    "dist/",
+    "docs/_layouts/",
+    "node_modules/",
+    "patches/",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "bun.lock",
+    "package-lock.json",
+    "Swabble/",
+    "vendor/",
+    "**/*.min.js",
+    "**/*.min.css",
+  ],
+}
