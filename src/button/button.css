@@ -1,0 +1,516 @@
+/* src/css/components/wia-button.css */
+@reference "tailwindcss";
+
+@layer components {
+  /* ========================================================================
+     1. Wia Button: 物理骨架 (严格保留 F7 所有基础特性)
+     ======================================================================== */
+  .button {
+    --wia-btn-theme: var(--f7-theme-color, var(--wia-primary));
+    --wia-btn-theme-content: var(--color-primary-content, var(--wia-primary-content));
+
+    --wia-btn-bg: transparent;
+    --wia-btn-text: var(--wia-btn-theme);
+    --wia-btn-border: transparent;
+
+    /* 默认尺寸基准 (由不同端重写) */
+    --wia-btn-h: 2.25rem; /* 36px */
+    --wia-btn-px: 1rem;
+    --wia-btn-radius: 6px;
+    --wia-btn-font: 14px;
+    --wia-btn-scale: 1;
+    --wia-btn-shadow: none;
+
+    position: relative;
+    z-index: 10;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    appearance: none;
+    overflow: hidden;
+    white-space: nowrap;
+    text-decoration: none;
+    user-select: none;
+    font-family: inherit;
+    font-weight: 500;
+    font-size: var(--wia-btn-font);
+    height: var(--wia-btn-h);
+    padding-inline: var(--wia-btn-px);
+    border-radius: var(--wia-btn-radius);
+
+    background-color: var(--wia-btn-bg);
+    color: var(--wia-btn-text);
+    border: 1px solid var(--wia-btn-border);
+    box-shadow: var(--wia-btn-shadow);
+
+    transform: scale(var(--wia-btn-scale)) translateZ(0);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 消除文字和图标的间距跳动 */
+  .button > i + span,
+  .button > span + span,
+  .button > span ~ i {
+    margin-left: 6px;
+  }
+
+  .button.disabled,
+  .button:disabled {
+    pointer-events: none;
+    cursor: not-allowed;
+    opacity: 0.55; /* F7 原生禁用透明度 */
+  }
+
+  /* ========================================================================
+     🔥 2. 标准语义色体系 (Semantic Colors) 
+     ======================================================================== */
+  .button-primary {
+    --wia-btn-theme: var(--wia-primary);
+    --wia-btn-theme-content: var(--wia-primary-content);
+  }
+  .button-secondary {
+    --wia-btn-theme: var(--wia-secondary, #8b5cf6);
+    --wia-btn-theme-content: var(--wia-secondary-content, #ffffff);
+  }
+  .button-neutral {
+    --wia-btn-theme: var(--wia-neutral);
+    --wia-btn-theme-content: var(--wia-neutral-content);
+  }
+  .button-info {
+    --wia-btn-theme: var(--wia-info);
+    --wia-btn-theme-content: var(--wia-info-content);
+  }
+  .button-success {
+    --wia-btn-theme: var(--wia-success);
+    --wia-btn-theme-content: var(--wia-success-content);
+  }
+  .button-warning {
+    --wia-btn-theme: var(--wia-warning);
+    --wia-btn-theme-content: var(--wia-warning-content);
+  }
+  .button-error {
+    --wia-btn-theme: var(--wia-error);
+    --wia-btn-theme-content: var(--wia-error-content);
+  }
+
+  /* 💎 Default 完美自适应引擎 (解决晃眼和看不清问题) */
+  .button-default {
+    --wia-btn-theme: var(--color-slate-400, #94a3b8);
+    --wia-btn-theme-content: var(--color-slate-900, #0f172a);
+    --wia-btn-text: var(--color-slate-700, #334155);
+  }
+  /* Fill default: 加深浅灰底, 黑字 */
+  .button-default.button-fill {
+    --wia-btn-bg: var(--color-slate-200, #e2e8f0);
+    --wia-btn-text: var(--color-slate-900, #0f172a);
+    --wia-btn-border: var(--color-slate-200, #e2e8f0);
+  }
+  /* Soft default: 加深浅灰底 */
+  .button-default.button-tonal {
+    --wia-btn-bg: var(--color-slate-100, #f1f5f9);
+    --wia-btn-text: var(--color-slate-800, #1e293b);
+  }
+
+  /* 暗黑模式 Default: 转为深沉的高级灰 */
+  html.dark .button-default {
+    --wia-btn-theme: var(--color-slate-600, #475569);
+    --wia-btn-theme-content: var(--color-slate-100, #f1f5f9);
+    --wia-btn-text: var(--color-slate-300, #cbd5e1);
+  }
+  html.dark .button-default.button-fill {
+    --wia-btn-bg: var(--color-slate-700, #334155);
+    --wia-btn-text: var(--color-slate-100, #f1f5f9);
+    --wia-btn-border: var(--color-slate-700, #334155);
+  }
+  html.dark .button-default.button-tonal {
+    --wia-btn-bg: rgba(51, 65, 85, 0.4); /* 透气感的 slate-700 */
+    --wia-btn-text: var(--color-slate-300, #cbd5e1);
+  }
+
+  /* ========================================================================
+     3. 核心视觉变体体系 (Fill, Outline, Tonal, Dashed, Text, Link, Ghost, Glass)
+     ======================================================================== */
+  .button-fill,
+  .button-fill-ios,
+  .button-fill-md {
+    --wia-btn-bg: var(--wia-btn-theme);
+    --wia-btn-text: var(--wia-btn-theme-content);
+    border-color: transparent;
+  }
+  .button-outline,
+  .button-outline-ios,
+  .button-outline-md {
+    --wia-btn-border: var(--wia-btn-theme);
+  }
+  .button-tonal {
+    --wia-btn-bg: color-mix(in oklch, var(--wia-btn-theme) 15%, transparent);
+    border-color: transparent;
+  }
+  .button-dashed {
+    --wia-btn-border: var(--wia-btn-theme);
+    border-style: dashed;
+  }
+
+  .button-text {
+    border-color: transparent;
+    color: var(--color-slate-600, #475569);
+  }
+  html.dark .button-text {
+    color: var(--color-slate-300, #cbd5e1);
+  } /* 修复 Dark 下 Text 按钮看不清 */
+
+  .button-link {
+    border-color: transparent;
+    color: var(--wia-primary);
+  }
+  .button-ghost {
+    border-color: transparent;
+  }
+  .button-glass {
+    --wia-btn-bg: rgba(255, 255, 255, 0.2);
+    --wia-btn-border: rgba(255, 255, 255, 0.3);
+    --wia-btn-text: #ffffff;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  /* ========================================================================
+     4. 尺寸与形状
+     ======================================================================== */
+  .button-large {
+    --wia-btn-h: 48px; /* F7 标准大按钮 */
+    --wia-btn-px: 1.5rem;
+    --wia-btn-font: 17px;
+  }
+  .button-small {
+    --wia-btn-h: 28px; /* F7 标准小按钮 */
+    --wia-btn-px: 0.75rem;
+    --wia-btn-font: 12px;
+  }
+  .button-round {
+    border-radius: 9999px;
+  }
+  .button-circle {
+    border-radius: 50% !important;
+    padding: 0 !important;
+    width: var(--wia-btn-h);
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* ========================================================================
+     🍎🤖 5. iOS / MD 原生端保留
+     ======================================================================== */
+  html.ios .button {
+    --wia-btn-h: 34px;
+    --wia-btn-font: 15px;
+    --wia-btn-radius: 5px;
+    transition-duration: 150ms;
+  }
+  html.ios .button:active,
+  html.ios .button.active-state {
+    --wia-btn-scale: 0.94;
+    transition-duration: 0ms;
+    filter: brightness(0.85);
+  }
+  html.md .button {
+    --wia-btn-h: 40px;
+    --wia-btn-font: 14px;
+    --wia-btn-radius: 8px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase; /* MD 特有大写 */
+    transition:
+      background-color 250ms,
+      box-shadow 250ms,
+      transform 200ms;
+  }
+  html.md .button-raised {
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.12),
+      0 1px 2px rgba(0, 0, 0, 0.24);
+  }
+  html.md .button:active,
+  html.md .button.active-state {
+    box-shadow:
+      0 3px 6px rgba(0, 0, 0, 0.16),
+      0 3px 6px rgba(0, 0, 0, 0.23);
+    filter: brightness(0.92);
+  }
+
+  /* ========================================================================
+     💻 6. PC 端：悬停强反差与 3D 投影引擎
+     ======================================================================== */
+  html.pc .button {
+    font-weight: 600;
+    transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
+    /* 默认实心按钮保留微弱的内发光 */
+    box-shadow:
+      inset 0 1px 0.5px rgba(255, 255, 255, 0.15),
+      0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  html.pc .button-outline,
+  html.pc .button:not(.button-fill):not(.button-tonal) {
+    box-shadow: none; /* 只有 transparent 或 outline 的去掉阴影 */
+  }
+
+  /* 实心按钮增强 3D 弥散投影 */
+  html.pc .button-fill {
+    box-shadow:
+      0 4px 12px -2px color-mix(in oklch, var(--wia-btn-theme) 45%, transparent),
+      inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  }
+  html.pc .button-default.button-fill {
+    box-shadow:
+      0 2px 6px -1px rgba(0, 0, 0, 0.05),
+      inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  }
+  html.dark.pc .button-default.button-fill {
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  }
+
+  /* Hover：Fill 加深，Outline/Dashed 强反差填满 */
+  html.pc .button-fill:hover {
+    --wia-btn-bg: color-mix(in oklch, var(--wia-btn-theme) 90%, white);
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0.5px rgba(255, 255, 255, 0.3),
+      0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  html.pc .button-outline:hover,
+  html.pc .button-dashed:hover {
+    background-color: var(--wia-btn-theme) !important;
+    color: var(--wia-btn-theme-content) !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 12px -2px color-mix(in oklch, var(--wia-btn-theme) 45%, transparent) !important;
+  }
+  html.pc .button-tonal:hover {
+    background-color: color-mix(in oklch, var(--wia-btn-theme) 25%, transparent) !important;
+  }
+
+  /* 🚀 修复 Default 系列 Hover (使 Outline 和 Dashed 也有背景色变化) */
+  html.pc .button-default.button-fill:hover {
+    --wia-btn-bg: var(--color-slate-300, #cbd5e1);
+    border-color: var(--color-slate-300, #cbd5e1);
+    box-shadow: 0 4px 8px -1px rgba(0, 0, 0, 0.05);
+  }
+  html.pc .button-default.button-outline:hover,
+  html.pc .button-default.button-dashed:hover {
+    background-color: var(--color-slate-200, #e2e8f0) !important;
+    color: var(--color-slate-900, #0f172a) !important;
+    border-color: var(--color-slate-400, #94a3b8) !important;
+    box-shadow: none !important;
+  }
+  html.pc .button-default.button-tonal:hover {
+    background-color: var(--color-slate-300, #cbd5e1) !important;
+  }
+
+  /* 🌙 Dark Mode Default Hover：使 Outline/Dashed 完全对齐 Soft 的背景色 */
+  html.dark.pc .button-default.button-fill:hover {
+    --wia-btn-bg: var(--color-slate-600, #475569);
+    border-color: var(--color-slate-600, #475569);
+  }
+  html.dark.pc .button-default.button-outline:hover,
+  html.dark.pc .button-default.button-dashed:hover {
+    background-color: rgba(71, 85, 105, 0.5) !important;
+    color: var(--color-slate-200, #e2e8f0) !important; /* 👈 完全同步 Tonal 文字色 */
+    border-color: var(--color-slate-600, #475569) !important;
+    box-shadow: none !important;
+  }
+  html.dark.pc .button-default.button-tonal:hover {
+    background-color: rgba(71, 85, 105, 0.5) !important;
+  }
+
+  /* 其余变体 PC 端专属悬停 */
+  html.pc .button-text:hover {
+    background-color: var(--color-slate-100, #f1f5f9);
+  }
+  html.dark.pc .button-text:hover {
+    background-color: var(--color-slate-800, #1e293b);
+  }
+  html.pc .button-ghost:hover {
+    background-color: color-mix(in oklch, var(--wia-btn-theme) 10%, transparent);
+  }
+  html.dark.pc .button-ghost:hover {
+    background-color: color-mix(in oklch, var(--wia-btn-theme) 20%, transparent);
+  }
+  html.pc .button-link:hover {
+    text-decoration: underline;
+  }
+  html.pc .button-glass:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+
+  /* PC 端 Active 沉降 */
+  html.pc .button:active,
+  html.pc .button.active-state {
+    transform: translateY(0) scale(0.98);
+    --wia-btn-bg: color-mix(in oklch, var(--wia-btn-theme) 85%, black);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+    transition-duration: 50ms;
+  }
+  /* PC 端原生键盘无障碍焦点环 */
+  html.pc .button:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--color-base-100, #fff),
+      0 0 0 4px color-mix(in oklch, var(--wia-btn-theme) 60%, transparent);
+  }
+
+  /* ========================================================================
+     8. 分段器与按钮组 (Groups & Segments)
+     ======================================================================== */
+  .segmented {
+    display: flex;
+    position: relative;
+    width: 100%;
+    align-items: stretch;
+    border-radius: var(--wia-btn-radius);
+    box-sizing: border-box;
+  }
+  .segmented .button {
+    flex: 1;
+    border-radius: 0;
+    margin: 0;
+  }
+  /* 禁用分组内的 Y 轴位移，防止打破基线 */
+  html.pc .segmented .button:hover {
+    transform: none !important;
+  }
+
+  .segmented .button:first-child {
+    border-radius: var(--wia-btn-radius) 0 0 var(--wia-btn-radius);
+  }
+  .segmented .button:last-child {
+    border-radius: 0 var(--wia-btn-radius) var(--wia-btn-radius) 0;
+  }
+  /* 保证虚线和线框按钮中间的边框不会被截断 */
+  .segmented .button:not(.button-outline):not(.button-dashed):first-child {
+    border-left: none;
+  }
+
+  /* 修复：保证 Standard Segmented 激活时必有背景色填充 */
+  .segmented .button.button-active {
+    background-color: var(--wia-btn-theme) !important;
+    color: var(--wia-btn-theme-content) !important;
+    border-color: var(--wia-btn-theme) !important;
+    z-index: 11;
+  }
+
+  /* Ant Design 灰色外框组 */
+  .segmented-outline .button {
+    margin-left: -1px;
+  }
+  .segmented-outline .button:first-child {
+    margin-left: 0;
+  }
+
+  /* ========================================================================
+     🔥 8. Segmented Strong (完全对标 F7 iOS 原生切换器质感)
+     ======================================================================== */
+  .segmented-strong {
+    background: var(--color-base-200, #f1f5f9);
+    border-radius: calc(var(--wia-btn-radius) + 2px);
+    padding: 2px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); /* 底部轨道内陷 */
+  }
+  html.dark .segmented-strong {
+    background: var(--color-slate-900, #0f172a);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  /* 强制锁定 Strong 的背景，决不覆盖高亮滑块 */
+  .segmented-strong .button {
+    z-index: 1;
+    --wia-btn-bg: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--color-slate-500, #64748b) !important;
+    transform: none !important;
+  }
+  html.dark .segmented-strong .button {
+    color: var(--color-slate-400, #94a3b8) !important;
+  }
+
+  /* 完美保留旧版中的 F7 遗留特性: tab-link-active */
+  .segmented-strong .button.button-active,
+  .segmented-strong .button.tab-link-active {
+    color: var(--color-slate-900, #0f172a) !important;
+    font-weight: 600;
+    background-color: transparent !important;
+  }
+  html.dark .segmented-strong .button.button-active,
+  html.dark .segmented-strong .button.tab-link-active {
+    color: #ffffff !important;
+  }
+
+  /* 滑块背景 */
+  .segmented-highlight {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    height: calc(100% - 4px);
+    background-color: var(--color-base-100, #fff);
+    border-radius: var(--wia-btn-radius);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.1),
+      0 1px 2px rgba(0, 0, 0, 0.06);
+    z-index: 0;
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  html.dark .segmented-highlight {
+    background-color: var(--color-slate-700, #334155);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.5),
+      0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .segmented-round {
+    border-radius: 9999px;
+  }
+  .segmented-round .button:first-child {
+    border-radius: 9999px 0 0 9999px;
+  }
+  .segmented-round .button:last-child {
+    border-radius: 0 9999px 9999px 0;
+  }
+  .segmented-round.segmented-strong {
+    border-radius: 9999px;
+  }
+  .segmented-round.segmented-strong .segmented-highlight {
+    border-radius: 9999px;
+  }
+
+  /* ========================================================================
+     9. 预加载器 Loading (完全保留 F7 居中遮罩动画)
+     ======================================================================== */
+  .button-preloader {
+    position: relative;
+  }
+  .button-preloader .preloader {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    margin-left: -10px;
+    margin-top: -10px;
+    opacity: 0;
+    visibility: hidden;
+    transition: 0.2s;
+  }
+  .button-loading > span:not(.preloader) {
+    opacity: 0;
+    transform: scale(0);
+    transition: 0.2s;
+  }
+  .button-loading .preloader {
+    opacity: 1;
+    visibility: visible;
+  }
+}

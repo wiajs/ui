@@ -1,0 +1,186 @@
+@import 'tailwindcss';
+@variant dark (&:where(.dark, .dark *));
+
+/* 1. Wia 极品色彩与主题系统 (基于 CSS 变量，支持动态换肤) */
+@theme {
+  --color-primary: oklch(0.45 0.12 260);
+  --color-primary-content: #ffffff;
+  
+  /* 基础背景色映射，PC 和 移动端在 html 选择器中分别定义 */
+  --color-base-100: var(--wia-base-100, oklch(1 0 0));
+  --color-base-200: var(--wia-base-200, oklch(0.98 0.01 260));
+
+  /* 字体系统映射 */
+  --font-sans: var(--wia-font-sans);
+}
+
+@layer base {
+  :root {
+    /* --- 核心品牌色 (两端共享) --- */
+    --wia-primary: #3b82f6; 
+    --wia-primary-content: #ffffff;
+    --wia-secondary: #8b5cf6;
+    --wia-secondary-content: #ffffff;
+    --wia-success: #22c55e;
+    --wia-success-content: #ffffff;
+    --wia-warning: #f59e0b;
+    --wia-warning-content: #000000;
+    --wia-error: #ef4444;
+    --wia-error-content: #ffffff;
+    --wia-info: #0ea5e9;
+    --wia-info-content: #ffffff;
+    --wia-neutral: #334155;
+    --wia-neutral-content: #ffffff;
+
+    /* --- 物理特性变量 (F7 核心) --- */
+    --f7-theme-color: var(--wia-primary);
+    --f7-device-pixel-ratio: 1;
+    @media (min-resolution: 2dppx) { --f7-device-pixel-ratio: 2; }
+    @media (min-resolution: 3dppx) { --f7-device-pixel-ratio: 3; }
+
+    --f7-safe-area-left: 0px;
+    --f7-safe-area-right: 0px;
+    --f7-safe-area-top: 0px;
+    --f7-safe-area-bottom: 0px;
+
+    @supports (left: env(safe-area-inset-left)) {
+      --f7-safe-area-top: env(safe-area-inset-top);
+      --f7-safe-area-bottom: env(safe-area-inset-bottom);
+      --f7-safe-area-left: env(safe-area-inset-left);
+      --f7-safe-area-right: env(safe-area-inset-right);
+    }
+  }
+
+  /* 🌙 暗黑模式翻转 */
+  html.dark {
+    --wia-neutral: #94a3b8;
+    --wia-neutral-content: #0f172a;
+    --wia-hairline-color: rgba(255, 255, 255, 0.1);
+  }
+
+  /* 全局物理特性重置 */
+  html {
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  /* --- [Mobile] iOS 顶级审美 --- */
+  html.ios {
+    --wia-font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF UI Text', system-ui, sans-serif;
+    --wia-radius-base: 12px;
+    --wia-radius-large: 16px;
+    --wia-font-title: 17px;
+    --wia-font-body: 15px;
+    --wia-glass-bg: rgba(255, 255, 255, 0.75);
+    --wia-glass-blur: 20px;
+    --wia-glass-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.15); 
+    --wia-base-100: oklch(1 0 0);
+    --wia-base-200: oklch(0.97 0.01 260);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  /* --- [Mobile] MD 现代审美 --- */
+  html.md {
+    --wia-font-sans: Roboto, -apple-system, system-ui, Noto, sans-serif;
+    --wia-radius-base: 8px;
+    --wia-radius-large: 12px;
+    --wia-font-title: 16px;
+    --wia-font-body: 14px;
+    --wia-glass-bg: var(--color-base-100);
+    --wia-glass-blur: none;
+    --wia-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    --wia-base-100: oklch(1 0 0);
+    --wia-base-200: oklch(0.97 0.01 260);
+    cursor: pointer;
+  }
+
+  /* --- [PC] 现代极简审美 --- */
+  html.pc {
+    --wia-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --wia-radius-base: 6px;
+    --wia-radius-large: 10px;
+    --wia-font-title: 14px;
+    --wia-font-body: 13px;
+    --wia-border-subtle: 1px solid oklch(0.9 0 0 / 0.1);
+    --wia-shadow-float: 0 4px 24px -6px rgba(0, 0, 0, 0.08);
+    --wia-base-100: oklch(1 0 0);
+    --wia-base-200: oklch(0.98 0 0);
+  }
+
+  /* --- Body 样式 --- */
+  html.ios body, html.md body {
+    @apply bg-base-100 m-0 h-full w-full overflow-hidden p-0 font-sans text-gray-900 antialiased;
+    -webkit-font-smoothing: antialiased;
+    -webkit-overflow-scrolling: touch;
+    overflow-y: scroll; 
+  }
+
+  html.pc body {
+    @apply bg-base-200 m-0 p-0 font-sans text-gray-800 antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* PC 专属滚动条 */
+  html.pc ::-webkit-scrollbar { width: 6px; height: 6px; }
+  html.pc ::-webkit-scrollbar-track { background: transparent; }
+  html.pc ::-webkit-scrollbar-thumb { @apply rounded-full bg-gray-300; }
+  html.pc ::-webkit-scrollbar-thumb:hover { @apply bg-gray-400; }
+}
+
+@layer components {
+  /* 基础容器 */
+  html.ios .framework7-root,
+  html.md .framework7-root,
+  html.ios #wia-app,
+  html.md #wia-app {
+    @apply relative z-0 flex h-full w-full flex-col overflow-hidden box-border;
+  }
+
+  html.pc .framework7-root,
+  html.pc #wia-app {
+    @apply relative z-0 flex min-h-screen w-full flex-col;
+  }
+}
+
+/* 🚀 3. Wia UI 核心原子工具 (Tailwind 4 @utility 注册) */
+@utility hairline-top {
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    z-index: 10;
+    display: block;
+    transform-origin: top;
+    height: 1px;
+    background-color: var(--wia-hairline-color, rgba(0, 0, 0, 0.1));
+    transform: scaleY(calc(1 / var(--f7-device-pixel-ratio, 1)));
+  }
+}
+
+@utility hairline-bottom {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    z-index: 10;
+    display: block;
+    transform-origin: bottom;
+    height: 1px;
+    background-color: var(--wia-hairline-color, rgba(0, 0, 0, 0.1));
+    transform: scaleY(calc(1 / var(--f7-device-pixel-ratio, 1)));
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}

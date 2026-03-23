@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en" class="pc">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Wia UI | Artisan Card Components</title>
+
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+      @variant dark (&:where(.dark, .dark *));
+    </style>
+
+    <link rel="stylesheet" href="../dist/css/base.mb.css" />
+    <link rel="stylesheet" href="../dist/css/base.pc.css" />
+    <link rel="stylesheet" href="../dist/css/card.mb.css" />
+    <link rel="stylesheet" href="../dist/css/card.pc.css" />
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
+
+    <script>
+      ;(function () {
+        const savedTheme = localStorage.getItem('wia-theme')
+        if (savedTheme === 'dark') document.documentElement.classList.add('dark')
+        else if (savedTheme === 'light') document.documentElement.classList.remove('dark')
+      })()
+    </script>
+
+    <style>
+      body { transition: background-color 0.3s; background-color: #f8fafc; }
+      html.dark body { background-color: #0f172a; }
+      .ambient-light { position: fixed; top: -20vh; left: 10vw; width: 80vw; height: 80vw; background: radial-gradient(circle, oklch(0.5 0.15 250 / 0.05) 0%, transparent 60%); pointer-events: none; z-index: -1; }
+      
+      .code-wrapper { background: #1e1e24; border-radius: 0 0 1.5rem 1.5rem; overflow: hidden; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+      .code-mac-header { display: flex; gap: 6px; padding: 8px 14px; background: #16161b; position: relative; }
+      .mac-dot { width: 10px; height: 10px; border-radius: 50%; opacity: 0.8; }
+      .mac-dot.red { background: #ff5f56; }
+      .mac-dot.yellow { background: #ffbd2e; }
+      .mac-dot.green { background: #27c93f; }
+      .code-scroll-area { max-height: 400px; overflow-y: auto; padding: 12px 16px; }
+      .code-scroll-area pre, .code-scroll-area code { margin: 0 !important; padding: 0 !important; background: transparent !important; font-family: 'JetBrains Mono', monospace !important; font-size: 12px !important; line-height: 1.2 !important; color: #fff !important; }
+      .code-area { display: none; }
+      .code-area.active { display: block; }
+      .preview-area { display: none; }
+      .preview-area.active { display: block; }
+    </style>
+  </head>
+
+  <body class="relative !h-auto min-h-screen !overflow-y-auto pb-32 text-slate-900 antialiased dark:text-slate-100">
+    <div class="ambient-light"></div>
+
+    <header class="fixed top-0 right-0 left-0 z-50 flex items-center justify-between border-b border-slate-900/5 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-xl sm:px-6 sm:py-4 dark:border-white/5 dark:bg-slate-900/70">
+      <div class="flex items-center gap-4">
+        <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-indigo-800 shadow-lg shadow-purple-500/30 sm:h-9 sm:w-9">
+          <i class="ph-bold ph-square text-lg text-white"></i>
+        </div>
+        <h1 class="text-lg font-bold tracking-tight text-slate-800 sm:text-xl dark:text-white">Wia <span class="font-medium text-slate-400">Card</span></h1>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-4">
+        <button onclick="toggleDarkMode()" class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-slate-600 sm:h-10 sm:w-10 dark:bg-slate-800 dark:text-yellow-400">
+          <i class="ph-fill ph-moon text-lg" id="icon-theme"></i>
+        </button>
+
+        <div class="flex items-center rounded-2xl bg-slate-200/80 p-1 dark:bg-slate-800/80">
+          <button onclick="switchTheme('ios')" id="btn-ios" class="px-4 py-1.5 text-sm font-semibold rounded-xl transition-all">iOS</button>
+          <button onclick="switchTheme('md')" id="btn-md" class="px-4 py-1.5 text-sm font-semibold rounded-xl transition-all">MD</button>
+          <button onclick="switchTheme('pc')" id="btn-pc" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-white shadow dark:bg-slate-700 transition-all">PC</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto grid max-w-[90rem] grid-cols-1 gap-8 px-4 pt-28 sm:px-6 sm:pt-32 lg:grid-cols-2">
+      
+      <!-- Section 1: Basic & Outline -->
+      <div class="showcase-card col-span-1 flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white shadow-xl dark:border-white/5 dark:bg-slate-800">
+        <div class="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-700">
+          <h3 class="font-bold"><i class="ph-fill ph-cards mr-2 text-indigo-500"></i>Basic Variations</h3>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+          </div>
+        </div>
+        <div class="flex-1 rounded-b-[1.5rem] bg-slate-50 dark:bg-slate-900/50">
+          <div class="preview-area active p-6 space-y-4">
+            <!-- Raised Card -->
+            <div class="card card-raised">
+              <div class="card-header">Raised Artisan</div>
+              <div class="card-content card-content-padding">
+                This is a standard raised card with a subtle shadow and optimized typography.
+              </div>
+              <div class="card-footer"><span>March 23, 2026</span><a href="#" class="text-blue-500 font-semibold">Read More</a></div>
+            </div>
+            <!-- Outline Card -->
+            <div class="card card-outline">
+              <div class="card-header">Outline Precision</div>
+              <div class="card-content card-content-padding">
+                Perfect for dense UIs where you want to maintain structure without too much visual weight.
+              </div>
+            </div>
+          </div>
+          <div class="code-area html-code"></div>
+        </div>
+      </div>
+
+      <!-- Section 2: Rich Media Card -->
+      <div class="showcase-card col-span-1 flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white shadow-xl dark:border-white/5 dark:bg-slate-800">
+        <div class="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-700">
+          <h3 class="font-bold"><i class="ph-fill ph-image mr-2 text-pink-500"></i>Media Artisan</h3>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+          </div>
+        </div>
+        <div class="flex-1 rounded-b-[1.5rem] bg-slate-50 dark:bg-slate-900/50">
+          <div class="preview-area active p-6">
+            <div class="card card-raised overflow-hidden !m-0 group">
+              <div class="relative h-48 overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                <div class="absolute bottom-4 left-4 text-white">
+                  <div class="text-xs font-bold uppercase tracking-widest opacity-80">Architecture</div>
+                  <div class="text-xl font-bold">The Minimalist Dream</div>
+                </div>
+              </div>
+              <div class="card-content card-content-padding">
+                Explore the intersection of modern aesthetics and functional design in our latest series.
+              </div>
+              <div class="card-footer hairline-top">
+                <div class="flex items-center gap-2">
+                  <img src="https://i.pravatar.cc/100?u=wia" class="w-6 h-6 rounded-full" />
+                  <span class="text-xs">Sibyl Yu</span>
+                </div>
+                <button class="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-blue-500 transition-colors">
+                  <i class="ph ph-share-network"></i> SHARE
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="code-area html-code"></div>
+        </div>
+      </div>
+
+      <!-- Section 3: Expandable Card (Simulation) -->
+      <div class="showcase-card col-span-1 lg:col-span-2 flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white shadow-xl dark:border-white/5 dark:bg-slate-800">
+        <div class="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-700">
+          <h3 class="font-bold"><i class="ph-fill ph-arrows-out mr-2 text-orange-500"></i>Expandable Magic</h3>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+          </div>
+        </div>
+        <div class="flex-1 rounded-b-[1.5rem] bg-slate-50 dark:bg-slate-900/50 relative overflow-hidden">
+          <div id="card-backdrop" class="card-backdrop"></div>
+          <div class="preview-area active p-6 flex justify-center">
+            <div id="demo-expandable" class="card card-expandable card-raised !m-0 w-80 bg-indigo-600 text-white" onclick="toggleExpand()">
+              <div class="card-content">
+                <div class="card-header !flex-col !items-start gap-1 p-6">
+                  <div class="text-sm font-bold opacity-70">FEATURED COMPONENT</div>
+                  <div class="text-3xl font-black leading-tight">Expandable<br/>Experience</div>
+                </div>
+                <div class="p-6 opacity-0 transition-opacity duration-500 delay-200" id="expanded-text">
+                  <p class="text-lg leading-relaxed">
+                    This component mimics the native iOS App Store transition. On mobile, it fills the screen with a beautiful morphing animation. On PC, it expands to a focused modal-like container.
+                  </p>
+                  <div class="mt-8 p-4 bg-white/10 rounded-xl border border-white/10">
+                    <h4 class="font-bold mb-2">Technical Details</h4>
+                    <ul class="text-sm space-y-2 opacity-80">
+                      <li>• Morphing Transition (400ms)</li>
+                      <li>• Backdrop Blur Filtering</li>
+                      <li>• Adaptive Tablet/PC Width</li>
+                    </ul>
+                  </div>
+                  <button class="mt-8 w-full py-4 bg-white text-indigo-600 rounded-2xl font-bold shadow-lg">CLOSE EXPERIENCE</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="code-area html-code"></div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      function toggleDarkMode() {
+        document.documentElement.classList.toggle('dark')
+        const isDark = document.documentElement.classList.contains('dark')
+        localStorage.setItem('wia-theme', isDark ? 'dark' : 'light')
+        document.getElementById('icon-theme').className = isDark ? 'ph-fill ph-sun text-yellow-400 text-lg' : 'ph-fill ph-moon text-slate-600 text-lg'
+      }
+
+      function switchTheme(theme) {
+        const isDark = document.documentElement.classList.contains('dark')
+        document.documentElement.className = theme
+        if (isDark) document.documentElement.classList.add('dark')
+        ;['ios', 'md', 'pc'].forEach(t => {
+          const btn = document.getElementById(`btn-${t}`)
+          btn.className = (t === theme) 
+            ? 'px-4 py-1.5 text-sm font-semibold rounded-xl bg-white shadow dark:bg-slate-700 transition-all'
+            : 'px-4 py-1.5 text-sm font-semibold rounded-xl transition-all'
+        })
+      }
+
+      function toggleExpand() {
+        const card = document.getElementById('demo-expandable')
+        const backdrop = document.getElementById('card-backdrop')
+        const text = document.getElementById('expanded-text')
+        const isOpened = card.classList.contains('card-opened')
+        
+        if (isOpened) {
+          card.classList.remove('card-opened')
+          backdrop.classList.remove('card-backdrop-in')
+          text.classList.add('opacity-0')
+        } else {
+          card.classList.add('card-opened')
+          backdrop.classList.add('card-backdrop-in')
+          text.classList.remove('opacity-0')
+        }
+      }
+
+      function formatHTML(html) {
+        return html.trim().replace(/>\s+</g, '>\n<').replace(/class="\s+/g, 'class="')
+      }
+
+      function wrapCodeBlock(codeHtml, language) {
+        return `<div class="code-wrapper"><div class="code-mac-header"><div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div></div><div class="code-scroll-area"><pre><code class="language-${language}">${codeHtml}</code></pre></div></div>`
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.showcase-card').forEach(card => {
+          const preview = card.querySelector('.preview-area')
+          const htmlContainer = card.querySelector('.html-code')
+          if (preview && htmlContainer) {
+            const fmtHtml = formatHTML(preview.innerHTML)
+            htmlContainer.innerHTML = wrapCodeBlock(Prism.highlight(fmtHtml, Prism.languages.markup, 'markup'), 'markup')
+          }
+          const tabs = card.querySelectorAll('.tab-btn')
+          tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+              tabs.forEach(t => { t.classList.remove('active', 'bg-white', 'dark:bg-slate-700', 'shadow'); t.classList.add('text-slate-500') })
+              tab.classList.add('active', 'bg-white', 'dark:bg-slate-700', 'shadow'); tab.classList.remove('text-slate-500')
+              const target = tab.getAttribute('data-target')
+              card.querySelector('.preview-area').classList.toggle('active', target === 'preview')
+              card.querySelector('.html-code').classList.toggle('active', target === 'html')
+            })
+          })
+        })
+      })
+    </script>
+  </body>
+</html>

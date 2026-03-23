@@ -1,0 +1,103 @@
+/* src/card/card.css */
+
+@reference "../base.css";
+
+@layer components {
+  /* --- 1. 基础容器结构 --- */
+  .card {
+    @apply relative overflow-hidden my-4 mx-4;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--wia-card-bg, var(--color-base-100));
+    border-radius: var(--wia-card-radius, 12px);
+    color: var(--color-base-content);
+  }
+
+  .card-raised { @apply shadow-md; }
+
+  .card-outline {
+    @apply border border-slate-200 dark:border-white/10 shadow-none;
+  }
+
+  /* --- 2. 核心组成部分 --- */
+  .card-header, .card-footer {
+    @apply relative flex items-center justify-between box-border min-h-[48px] px-4 py-2;
+  }
+
+  .card-header { @apply text-base font-semibold; }
+  .card-footer { @apply text-sm text-gray-500 dark:text-gray-400; }
+
+  /* 使用注册好的原子类 */
+  .card-header-divider .card-header, .card-dividers .card-header { @apply hairline-bottom; }
+  .card-footer-divider .card-footer, .card-dividers .card-footer { @apply hairline-top; }
+
+  .card-content { @apply relative; }
+  .card-content-padding { @apply p-4; }
+
+  /* --- 🚀 iOS 顶级原生重构 --- */
+  html.ios { --wia-card-radius: 24px; }
+  html.ios .card {
+    @apply shadow-sm;
+    margin-left: calc(1rem + var(--f7-safe-area-left));
+    margin-right: calc(1rem + var(--f7-safe-area-right));
+  }
+  html.ios .card-header { @apply text-[17px] min-h-[52px] font-bold; }
+
+  /* --- 🚀 MD 现代重构 --- */
+  html.md { --wia-card-radius: 16px; }
+  html.md .card { @apply shadow-md border-none; }
+  html.md .card-header { @apply text-xl font-medium min-h-[56px]; }
+
+  /* --- 🚀 PC 大师级重构 (Artisan) --- */
+  html.pc { --wia-card-radius: 12px; }
+  html.pc .card {
+    @apply my-6 mx-0 border border-slate-100 dark:border-white/5 shadow-sm;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+  }
+  html.pc .card:hover {
+    @apply shadow-xl -translate-y-1 border-blue-500/20;
+  }
+  html.pc .card-header { @apply min-h-[44px] px-5 py-3 tracking-tight; }
+  html.pc .card-content-padding { @apply px-5 py-4 leading-relaxed text-slate-600 dark:text-slate-300; }
+
+  /* --- 🚀 Expandable Card --- */
+  .card-expandable {
+    @apply overflow-hidden z-10 cursor-pointer;
+    height: 300px;
+    transform-origin: center center;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.4s;
+  }
+
+  .card-expandable.active-state {
+    transform: scale(0.95) translate3d(0,0,0);
+  }
+
+  .card-expandable .card-content {
+    @apply absolute top-0 left-0 w-full h-full overflow-hidden;
+    transition: transform 0.4s;
+  }
+
+  .card-expandable.card-opened {
+    @apply z-[300] cursor-default rounded-none;
+    height: 100vh !important;
+    margin: 0 !important;
+  }
+
+  .card-expandable.card-opened .card-content {
+    @apply overflow-y-auto !relative;
+    height: 100vh;
+  }
+
+  @media (min-width: 768px) {
+    html.pc .card-expandable.card-opened {
+      @apply max-w-[670px] max-h-[80vh] mx-auto mt-[10vh] rounded-2xl shadow-2xl;
+    }
+  }
+
+  .card-backdrop {
+    @apply fixed inset-0 z-[299] opacity-0 pointer-events-none transition-opacity duration-400;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(15px);
+  }
+  .card-backdrop-in { @apply opacity-100 pointer-events-auto; }
+}

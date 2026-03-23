@@ -1,0 +1,149 @@
+/* src/list/list.css */
+
+@reference "../base.css";
+
+@layer components {
+  /* --- 1. 基础容器结构 --- */
+  .list {
+    @apply relative z-0 my-8;
+    --wia-list-bg: var(--color-base-100);
+  }
+
+  .list ul {
+    @apply relative m-0 list-none p-0;
+    background: var(--wia-list-bg);
+  }
+
+  .list li {
+    @apply relative box-border;
+  }
+
+  /* --- 2. 核心条目内容布局 --- */
+  .item-content {
+    @apply relative flex box-border items-center justify-between overflow-hidden;
+    min-height: var(--wia-list-item-min-height, 48px);
+    padding-left: calc(var(--wia-list-item-padding-horizontal, 16px) + var(--f7-safe-area-left));
+  }
+
+  .item-media {
+    @apply flex shrink-0 flex-nowrap items-center self-stretch py-2;
+    min-width: 24px;
+    margin-right: var(--wia-list-item-media-margin, 16px);
+  }
+
+  .item-inner {
+    @apply relative flex w-full flex-col justify-center self-stretch py-3;
+    min-width: 0;
+    padding-right: calc(var(--wia-list-item-padding-horizontal, 16px) + var(--f7-safe-area-right));
+  }
+
+  .list:not(.media-list) .item-inner {
+    @apply flex-row items-center justify-between;
+  }
+
+  .item-title {
+    @apply shrink truncate text-base;
+    color: var(--wia-list-title-color, inherit);
+  }
+
+  .item-after {
+    @apply ml-auto shrink-0 whitespace-nowrap pl-2 text-sm text-gray-400;
+  }
+
+  .item-link {
+    @apply block transition-colors duration-200 cursor-pointer;
+  }
+
+  /* --- 🚀 iOS 顶级原生重构 --- */
+  html.ios {
+    --wia-list-item-min-height: 52px;
+    --wia-list-item-padding-horizontal: 16px;
+    --wia-list-bg: var(--color-base-100);
+  }
+
+  /* 复用注册好的 Utility 类 */
+  html.ios .list .item-inner { @apply hairline-bottom; }
+  html.ios .list li:last-child .item-inner::after { @apply hidden; }
+
+  html.ios .item-link.active-state,
+  html.ios label.item-content.active-state {
+    @apply bg-gray-200/50 dark:bg-white/10;
+  }
+
+  html.ios .item-link .item-inner { @apply pr-10; }
+  html.ios .item-link .item-inner::before {
+    content: "\e096"; 
+    font-family: 'Phosphor';
+    @apply absolute top-1/2 -mt-2.5 right-4 text-gray-300 text-lg pointer-events-none;
+  }
+
+  html.ios .list.inset {
+    @apply mx-4 overflow-hidden rounded-2xl;
+  }
+
+  /* --- 🚀 MD 现代重构 --- */
+  html.md {
+    --wia-list-item-min-height: 56px;
+    --wia-list-item-padding-horizontal: 16px;
+    --wia-list-bg: transparent;
+  }
+
+  html.md .item-content {
+    @apply px-4 mx-2 my-1 rounded-2xl;
+    transition: background-color 0.2s;
+  }
+
+  html.md .item-link:active .item-content {
+    @apply bg-blue-100/50 dark:bg-blue-900/30;
+  }
+
+  html.md .list-dividers .item-inner {
+    @apply border-b border-gray-100 dark:border-gray-800;
+  }
+
+  /* --- 🚀 PC 大师级重构 --- */
+  html.pc {
+    --wia-list-item-min-height: 44px;
+    --wia-list-item-padding-horizontal: 12px;
+    --wia-list-bg: transparent;
+  }
+
+  html.pc .list { @apply my-4; }
+
+  html.pc .list ul {
+    @apply overflow-hidden rounded-xl border border-gray-100 bg-white/50 shadow-sm backdrop-blur-sm dark:border-white/5 dark:bg-slate-900/50;
+  }
+
+  html.pc .item-content {
+    @apply transition-all duration-200 border-l-2 border-transparent;
+  }
+
+  html.pc .item-link:hover .item-content {
+    @apply bg-gray-50/80 border-blue-500/50 dark:bg-white/5;
+  }
+
+  html.pc .item-title {
+    @apply text-sm font-medium tracking-tight text-slate-700 dark:text-slate-200;
+  }
+
+  html.pc .item-after {
+    @apply text-xs font-mono opacity-60;
+  }
+
+  html.pc .item-selected .item-content {
+    @apply bg-blue-50/50 border-blue-500 dark:bg-blue-500/10;
+  }
+  html.pc .item-selected .item-title { @apply text-blue-600 dark:text-blue-400; }
+
+  /* --- 🚀 Media List --- */
+  .media-list .item-inner { @apply flex-col items-start space-y-1; }
+  .item-subtitle { @apply truncate text-sm text-slate-500 dark:text-slate-400; }
+  .item-text { @apply text-xs text-slate-400 line-clamp-2; line-height: 1.4; }
+  .item-title-row { @apply flex w-full items-center justify-between; }
+
+  /* --- 4. 分组标题 --- */
+  .list-group-title {
+    @apply sticky top-0 z-20 flex h-8 items-center bg-gray-50/90 px-4 text-xs font-bold tracking-widest text-gray-400 uppercase backdrop-blur dark:bg-slate-800/90;
+    @apply hairline-bottom; 
+  }
+}

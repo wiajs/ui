@@ -1,0 +1,1180 @@
+<!doctype html>
+<html lang="en" class="pc">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Wia UI | The Ultimate 150+ Buttons Showcase</title>
+
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+      @variant dark (&:where(.dark, .dark *));
+    </style>
+
+    <link rel="stylesheet" href="../dist/css/base.mb.css" />
+    <link rel="stylesheet" href="../dist/css/base.pc.css" />
+    <link rel="stylesheet" href="../dist/css/button.mb.css" />
+    <link rel="stylesheet" href="../dist/css/button.pc.css" />
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
+
+    <script>
+      ;(function () {
+        const savedTheme = localStorage.getItem('wia-theme')
+        if (savedTheme === 'dark') document.documentElement.classList.add('dark')
+        else if (savedTheme === 'light') document.documentElement.classList.remove('dark')
+        else {
+          if (new Date().getHours() >= 18 || new Date().getHours() < 6) document.documentElement.classList.add('dark')
+        }
+      })()
+    </script>
+
+    <style>
+      body {
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 0.3s,
+          color 0.3s;
+        background-color: #f8fafc;
+      }
+      html.dark body {
+        background-color: #0f172a;
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 10px;
+      }
+      html.dark ::-webkit-scrollbar-thumb {
+        background: #475569;
+      }
+
+      .ambient-light {
+        position: fixed;
+        top: -20vh;
+        left: 10vw;
+        width: 80vw;
+        height: 80vw;
+        background: radial-gradient(circle, oklch(0.5 0.15 250 / 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: -1;
+        animation: breathe 12s ease-in-out infinite alternate;
+      }
+      html.dark .ambient-light {
+        background: radial-gradient(circle, oklch(0.4 0.15 260 / 0.15) 0%, transparent 60%);
+      }
+      @keyframes breathe {
+        0% {
+          transform: scale(1);
+        }
+        100% {
+          transform: scale(1.1);
+        }
+      }
+
+      .wia-ripple {
+        position: absolute;
+        background: currentColor;
+        border-radius: 50%;
+        transform: scale(0);
+        animation: wia-ripple-anim 500ms cubic-bezier(0.4, 0, 0.2, 1);
+        opacity: 0.15;
+        pointer-events: none;
+      }
+      @keyframes wia-ripple-anim {
+        to {
+          transform: scale(2.5);
+          opacity: 0;
+        }
+      }
+
+      .theme-color-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: transform 0.2s;
+        border: 2px solid transparent;
+      }
+      .theme-color-dot:hover {
+        transform: scale(1.2);
+      }
+      .theme-color-dot.active {
+        border-color: #fff;
+        box-shadow: 0 0 0 2px var(--dot-color);
+      }
+
+      /* 🚀 适度调整：完美兼顾紧凑与阅读舒适度 */
+      .code-wrapper {
+        background: #1e1e24;
+        border-radius: 0 0 1.5rem 1.5rem;
+        overflow: hidden;
+        margin-top: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .code-mac-header {
+        display: flex;
+        gap: 6px;
+        padding: 10px 16px;
+        background: #16161b;
+        position: relative;
+      }
+      .mac-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        opacity: 0.8;
+      }
+      .mac-dot.red {
+        background: #ff5f56;
+      }
+      .mac-dot.yellow {
+        background: #ffbd2e;
+      }
+      .mac-dot.green {
+        background: #27c93f;
+      }
+
+      .code-scroll-area {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 16px 20px;
+      }
+      .code-scroll-area pre[class*='language-'],
+      .code-scroll-area code[class*='language-'] {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+        font-size: 13.5px !important; /* 字体稍微加大，保证可视度 */
+        line-height: 1.45 !important; /* 行高不再挤压，恰到好处 */
+        color: #ffffff !important;
+        tab-size: 2 !important;
+        white-space: pre !important;
+      }
+
+      .token.tag,
+      .token.namespace {
+        color: #60a5fa !important;
+      }
+      .token.attr-name {
+        color: #facc15 !important;
+      }
+      .token.attr-value,
+      .token.string {
+        color: #4ade80 !important;
+      }
+      .token.keyword {
+        color: #c084fc !important;
+      }
+      .token.function,
+      .token.class-name {
+        color: #38bdf8 !important;
+      }
+      .token.punctuation,
+      .token.operator {
+        color: #94a3b8 !important;
+        opacity: 0.8;
+      }
+
+      .code-area {
+        width: 100%;
+        display: none;
+      }
+      .code-area.active {
+        display: block;
+      }
+      .preview-area {
+        display: none;
+      }
+      .preview-area.active {
+        display: flex;
+      }
+
+      .float-btn-enter {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+      }
+      .float-btn-exit {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+        pointer-events: none;
+      }
+    </style>
+  </head>
+
+  <body
+    class="relative !h-auto min-h-screen !overflow-y-auto pb-32 text-slate-900 antialiased dark:text-slate-100"
+    ontouchstart="">
+    <div class="ambient-light"></div>
+
+    <div class="fixed right-8 bottom-8 z-50 flex flex-col items-center gap-4">
+      <button
+        id="btn-back-top"
+        onclick="window.scrollTo({top: 0, behavior: 'smooth'})"
+        class="button button-default button-outline button-circle float-btn-exit !h-12 !w-12 bg-white !p-0 shadow-lg transition-all duration-300 hover:-translate-y-1 dark:bg-slate-800">
+        <i class="ph-bold ph-caret-up text-xl"></i>
+      </button>
+      <button
+        class="button button-fill button-primary button-circle !h-12 !w-12 !p-0 shadow-2xl shadow-blue-500/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-blue-500/70">
+        <i class="ph-fill ph-chat-teardrop-dots animate-pulse text-2xl text-white"></i>
+      </button>
+    </div>
+
+    <header
+      class="fixed top-0 right-0 left-0 z-50 flex items-center justify-between border-b border-slate-900/5 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-xl sm:px-6 sm:py-4 dark:border-white/5 dark:bg-slate-900/70">
+      <div class="flex shrink-0 items-center gap-4">
+        <div
+          class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-blue-800 shadow-lg shadow-indigo-500/30 sm:h-9 sm:w-9">
+          <i class="ph-bold ph-sketch-logo text-lg text-white sm:text-xl"></i>
+        </div>
+        <h1 class="shrink-0 text-lg font-bold tracking-tight text-slate-800 sm:text-xl dark:text-white">
+          Wia <span class="font-medium text-slate-400">UI</span>
+        </h1>
+
+        <div class="ml-4 hidden items-center gap-2 border-l border-slate-200 pl-4 md:flex dark:border-slate-700">
+          <span class="mr-1 text-xs font-semibold text-slate-400">Theme:</span>
+          <div
+            class="theme-color-dot active"
+            style="background: #3b82f6; --dot-color: #3b82f6"
+            onclick="changeThemePalette('blue', this)"></div>
+          <div
+            class="theme-color-dot"
+            style="background: #ef4444; --dot-color: #ef4444"
+            onclick="changeThemePalette('red', this)"></div>
+          <div
+            class="theme-color-dot"
+            style="background: #10b981; --dot-color: #10b981"
+            onclick="changeThemePalette('green', this)"></div>
+          <div
+            class="theme-color-dot"
+            style="background: #8b5cf6; --dot-color: #8b5cf6"
+            onclick="changeThemePalette('purple', this)"></div>
+        </div>
+      </div>
+
+      <div class="flex shrink-0 items-center gap-2 sm:gap-4">
+        <button
+          onclick="toggleDarkMode()"
+          id="btn-darkmode"
+          class="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-900/5 bg-slate-200 text-slate-600 shadow-inner transition-colors hover:bg-slate-300 sm:h-10 sm:w-10 dark:border-white/5 dark:bg-slate-800 dark:text-yellow-400 dark:hover:bg-slate-700">
+          <i class="ph-fill ph-moon text-lg" id="icon-theme"></i>
+        </button>
+
+        <div
+          class="flex shrink-0 items-center rounded-[1rem] border border-slate-900/5 bg-slate-200/80 p-1 shadow-inner sm:rounded-2xl sm:p-1.5 dark:border-white/5 dark:bg-slate-800/80">
+          <button
+            onclick="switchTheme('ios')"
+            id="btn-ios"
+            class="theme-btn relative flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 sm:rounded-xl sm:px-4 sm:text-sm dark:text-slate-400">
+            <i class="ph-fill ph-apple-logo text-base sm:text-lg"></i><span class="hidden md:inline-block">iOS</span>
+          </button>
+          <button
+            onclick="switchTheme('md')"
+            id="btn-md"
+            class="theme-btn relative flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 sm:rounded-xl sm:px-4 sm:text-sm dark:text-slate-400">
+            <i class="ph-fill ph-android-logo text-base sm:text-lg"></i><span class="hidden md:inline-block">MD</span>
+          </button>
+          <button
+            onclick="switchTheme('pc')"
+            id="btn-pc"
+            class="theme-btn relative flex cursor-pointer items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-sm ring-1 ring-slate-900/5 sm:rounded-xl sm:px-4 sm:text-sm dark:bg-slate-700 dark:text-white dark:ring-white/10">
+            <i class="ph-fill ph-desktop text-base sm:text-lg"></i><span class="hidden md:inline-block">PC</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto grid max-w-[90rem] grid-cols-1 gap-6 px-4 pt-28 sm:gap-8 sm:px-6 sm:pt-32 lg:grid-cols-2">
+      <div class="col-span-1 mb-4 text-center sm:mb-6 lg:col-span-2">
+        <h2 class="mb-3 text-3xl font-extrabold tracking-tight sm:mb-4 sm:text-4xl">Full Matrix Reborn</h2>
+        <p class="mx-auto max-w-2xl text-base text-slate-500 sm:text-lg dark:text-slate-400">
+          The perfect dark mode adaptation and fully purified AST code formatter.
+        </p>
+      </div>
+
+      <div
+        class="showcase-card col-span-1 flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white shadow-xl shadow-slate-200/40 lg:col-span-2 dark:border-white/5 dark:bg-slate-800 dark:shadow-none">
+        <div class="z-10 flex items-center justify-between border-b border-slate-100 p-4 sm:p-5 dark:border-slate-700">
+          <h3 class="text-base font-bold sm:text-lg">
+            <i class="ph-fill ph-cube mr-2 text-blue-500"></i>Ant Design Basic Types
+          </h3>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+            <button class="tab-btn" data-target="jsx">JSX</button>
+          </div>
+        </div>
+        <div class="flex-1 rounded-b-[1.5rem] bg-white dark:bg-[#1e293b]">
+          <div class="preview-area active demo-clean-container flex-wrap items-center justify-center gap-4 p-8 sm:p-12">
+            <button class="button button-fill button-primary">Primary Button</button>
+            <button class="button button-default button-outline">Default Button</button>
+            <button class="button button-default button-dashed">Dashed Button</button>
+            <button class="button button-text">Text Button</button>
+            <button class="button button-link">Link Button</button>
+            <button class="button button-fill button-error">Danger Button</button>
+          </div>
+          <div class="code-area html-code"></div>
+          <div class="code-area jsx-code"></div>
+        </div>
+      </div>
+
+      <div
+        class="showcase-card col-span-1 flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white shadow-xl shadow-slate-200/40 lg:col-span-2 dark:border-white/5 dark:bg-slate-800 dark:shadow-none">
+        <div class="z-10 flex items-center justify-between border-b border-slate-100 p-4 sm:p-5 dark:border-slate-700">
+          <h3 class="text-base font-bold sm:text-lg">
+            <i class="ph-fill ph-palette mr-2 text-purple-500"></i>Semantic Color Matrix
+          </h3>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+            <button class="tab-btn" data-target="jsx">JSX</button>
+          </div>
+        </div>
+        <div class="flex-1 overflow-hidden rounded-b-[1.5rem] bg-white dark:bg-[#1e293b]">
+          <div class="preview-area active demo-clean-container flex-col gap-6 overflow-x-auto p-4 sm:p-8">
+            <table class="w-full min-w-[1000px] border-collapse text-left">
+              <thead>
+                <tr
+                  class="border-b border-slate-100 text-[11px] tracking-widest text-slate-400 uppercase dark:border-slate-700">
+                  <th class="px-2 py-3">Variant</th>
+                  <th class="px-2 py-3">Default</th>
+                  <th class="px-2 py-3">Primary</th>
+                  <th class="px-2 py-3">Secondary</th>
+                  <th class="px-2 py-3">Neutral</th>
+                  <th class="px-2 py-3">Info</th>
+                  <th class="px-2 py-3">Success</th>
+                  <th class="px-2 py-3">Warning</th>
+                  <th class="px-2 py-3">Error</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <tr>
+                  <td class="px-2 py-4 text-xs font-bold text-slate-500">Fill (Solid)</td>
+                  <td class="px-2 py-4"><button class="button button-default button-fill w-full">Default</button></td>
+                  <td class="px-2 py-4"><button class="button button-fill button-primary w-full">Primary</button></td>
+                  <td class="px-2 py-4">
+                    <button class="button button-fill button-secondary w-full">Secondary</button>
+                  </td>
+                  <td class="px-2 py-4"><button class="button button-fill button-neutral w-full">Neutral</button></td>
+                  <td class="px-2 py-4"><button class="button button-fill button-info w-full">Info</button></td>
+                  <td class="px-2 py-4"><button class="button button-fill button-success w-full">Success</button></td>
+                  <td class="px-2 py-4"><button class="button button-fill button-warning w-full">Warning</button></td>
+                  <td class="px-2 py-4"><button class="button button-fill button-error w-full">Error</button></td>
+                </tr>
+                <tr>
+                  <td class="px-2 py-4 text-xs font-bold text-slate-500">Tonal (Soft)</td>
+                  <td class="px-2 py-4"><button class="button button-default button-tonal w-full">Default</button></td>
+                  <td class="px-2 py-4"><button class="button button-tonal button-primary w-full">Primary</button></td>
+                  <td class="px-2 py-4">
+                    <button class="button button-tonal button-secondary w-full">Secondary</button>
+                  </td>
+                  <td class="px-2 py-4"><button class="button button-tonal button-neutral w-full">Neutral</button></td>
+                  <td class="px-2 py-4"><button class="button button-tonal button-info w-full">Info</button></td>
+                  <td class="px-2 py-4"><button class="button button-tonal button-success w-full">Success</button></td>
+                  <td class="px-2 py-4"><button class="button button-tonal button-warning w-full">Warning</button></td>
+                  <td class="px-2 py-4"><button class="button button-tonal button-error w-full">Error</button></td>
+                </tr>
+                <tr>
+                  <td class="px-2 py-4 text-xs font-bold text-slate-500">Outline</td>
+                  <td class="px-2 py-4">
+                    <button class="button button-default button-outline w-full">Default</button>
+                  </td>
+                  <td class="px-2 py-4">
+                    <button class="button button-outline button-primary w-full">Primary</button>
+                  </td>
+                  <td class="px-2 py-4">
+                    <button class="button button-outline button-secondary w-full">Secondary</button>
+                  </td>
+                  <td class="px-2 py-4">
+                    <button class="button button-outline button-neutral w-full">Neutral</button>
+                  </td>
+                  <td class="px-2 py-4"><button class="button button-outline button-info w-full">Info</button></td>
+                  <td class="px-2 py-4">
+                    <button class="button button-outline button-success w-full">Success</button>
+                  </td>
+                  <td class="px-2 py-4">
+                    <button class="button button-outline button-warning w-full">Warning</button>
+                  </td>
+                  <td class="px-2 py-4"><button class="button button-outline button-error w-full">Error</button></td>
+                </tr>
+                <tr>
+                  <td class="px-2 py-4 text-xs font-bold text-slate-500">Dashed</td>
+                  <td class="px-2 py-4"><button class="button button-default button-dashed w-full">Default</button></td>
+                  <td class="px-2 py-4"><button class="button button-dashed button-primary w-full">Primary</button></td>
+                  <td class="px-2 py-4">
+                    <button class="button button-dashed button-secondary w-full">Secondary</button>
+                  </td>
+                  <td class="px-2 py-4"><button class="button button-dashed button-neutral w-full">Neutral</button></td>
+                  <td class="px-2 py-4"><button class="button button-dashed button-info w-full">Info</button></td>
+                  <td class="px-2 py-4"><button class="button button-dashed button-success w-full">Success</button></td>
+                  <td class="px-2 py-4"><button class="button button-dashed button-warning w-full">Warning</button></td>
+                  <td class="px-2 py-4"><button class="button button-dashed button-error w-full">Error</button></td>
+                </tr>
+                <tr>
+                  <td class="px-2 py-4 text-xs font-bold text-slate-500">Rounded (Pill)</td>
+                  <td class="px-2 py-4">
+                    <button class="button button-round button-default button-fill w-full">Default</button>
+                  </td>
+                  <td class="px-2 py-4">
+                    <button class="button button-round button-fill button-primary w-full">Primary</button>
+                  </td>
+                  <td class="px-2 py-4">
+                    <button class="button button-round button-fill button-secondary w-full">Secondary</button>
+                  </td>
+                  <td class="px-2 py-4">
+                    <button class="button button-round button-fill button-neutral w-full">Neutral</button>
+                  </td>
+                  <td class="px-2 py-4">
+                    <button class="button button-round button-fill button-info w-full">Info</button>
+                  </td>
+                  <td class="px-2 py-4">
+                    <button class="button button-round button-fill button-success w-full">Success</button>
+                  </td>
+                  <td class="px-2 py-4">
+                    <button class="button button-round button-fill button-warning w-full">Warning</button>
+                  </td>
+                  <td class="px-2 py-4">
+                    <button class="button button-round button-fill button-error w-full">Error</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="code-area html-code"></div>
+        <div class="code-area jsx-code"></div>
+      </div>
+
+      <div
+        class="showcase-card col-span-1 flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white p-4 shadow-xl shadow-slate-200/40 sm:p-6 lg:col-span-2 dark:border-white/5 dark:bg-slate-800 dark:shadow-none">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-base font-bold sm:text-lg">
+            <i class="ph-fill ph-rows mr-2 text-indigo-500"></i>Button Groups & Switchers
+          </h3>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+            <button class="tab-btn" data-target="jsx">JSX</button>
+          </div>
+        </div>
+
+        <div class="flex-1 rounded-[1rem] border border-slate-100 bg-white dark:border-slate-700 dark:bg-[#1e293b]">
+          <div class="preview-area active demo-clean-container h-full flex-col items-center justify-center gap-10 p-8">
+            <div class="flex w-full flex-col items-center gap-2">
+              <span class="text-xs font-bold text-slate-400">Default Outline Group</span>
+              <div class="segmented segmented-outline rounded-lg shadow-sm" style="max-width: 24rem">
+                <button class="button button-default button-outline button-active" onclick="toggleGroupActive(this)">
+                  Left
+                </button>
+                <button class="button button-default button-outline" onclick="toggleGroupActive(this)">Middle</button>
+                <button class="button button-default button-outline" onclick="toggleGroupActive(this)">Right</button>
+              </div>
+            </div>
+
+            <div class="flex w-full flex-col items-center gap-2">
+              <span class="text-xs font-bold text-slate-400">Colored Addons (Contiguous)</span>
+              <div class="segmented rounded-lg shadow-sm" style="max-width: 24rem">
+                <button class="button button-fill button-primary">Save</button>
+                <button class="button button-fill button-secondary">Edit</button>
+                <button class="button button-fill button-error">Delete</button>
+              </div>
+            </div>
+
+            <div class="flex w-full flex-col items-center gap-2">
+              <span class="text-xs font-bold text-slate-400">Framework 7 Standard Segmented</span>
+              <div class="segmented" style="max-width: 24rem">
+                <button class="button button-primary button-outline button-active" onclick="toggleGroupActive(this)">
+                  Day
+                </button>
+                <button class="button button-primary button-outline" onclick="toggleGroupActive(this)">Week</button>
+                <button class="button button-primary button-outline" onclick="toggleGroupActive(this)">Month</button>
+              </div>
+            </div>
+
+            <div class="flex w-full flex-col items-center gap-2">
+              <span class="text-xs font-bold text-slate-400">Framework 7 Strong Segments (iOS Native Switcher)</span>
+              <div class="segmented segmented-strong segmented-round relative" style="max-width: 24rem">
+                <span class="segmented-highlight" style="width: 33.333%; transform: translateX(0%)"></span>
+                <button class="button button-active" onclick="moveHighlight(this, 0)">iOS</button>
+                <button class="button" onclick="moveHighlight(this, 1)">MD</button>
+                <button class="button" onclick="moveHighlight(this, 2)">PC</button>
+              </div>
+            </div>
+
+            <div class="flex w-full flex-col items-center gap-2">
+              <span class="text-xs font-bold text-slate-400">Wia UI Demo Switcher (Text Buttons)</span>
+              <div
+                class="flex w-full items-center rounded-lg border border-transparent bg-slate-200/50 p-1 shadow-inner dark:border-slate-800 dark:bg-slate-900/80"
+                style="max-width: 24rem">
+                <button
+                  class="button button-text flex-1 rounded-md bg-white !text-slate-800 shadow-sm dark:bg-slate-700 dark:!text-white"
+                  onclick="toggleWiaTab(this)">
+                  Preview
+                </button>
+                <button class="button button-text flex-1 rounded-md !text-slate-500" onclick="toggleWiaTab(this)">
+                  HTML
+                </button>
+                <button class="button button-text flex-1 rounded-md !text-slate-500" onclick="toggleWiaTab(this)">
+                  JSX
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="code-area html-code"></div>
+          <div class="code-area jsx-code"></div>
+        </div>
+      </div>
+
+      <div
+        class="showcase-card col-span-1 flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white shadow-xl shadow-slate-200/40 lg:col-span-2 dark:border-white/5 dark:bg-slate-800 dark:shadow-none">
+        <div
+          class="z-10 flex items-center justify-between rounded-t-[1.5rem] border-b border-slate-100 bg-white p-4 sm:p-5 dark:border-slate-700 dark:bg-slate-800">
+          <div>
+            <h3 class="text-base font-bold sm:text-lg">
+              <i class="ph-fill ph-sign-in mr-2 text-pink-500"></i>Social Logins (45 Combinations)
+            </h3>
+          </div>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+            <button class="tab-btn" data-target="jsx">JSX</button>
+          </div>
+        </div>
+
+        <div class="flex-1 rounded-b-[1.5rem] bg-white dark:bg-[#1e293b]">
+          <div class="preview-area active demo-clean-container flex-col items-center justify-center gap-10 p-6 sm:p-10">
+            <div style="width: 100%">
+              <h4 class="mb-4 w-full text-center text-xs font-bold tracking-widest text-slate-400 uppercase">
+                15 Solid Logins
+              </h4>
+              <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" style="width: 100%">
+                <button class="button button-fill" style="--f7-theme-color: #ea4335">
+                  <i class="ph-bold ph-google-logo text-lg"></i> Google
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #000000; --color-primary-content: #ffffff">
+                  <i class="ph-fill ph-apple-logo text-lg"></i> Apple
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #333333">
+                  <i class="ph-fill ph-github-logo text-lg"></i> GitHub
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #1da1f2">
+                  <i class="ph-fill ph-twitter-logo text-lg"></i> Twitter
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #5865f2">
+                  <i class="ph-fill ph-discord-logo text-lg"></i> Discord
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #1877f2">
+                  <i class="ph-fill ph-facebook-logo text-lg"></i> Facebook
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #0a66c2">
+                  <i class="ph-fill ph-linkedin-logo text-lg"></i> LinkedIn
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #ff9900; --color-primary-content: #000">
+                  <i class="ph-fill ph-amazon-logo text-lg"></i> Amazon
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #1db954">
+                  <i class="ph-fill ph-spotify-logo text-lg"></i> Spotify
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #fffc00; --color-primary-content: #000">
+                  <i class="ph-fill ph-snapchat-logo text-lg"></i> Snapchat
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #4a154b">
+                  <i class="ph-fill ph-slack-logo text-lg"></i> Slack
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #ff4500">
+                  <i class="ph-fill ph-reddit-logo text-lg"></i> Reddit
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #9146ff">
+                  <i class="ph-fill ph-twitch-logo text-lg"></i> Twitch
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #e1306c">
+                  <i class="ph-bold ph-instagram-logo text-lg"></i> Instagram
+                </button>
+                <button class="button button-fill" style="--f7-theme-color: #ff0000">
+                  <i class="ph-fill ph-youtube-logo text-lg"></i> YouTube
+                </button>
+              </div>
+            </div>
+
+            <div style="width: 100%">
+              <h4 class="mb-4 w-full text-center text-xs font-bold tracking-widest text-slate-400 uppercase">
+                15 Outline Logins
+              </h4>
+              <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" style="width: 100%">
+                <button class="button button-outline" style="--f7-theme-color: #ea4335">
+                  <i class="ph-bold ph-google-logo text-lg"></i> Google
+                </button>
+                <button
+                  class="button button-outline dark:!border-slate-500 dark:!text-slate-300"
+                  style="--f7-theme-color: #000000">
+                  <i class="ph-fill ph-apple-logo text-lg"></i> Apple
+                </button>
+                <button
+                  class="button button-outline dark:!border-slate-500 dark:!text-slate-300"
+                  style="--f7-theme-color: #333333">
+                  <i class="ph-fill ph-github-logo text-lg"></i> GitHub
+                </button>
+                <button class="button button-outline" style="--f7-theme-color: #1da1f2">
+                  <i class="ph-fill ph-twitter-logo text-lg"></i> Twitter
+                </button>
+                <button class="button button-outline" style="--f7-theme-color: #5865f2">
+                  <i class="ph-fill ph-discord-logo text-lg"></i> Discord
+                </button>
+                <button class="button button-outline" style="--f7-theme-color: #1877f2">
+                  <i class="ph-fill ph-facebook-logo text-lg"></i> Facebook
+                </button>
+                <button class="button button-outline" style="--f7-theme-color: #0a66c2">
+                  <i class="ph-fill ph-linkedin-logo text-lg"></i> LinkedIn
+                </button>
+                <button class="button button-outline" style="--f7-theme-color: #ff9900">
+                  <i class="ph-fill ph-amazon-logo text-lg"></i> Amazon
+                </button>
+                <button class="button button-outline" style="--f7-theme-color: #1db954">
+                  <i class="ph-fill ph-spotify-logo text-lg"></i> Spotify
+                </button>
+                <button class="button button-outline" style="--f7-theme-color: #ffcc00">
+                  <i class="ph-fill ph-snapchat-logo text-lg"></i> Snapchat
+                </button>
+                <button
+                  class="button button-outline dark:!border-purple-400 dark:!text-purple-400"
+                  style="--f7-theme-color: #4a154b">
+                  <i class="ph-fill ph-slack-logo text-lg"></i> Slack
+                </button>
+                <button class="button button-outline" style="--f7-theme-color: #ff4500">
+                  <i class="ph-fill ph-reddit-logo text-lg"></i> Reddit
+                </button>
+                <button class="button button-outline" style="--f7-theme-color: #9146ff">
+                  <i class="ph-fill ph-twitch-logo text-lg"></i> Twitch
+                </button>
+                <button class="button button-outline" style="--f7-theme-color: #e1306c">
+                  <i class="ph-bold ph-instagram-logo text-lg"></i> Instagram
+                </button>
+                <button class="button button-outline" style="--f7-theme-color: #ff0000">
+                  <i class="ph-fill ph-youtube-logo text-lg"></i> YouTube
+                </button>
+              </div>
+            </div>
+
+            <div style="width: 100%">
+              <h4 class="mb-4 w-full text-center text-xs font-bold tracking-widest text-slate-400 uppercase">
+                15 Ghost Logins (Pure Icon)
+              </h4>
+              <div class="flex flex-wrap justify-center gap-3" style="width: 100%">
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #ea4335">
+                  <i class="ph-bold ph-google-logo text-xl"></i>
+                </button>
+                <button
+                  class="button button-ghost button-circle dark:!text-slate-300"
+                  style="--f7-theme-color: #000000">
+                  <i class="ph-fill ph-apple-logo text-xl"></i>
+                </button>
+                <button
+                  class="button button-ghost button-circle dark:!text-slate-300"
+                  style="--f7-theme-color: #333333">
+                  <i class="ph-fill ph-github-logo text-xl"></i>
+                </button>
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #1da1f2">
+                  <i class="ph-fill ph-twitter-logo text-xl"></i>
+                </button>
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #5865f2">
+                  <i class="ph-fill ph-discord-logo text-xl"></i>
+                </button>
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #1877f2">
+                  <i class="ph-fill ph-facebook-logo text-xl"></i>
+                </button>
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #0a66c2">
+                  <i class="ph-fill ph-linkedin-logo text-xl"></i>
+                </button>
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #ff9900">
+                  <i class="ph-fill ph-amazon-logo text-xl"></i>
+                </button>
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #1db954">
+                  <i class="ph-fill ph-spotify-logo text-xl"></i>
+                </button>
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #ffcc00">
+                  <i class="ph-fill ph-snapchat-logo text-xl"></i>
+                </button>
+                <button
+                  class="button button-ghost button-circle dark:!text-purple-400"
+                  style="--f7-theme-color: #4a154b">
+                  <i class="ph-fill ph-slack-logo text-xl"></i>
+                </button>
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #ff4500">
+                  <i class="ph-fill ph-reddit-logo text-xl"></i>
+                </button>
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #f24e1e">
+                  <i class="ph-fill ph-figma-logo text-xl"></i>
+                </button>
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #9146ff">
+                  <i class="ph-fill ph-twitch-logo text-xl"></i>
+                </button>
+                <button class="button button-ghost button-circle" style="--f7-theme-color: #e1306c">
+                  <i class="ph-bold ph-instagram-logo text-xl"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="code-area html-code"></div>
+          <div class="code-area jsx-code"></div>
+        </div>
+      </div>
+
+      <div
+        class="showcase-card flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white p-4 shadow-xl shadow-slate-200/40 sm:p-6 dark:border-white/5 dark:bg-slate-800 dark:shadow-none">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-base font-bold sm:text-lg">
+            <i class="ph-fill ph-bounding-box mr-2 text-orange-500"></i>Icons, Sizes & Shapes
+          </h3>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+            <button class="tab-btn" data-target="jsx">JSX</button>
+          </div>
+        </div>
+        <div class="flex-1 rounded-[1rem] border border-slate-100 bg-white dark:border-slate-700 dark:bg-[#1e293b]">
+          <div class="preview-area active demo-clean-container h-full flex-col items-center justify-center gap-6 p-8">
+            <div class="flex w-full gap-4">
+              <button class="button button-fill button-primary"><i class="ph-bold ph-heart"></i> Left</button>
+              <button class="button button-outline button-primary">Right <i class="ph-bold ph-arrow-right"></i></button>
+            </div>
+            <div class="flex items-center justify-center gap-4">
+              <button class="button button-fill button-primary button-circle">
+                <i class="ph-bold ph-paper-plane-tilt text-lg"></i>
+              </button>
+              <button class="button button-outline button-primary button-circle">
+                <i class="ph-bold ph-x text-lg"></i>
+              </button>
+              <button class="button button-tonal button-error button-circle">
+                <i class="ph-bold ph-trash text-lg"></i>
+              </button>
+            </div>
+            <hr class="w-full border-slate-100 dark:border-slate-700" />
+            <div class="flex w-full flex-wrap items-end justify-center gap-3">
+              <button
+                class="button button-fill button-primary"
+                style="height: 1.5rem; padding: 0 0.5rem; font-size: 0.7rem">
+                Tiny
+              </button>
+              <button class="button button-small button-fill button-primary">Small</button>
+              <button class="button button-fill button-primary">Normal</button>
+              <button class="button button-large button-fill button-primary">Large</button>
+            </div>
+            <div class="mt-2 flex w-full flex-wrap items-center justify-center gap-4">
+              <button class="button button-fill button-primary" style="--wia-btn-radius: 0px">Square</button>
+              <button class="button button-fill button-primary">Rounded</button>
+              <button class="button button-outline button-primary button-round px-6">Pill</button>
+            </div>
+          </div>
+          <div class="code-area html-code"></div>
+          <div class="code-area jsx-code"></div>
+        </div>
+      </div>
+
+      <div
+        class="showcase-card flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white p-4 shadow-xl shadow-slate-200/40 sm:p-6 dark:border-white/5 dark:bg-slate-800 dark:shadow-none">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-base font-bold sm:text-lg">
+            <i class="ph-fill ph-spinner-gap mr-2 text-teal-500"></i>States & Glassmorphism
+          </h3>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+            <button class="tab-btn" data-target="jsx">JSX</button>
+          </div>
+        </div>
+        <div class="flex-1 rounded-[1rem] border border-slate-100 bg-white dark:border-slate-700 dark:bg-[#1e293b]">
+          <div class="preview-area active demo-clean-container h-full flex-col items-center justify-center gap-6 p-8">
+            <div class="flex gap-2" style="width: 100%">
+              <button class="button button-fill button-primary disabled flex-1">Disabled</button>
+              <button class="button button-outline button-primary active-state flex-1">Forced Active</button>
+            </div>
+            <div class="flex gap-2" style="width: 100%">
+              <button
+                class="button button-fill button-primary button-preloader button-loading flex-1"
+                onclick="this.classList.toggle('button-loading')">
+                <span class="preloader"
+                  ><svg class="h-5 w-5 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg
+                ></span>
+                <span>Submit</span>
+              </button>
+              <button class="button button-outline button-primary disabled flex-1">
+                <svg class="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Loading
+              </button>
+            </div>
+            <div
+              class="relative flex h-20 w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 px-4">
+              <img
+                src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=500&auto=format&fit=crop"
+                class="absolute inset-0 h-full w-full object-cover opacity-60 mix-blend-overlay"
+                alt="bg" />
+              <button class="button button-glass button-round z-10 px-8">Glass Button</button>
+            </div>
+          </div>
+          <div class="code-area html-code"></div>
+          <div class="code-area jsx-code"></div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const themePalettes = {
+        blue: {
+          '--wia-primary': '#3b82f6',
+          '--wia-primary-content': '#ffffff',
+          '--wia-secondary': '#8b5cf6',
+          '--wia-secondary-content': '#ffffff',
+          '--wia-info': '#0ea5e9',
+          '--wia-success': '#22c55e',
+          '--wia-warning': '#f59e0b',
+          '--wia-error': '#ef4444',
+        },
+        red: {
+          '--wia-primary': '#ef4444',
+          '--wia-primary-content': '#ffffff',
+          '--wia-secondary': '#f97316',
+          '--wia-secondary-content': '#ffffff',
+          '--wia-info': '#3b82f6',
+          '--wia-success': '#10b981',
+          '--wia-warning': '#eab308',
+          '--wia-error': '#dc2626',
+        },
+        green: {
+          '--wia-primary': '#10b981',
+          '--wia-primary-content': '#ffffff',
+          '--wia-secondary': '#0ea5e9',
+          '--wia-secondary-content': '#ffffff',
+          '--wia-info': '#6366f1',
+          '--wia-success': '#22c55e',
+          '--wia-warning': '#f59e0b',
+          '--wia-error': '#f43f5e',
+        },
+        purple: {
+          '--wia-primary': '#a855f7',
+          '--wia-primary-content': '#ffffff',
+          '--wia-secondary': '#ec4899',
+          '--wia-secondary-content': '#ffffff',
+          '--wia-info': '#06b6d4',
+          '--wia-success': '#14b8a6',
+          '--wia-warning': '#f59e0b',
+          '--wia-error': '#ef4444',
+        },
+      }
+
+      function changeThemePalette(themeName, dotElement) {
+        const palette = themePalettes[themeName]
+        for (const [key, value] of Object.entries(palette)) {
+          document.documentElement.style.setProperty(key, value)
+        }
+        document.querySelectorAll('.theme-color-dot').forEach(el => el.classList.remove('active'))
+        dotElement.classList.add('active')
+      }
+
+      function toggleGroupActive(btn) {
+        const group = btn.closest('.segmented')
+        group.querySelectorAll('.button').forEach(b => b.classList.remove('button-active'))
+        btn.classList.add('button-active')
+      }
+
+      function toggleWiaTab(btn) {
+        const group = btn.parentElement
+        group.querySelectorAll('.button').forEach(b => {
+          b.classList.remove('bg-white', 'dark:bg-slate-700', 'shadow-sm', '!text-slate-800', 'dark:!text-white')
+          b.classList.add('!text-slate-500')
+        })
+        btn.classList.add('bg-white', 'dark:bg-slate-700', 'shadow-sm', '!text-slate-800', 'dark:!text-white')
+        btn.classList.remove('!text-slate-500')
+      }
+
+      function moveHighlight(btn, index) {
+        const container = btn.closest('.segmented')
+        container.querySelectorAll('.button').forEach(b => b.classList.remove('button-active'))
+        btn.classList.add('button-active')
+        const highlight = container.querySelector('.segmented-highlight')
+        if (highlight) highlight.style.transform = `translateX(${index * 100}%)`
+      }
+
+      ;(function () {
+        let activeEl = null
+        function handleTouchStart(e) {
+          const btn = e.target.closest('.button')
+          if (!btn || btn.classList.contains('disabled')) return
+          activeEl = btn
+          if (document.documentElement.classList.contains('ios')) btn.classList.add('active-state')
+          if (document.documentElement.classList.contains('md')) createRipple(e, btn)
+        }
+        function handleTouchEnd() {
+          if (activeEl) {
+            activeEl.classList.remove('active-state')
+            activeEl = null
+          }
+        }
+        function createRipple(e, btn) {
+          const rect = btn.getBoundingClientRect()
+          const ripple = document.createElement('span')
+          let clientX = e.clientX || (e.touches && e.touches[0].clientX)
+          let clientY = e.clientY || (e.touches && e.touches[0].clientY)
+          const x = clientX - rect.left,
+            y = clientY - rect.top,
+            size = Math.max(rect.width, rect.height)
+          ripple.style.width = ripple.style.height = `${size}px`
+          ripple.style.left = `${x - size / 2}px`
+          ripple.style.top = `${y - size / 2}px`
+          ripple.className = 'wia-ripple'
+          btn.appendChild(ripple)
+          setTimeout(() => ripple.remove(), 500)
+        }
+        document.addEventListener('mousedown', handleTouchStart)
+        document.addEventListener('touchstart', handleTouchStart, {passive: true})
+        document.addEventListener('mouseup', handleTouchEnd)
+        document.addEventListener('touchend', handleTouchEnd)
+        document.addEventListener('touchcancel', handleTouchEnd)
+        document.addEventListener('mouseout', e => {
+          if (activeEl && !activeEl.contains(e.relatedTarget)) handleTouchEnd()
+        })
+      })()
+
+      window.addEventListener('scroll', () => {
+        const backTopBtn = document.getElementById('btn-back-top')
+        if (window.scrollY > 300) {
+          backTopBtn.classList.remove('float-btn-exit')
+          backTopBtn.classList.add('float-btn-enter')
+        } else {
+          backTopBtn.classList.add('float-btn-exit')
+          backTopBtn.classList.remove('float-btn-enter')
+        }
+      })
+
+      function syncThemeIcon() {
+        const isDark = document.documentElement.classList.contains('dark')
+        const icon = document.getElementById('icon-theme')
+        if (icon)
+          icon.className = isDark ? 'ph-fill ph-sun text-yellow-400 text-lg' : 'ph-fill ph-moon text-slate-600 text-lg'
+      }
+      document.addEventListener('DOMContentLoaded', syncThemeIcon)
+
+      function toggleDarkMode() {
+        if (document.documentElement.classList.contains('dark')) {
+          document.documentElement.classList.remove('dark')
+          localStorage.setItem('wia-theme', 'light')
+        } else {
+          document.documentElement.classList.add('dark')
+          localStorage.setItem('wia-theme', 'dark')
+        }
+        syncThemeIcon()
+      }
+
+      function switchTheme(theme) {
+        const isDark = document.documentElement.classList.contains('dark')
+        document.documentElement.className = theme
+        if (isDark) document.documentElement.classList.add('dark')
+        ;['ios', 'md', 'pc'].forEach(t => {
+          const btn = document.getElementById(`btn-${t}`)
+          if (t === theme)
+            btn.className =
+              'theme-btn relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-700 shadow-sm ring-1 ring-slate-900/5 dark:ring-white/10 transition-all cursor-pointer'
+          else
+            btn.className =
+              'theme-btn relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer'
+        })
+      }
+
+      // 🚀 彻底终结按钮内断行的全新格式化引擎
+      function formatHTML(html) {
+        html = html
+          .replace(
+            /\b(demo-clean-container|w-full|flex-1|z-10|max-w-[a-z0-9]+|absolute|bottom-\d+|right-\d+|top-\d+|left-\d+|fixed|transition-all|duration-\d+|hover:-translate-y-1|hover:shadow-[^\s"]+|flex|items-center|justify-center|gap-\d+|mt-\d+|mb-\d+|p-\d+|!w-\d+|!h-\d+|!p-\d+|bg-white|dark:bg-slate-800|dark:bg-slate-900|shadow-inner)\b/g,
+            ''
+          )
+          .replace(/style="[^"]*max-width:[^"]*"/g, '')
+          .replace(/style="width:\s*100%;?"/g, '')
+          .replace(/class="\s+/g, 'class="')
+          .replace(/\s+"/g, '"')
+          .replace(/class=""/g, '')
+
+        html = html.replace(/\s+<\/(button|th|td|a|span|i|div)>/g, '</$1>')
+        html = html.replace(/>\s+</g, '>\n<')
+
+        let tokens = html.split(/(?=<)|(?<=>)/).filter(s => s.trim() !== '')
+        let formatted = '',
+          indent = 0
+
+        for (let i = 0; i < tokens.length; i++) {
+          let tag = tokens[i]
+
+          // 核心修复：只要遇到 <button...，强行包裹其后的所有文本和图标，直到 </button> 为止！
+          if (tag.startsWith('<button')) {
+            let btnStr = tag
+            let j = i + 1
+            while (j < tokens.length && !tokens[j].startsWith('</button>')) {
+              btnStr += tokens[j]
+              j++
+            }
+            if (j < tokens.length) {
+              btnStr += tokens[j]
+            }
+            // 彻底消除里面的所有换行和多余空格！
+            btnStr = btnStr
+              .replace(/\n/g, '')
+              .replace(/\s{2,}/g, ' ')
+              .replace(/>\s+</g, '><')
+            formatted += '\n' + '  '.repeat(indent) + btnStr
+            i = j
+            continue
+          }
+
+          let isClosing = tag.match(/^<\//)
+          let isOpening = tag.match(/^<\w[^>]*[^\/]>$/) && !tag.match(/^<(img|hr|br|input)/)
+
+          if (isClosing) indent = Math.max(0, indent - 1)
+          formatted += '\n' + '  '.repeat(indent) + tag
+          if (isOpening) indent++
+        }
+        return formatted.trim().replace(/\n\s*\n/g, '\n')
+      }
+
+      function htmlToJSX(html) {
+        return html
+          .replace(/class="/g, 'className="')
+          .replace(/onclick="/g, 'onClick="')
+          .replace(/style="([^"]*)"/g, (match, p1) => {
+            const styles = p1
+              .split(';')
+              .filter(s => s.trim())
+              .map(s => {
+                const firstColonIndex = s.indexOf(':')
+                if (firstColonIndex === -1) return ''
+                const key = s.substring(0, firstColonIndex).trim()
+                const value = s.substring(firstColonIndex + 1).trim()
+                const camelKey = key.replace(/-([a-z])/g, g => g[1].toUpperCase())
+                return `${camelKey}: '${value}'`
+              })
+              .filter(Boolean)
+            return `style={{ ${styles.join(', ')} }}`
+          })
+          .replace(/\x3C!--([\s\S]*?)--\x3E/g, '{/* $1 */}')
+      }
+
+      window.copyCode = function (btnElement) {
+        const codeBlock = btnElement.parentElement.parentElement.querySelector('code')
+        const textToCopy = codeBlock.innerText || codeBlock.textContent
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          const originalHTML = btnElement.innerHTML
+          btnElement.innerHTML = '<i class="ph-bold ph-check text-green-400 text-sm"></i> Copied!'
+          btnElement.classList.add('!text-green-400', 'bg-white/10')
+          setTimeout(() => {
+            btnElement.innerHTML = originalHTML
+            btnElement.classList.remove('!text-green-400', 'bg-white/10')
+          }, 2000)
+        })
+      }
+
+      function wrapCodeBlock(codeHtml, language) {
+        return `
+        <div class="code-wrapper">
+          <div class="code-mac-header">
+            <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
+            <button class="absolute top-1.5 right-2.5 px-3 py-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors flex items-center gap-1.5 text-[11px] font-semibold cursor-pointer z-10" onclick="copyCode(this)">
+              <i class="ph-bold ph-copy text-sm"></i> Copy
+            </button>
+          </div>
+          <div class="code-scroll-area">
+            <pre><code class="language-${language}">${codeHtml}</code></pre>
+          </div>
+        </div>`
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.showcase-card').forEach(card => {
+          const preview = card.querySelector('.demo-clean-container')
+          const htmlContainer = card.querySelector('.html-code')
+          const jsxContainer = card.querySelector('.jsx-code')
+
+          if (preview) {
+            const clone = preview.cloneNode(true)
+            const rawHtml = clone.innerHTML
+            const fmtHtml = formatHTML(rawHtml)
+
+            if (htmlContainer) {
+              htmlContainer.innerHTML = wrapCodeBlock(
+                Prism.highlight(fmtHtml, Prism.languages.markup, 'markup'),
+                'markup'
+              )
+            }
+            if (jsxContainer) {
+              const jsxStr = htmlToJSX(fmtHtml)
+              jsxContainer.innerHTML = wrapCodeBlock(Prism.highlight(jsxStr, Prism.languages.jsx, 'jsx'), 'jsx')
+            }
+          }
+
+          const tabs = card.querySelectorAll('.tab-btn')
+          tabs.forEach(tab => {
+            tab.classList.add(
+              'px-3',
+              'py-1',
+              'text-xs',
+              'font-semibold',
+              'rounded-md',
+              'transition-colors',
+              'cursor-pointer'
+            )
+            if (!tab.classList.contains('active')) tab.classList.add('text-slate-500', 'dark:text-slate-400')
+            else tab.classList.add('bg-white', 'dark:bg-slate-700', 'shadow-sm', 'text-slate-800', 'dark:text-white')
+
+            tab.addEventListener('click', () => {
+              tabs.forEach(t => {
+                t.classList.remove(
+                  'active',
+                  'bg-white',
+                  'dark:bg-slate-700',
+                  'shadow-sm',
+                  'text-slate-800',
+                  'dark:text-white'
+                )
+                t.classList.add('text-slate-500', 'dark:text-slate-400')
+              })
+              tab.classList.add(
+                'active',
+                'bg-white',
+                'dark:bg-slate-700',
+                'shadow-sm',
+                'text-slate-800',
+                'dark:text-white'
+              )
+              tab.classList.remove('text-slate-500', 'dark:text-slate-400')
+
+              card.querySelector('.preview-area')?.classList.remove('active')
+              card.querySelector('.html-code')?.classList.remove('active')
+              card.querySelector('.jsx-code')?.classList.remove('active')
+
+              const target = tab.getAttribute('data-target')
+              if (target === 'preview') card.querySelector('.preview-area').classList.add('active')
+              else card.querySelector(`.${target}-code`).classList.add('active')
+            })
+          })
+        })
+      })
+    </script>
+  </body>
+</html>

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en" class="pc">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Wia UI | Artisan List Components</title>
+
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+      @variant dark (&:where(.dark, .dark *));
+    </style>
+
+    <link rel="stylesheet" href="../dist/css/base.mb.css" />
+    <link rel="stylesheet" href="../dist/css/base.pc.css" />
+    <link rel="stylesheet" href="../dist/css/list.mb.css" />
+    <link rel="stylesheet" href="../dist/css/list.pc.css" />
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
+
+    <script>
+      ;(function () {
+        const savedTheme = localStorage.getItem('wia-theme')
+        if (savedTheme === 'dark') document.documentElement.classList.add('dark')
+        else if (savedTheme === 'light') document.documentElement.classList.remove('dark')
+      })()
+    </script>
+
+    <style>
+      body { transition: background-color 0.3s; background-color: #f8fafc; }
+      html.dark body { background-color: #0f172a; }
+      .ambient-light { position: fixed; top: -20vh; left: 10vw; width: 80vw; height: 80vw; background: radial-gradient(circle, oklch(0.5 0.15 250 / 0.05) 0%, transparent 60%); pointer-events: none; z-index: -1; }
+      
+      /* 代码框样式保持一致 */
+      .code-wrapper { background: #1e1e24; border-radius: 0 0 1.5rem 1.5rem; overflow: hidden; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+      .code-mac-header { display: flex; gap: 6px; padding: 8px 14px; background: #16161b; position: relative; }
+      .mac-dot { width: 10px; height: 10px; border-radius: 50%; opacity: 0.8; }
+      .mac-dot.red { background: #ff5f56; }
+      .mac-dot.yellow { background: #ffbd2e; }
+      .mac-dot.green { background: #27c93f; }
+      .code-scroll-area { max-height: 400px; overflow-y: auto; padding: 12px 16px; }
+      .code-scroll-area pre, .code-scroll-area code { margin: 0 !important; padding: 0 !important; background: transparent !important; font-family: 'JetBrains Mono', monospace !important; font-size: 12px !important; line-height: 1.2 !important; color: #fff !important; }
+      .code-area { display: none; }
+      .code-area.active { display: block; }
+      .preview-area { display: none; }
+      .preview-area.active { display: block; }
+    </style>
+  </head>
+
+  <body class="relative !h-auto min-h-screen !overflow-y-auto pb-32 text-slate-900 antialiased dark:text-slate-100">
+    <div class="ambient-light"></div>
+
+    <header class="fixed top-0 right-0 left-0 z-50 flex items-center justify-between border-b border-slate-900/5 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-xl sm:px-6 sm:py-4 dark:border-white/5 dark:bg-slate-900/70">
+      <div class="flex items-center gap-4">
+        <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-blue-800 shadow-lg shadow-indigo-500/30 sm:h-9 sm:w-9">
+          <i class="ph-bold ph-list-bullets text-lg text-white"></i>
+        </div>
+        <h1 class="text-lg font-bold tracking-tight text-slate-800 sm:text-xl dark:text-white">Wia <span class="font-medium text-slate-400">List</span></h1>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-4">
+        <button onclick="toggleDarkMode()" class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-slate-600 sm:h-10 sm:w-10 dark:bg-slate-800 dark:text-yellow-400">
+          <i class="ph-fill ph-moon text-lg" id="icon-theme"></i>
+        </button>
+
+        <div class="flex items-center rounded-2xl bg-slate-200/80 p-1 dark:bg-slate-800/80">
+          <button onclick="switchTheme('ios')" id="btn-ios" class="px-4 py-1.5 text-sm font-semibold rounded-xl transition-all">iOS</button>
+          <button onclick="switchTheme('md')" id="btn-md" class="px-4 py-1.5 text-sm font-semibold rounded-xl transition-all">MD</button>
+          <button onclick="switchTheme('pc')" id="btn-pc" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-white shadow dark:bg-slate-700 transition-all">PC</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto grid max-w-[90rem] grid-cols-1 gap-8 px-4 pt-28 sm:px-6 sm:pt-32 lg:grid-cols-2">
+      
+      <!-- Section 1: Simple List -->
+      <div class="showcase-card col-span-1 flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white shadow-xl lg:col-span-1 dark:border-white/5 dark:bg-slate-800">
+        <div class="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-700">
+          <h3 class="font-bold"><i class="ph-fill ph-text-align-left mr-2 text-blue-500"></i>Simple Settings</h3>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+          </div>
+        </div>
+        <div class="flex-1 bg-white dark:bg-[#1e293b] rounded-b-[1.5rem]">
+          <div class="preview-area active p-6">
+            <div class="list inset">
+              <ul>
+                <li>
+                  <a href="#" class="item-link item-content">
+                    <div class="item-media"><i class="ph-bold ph-airplane text-xl text-orange-500"></i></div>
+                    <div class="item-inner">
+                      <div class="item-title">Airplane Mode</div>
+                      <div class="item-after">Off</div>
+                    </div>
+                  </a>
+                </li>
+                <li>
+                  <a href="#" class="item-link item-content">
+                    <div class="item-media"><i class="ph-bold ph-wifi-high text-xl text-blue-500"></i></div>
+                    <div class="item-inner">
+                      <div class="item-title">Wi-Fi</div>
+                      <div class="item-after">Wia_Internal_5G</div>
+                    </div>
+                  </a>
+                </li>
+                <li>
+                  <a href="#" class="item-link item-content">
+                    <div class="item-media"><i class="ph-bold ph-bluetooth text-xl text-indigo-500"></i></div>
+                    <div class="item-inner">
+                      <div class="item-title">Bluetooth</div>
+                      <div class="item-after">On</div>
+                    </div>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="code-area html-code"></div>
+        </div>
+      </div>
+
+      <!-- Section 2: Media List (Modern Messaging Look) -->
+      <div class="showcase-card col-span-1 flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white shadow-xl lg:col-span-1 dark:border-white/5 dark:bg-slate-800">
+        <div class="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-700">
+          <h3 class="font-bold"><i class="ph-fill ph-chats-circle mr-2 text-green-500"></i>Recent Messages</h3>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+          </div>
+        </div>
+        <div class="flex-1 bg-white dark:bg-[#1e293b] rounded-b-[1.5rem]">
+          <div class="preview-area active p-6">
+            <div class="list media-list">
+              <ul>
+                <li>
+                  <a href="#" class="item-link item-content">
+                    <div class="item-media">
+                      <img src="https://i.pravatar.cc/100?u=wia1" class="w-12 h-12 rounded-full border-2 border-white dark:border-slate-700 shadow-sm" />
+                    </div>
+                    <div class="item-inner">
+                      <div class="item-title-row">
+                        <div class="item-title font-bold">Sibyl Yu</div>
+                        <div class="item-after">14:20</div>
+                      </div>
+                      <div class="item-subtitle">Artisan UI Architect</div>
+                      <div class="item-text">The new List component is looking absolutely stunning! The hairlines are perfect.</div>
+                    </div>
+                  </a>
+                </li>
+                <li>
+                  <a href="#" class="item-link item-content">
+                    <div class="item-media">
+                      <img src="https://i.pravatar.cc/100?u=wia2" class="w-12 h-12 rounded-full border-2 border-white dark:border-slate-700 shadow-sm" />
+                    </div>
+                    <div class="item-inner">
+                      <div class="item-title-row">
+                        <div class="item-title font-bold">Wia Bot</div>
+                        <div class="item-after">Yesterday</div>
+                      </div>
+                      <div class="item-subtitle">System Notification</div>
+                      <div class="item-text">Your latest build finished successfully. All 150+ button variations passed the visual regression test.</div>
+                    </div>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="code-area html-code"></div>
+        </div>
+      </div>
+
+      <!-- Section 3: Contact List (With Sticky Headers) -->
+      <div class="showcase-card col-span-1 flex flex-col rounded-[1.5rem] border border-slate-900/5 bg-white shadow-xl lg:col-span-2 dark:border-white/5 dark:bg-slate-800">
+        <div class="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-700">
+          <h3 class="font-bold"><i class="ph-fill ph-address-book mr-2 text-purple-500"></i>Contacts Matrix</h3>
+          <div class="tab-container flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+            <button class="tab-btn active" data-target="preview">Preview</button>
+            <button class="tab-btn" data-target="html">HTML</button>
+          </div>
+        </div>
+        <div class="flex-1 bg-white dark:bg-[#1e293b] rounded-b-[1.5rem]">
+          <div class="preview-area active p-6">
+            <div class="list h-80 overflow-y-auto rounded-xl border dark:border-white/5">
+              <div class="list-group">
+                <div class="list-group-title">A</div>
+                <ul>
+                  <li><div class="item-content"><div class="item-inner"><div class="item-title">Aaron Finch</div></div></div></li>
+                  <li><div class="item-content"><div class="item-inner"><div class="item-title">Alice Cooper</div></div></div></li>
+                </ul>
+              </div>
+              <div class="list-group">
+                <div class="list-group-title">B</div>
+                <ul>
+                  <li><div class="item-content"><div class="item-inner"><div class="item-title">Ben Stokes</div></div></div></li>
+                  <li><div class="item-content"><div class="item-inner"><div class="item-title">Bob Dylan</div></div></div></li>
+                  <li><div class="item-content"><div class="item-inner"><div class="item-title">Bryan Adams</div></div></div></li>
+                </ul>
+              </div>
+              <div class="list-group">
+                <div class="list-group-title">C</div>
+                <ul>
+                  <li><div class="item-content"><div class="item-inner"><div class="item-title">Chris Martin</div></div></div></li>
+                  <li><div class="item-content"><div class="item-inner"><div class="item-title">Celine Dion</div></div></div></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="code-area html-code"></div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      function toggleDarkMode() {
+        document.documentElement.classList.toggle('dark')
+        const isDark = document.documentElement.classList.contains('dark')
+        localStorage.setItem('wia-theme', isDark ? 'dark' : 'light')
+        document.getElementById('icon-theme').className = isDark ? 'ph-fill ph-sun text-yellow-400 text-lg' : 'ph-fill ph-moon text-slate-600 text-lg'
+      }
+
+      function switchTheme(theme) {
+        const isDark = document.documentElement.classList.contains('dark')
+        document.documentElement.className = theme
+        if (isDark) document.documentElement.classList.add('dark')
+        ;['ios', 'md', 'pc'].forEach(t => {
+          const btn = document.getElementById(`btn-${t}`)
+          btn.className = (t === theme) 
+            ? 'px-4 py-1.5 text-sm font-semibold rounded-xl bg-white shadow dark:bg-slate-700 transition-all'
+            : 'px-4 py-1.5 text-sm font-semibold rounded-xl transition-all'
+        })
+      }
+
+      // 极简 HTML 格式化
+      function formatHTML(html) {
+        return html.trim().replace(/>\s+</g, '>\n<').replace(/class="\s+/g, 'class="')
+      }
+
+      function wrapCodeBlock(codeHtml, language) {
+        return `<div class="code-wrapper"><div class="code-mac-header"><div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div></div><div class="code-scroll-area"><pre><code class="language-${language}">${codeHtml}</code></pre></div></div>`
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.showcase-card').forEach(card => {
+          const preview = card.querySelector('.preview-area')
+          const htmlContainer = card.querySelector('.html-code')
+          if (preview && htmlContainer) {
+            const fmtHtml = formatHTML(preview.innerHTML)
+            htmlContainer.innerHTML = wrapCodeBlock(Prism.highlight(fmtHtml, Prism.languages.markup, 'markup'), 'markup')
+          }
+          const tabs = card.querySelectorAll('.tab-btn')
+          tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+              tabs.forEach(t => { t.classList.remove('active', 'bg-white', 'dark:bg-slate-700', 'shadow'); t.classList.add('text-slate-500') })
+              tab.classList.add('active', 'bg-white', 'dark:bg-slate-700', 'shadow'); tab.classList.remove('text-slate-500')
+              const target = tab.getAttribute('data-target')
+              card.querySelector('.preview-area').classList.toggle('active', target === 'preview')
+              card.querySelector('.html-code').classList.toggle('active', target === 'html')
+            })
+          })
+        })
+      })
+
+      // 模拟移动端 Active State
+      document.addEventListener('touchstart', (e) => {
+        const link = e.target.closest('.item-link, .item-content')
+        if (link) link.classList.add('active-state')
+      }, {passive: true})
+      document.addEventListener('touchend', (e) => {
+        document.querySelectorAll('.active-state').forEach(el => el.classList.remove('active-state'))
+      })
+    </script>
+  </body>
+</html>

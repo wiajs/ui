@@ -1,11 +1,43 @@
 # Change Log
 
+## 2026-03-23
+
+### Card (卡片组件)
+
+- **视觉重构**:
+  - **iOS**: 复刻原生大圆角 (24px) 与极致平滑内阴影。
+  - **MD**: 采用 Material 3 Surface 阴影系统。
+  - **PC**: 实现大师级 Artisan 风格，引入呼吸感应边框、悬停位移与高斯模糊背景。
+- **架构适配**: 采用 Tailwind 4 `@reference` 模式，实现零冗余输出。
+- **功能兼容**: 完美支持 Framework 7 的 Expandable Cards (可展开卡片) 结构与动画。
+- **Demo**: `demo/card.html` 已就绪。
+
+### List (列表组件)
+
+- **视觉重构**:
+  - **iOS**: 补齐 Chevron 图标与发丝级细线分割。
+  - **PC**: 引入左侧呼吸灯感应效果与精致悬停态。
+- **兼容性**: 保留 `.item-content`, `.item-inner` 等 F7 核心结构，确保旧 JS 逻辑无缝运行。
+- **Demo**: `demo/list.html` 已就绪。
+
+### Button (按钮组件)
+
+- **iOS/MD**: 精准复刻原生交互与动效。
+- **PC**: 参照 DaisyUI 与 Ant Design 重新设计，支持多种 Artisan 风格（Fill, Tonal, Outline 等）。
+- **Demo**: `demo/button.html` 已就绪。
+
+### Base (基础样式) - 架构进化完成
+
+- **单源能力池**: 最终确立 “单一 base.css 基座” 模式。利用 Tailwind 4 的 `@utility` 指令将核心原子工具（如 `hairline-*`, `no-scrollbar`）注册为全局类。
+- **物理特性**: 注入 DPR (Device Pixel Ratio) 动态感知变量，实现真机发丝级细线视觉。
+- **原生增强**: 针对移动端优化 `overscroll-behavior` 和 `touch-action`，超越 Framework 7 原生体验。
+
 ## 2022-01-05
 
-+ messagebar
-+ messages 
+- messagebar
+- messages
   聊天消息
-	
+
 dataTable
 
 二维数组，支持指定 id 字段，用于选择后操作
