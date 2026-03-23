@@ -1,74 +1,61 @@
 {
   "name": "@wiajs/ui",
-  "version": "2.1.1",
-  "description": "wia ui packages",
-  "main": "",
-  "scripts": {
-    "build": "node copy-assets.js",
-    "postbuild": "swc --config-file ./.swcrc src -d dist --strip-leading-paths"
+  "version": "2.2.2",
+  "description": "The Artisan UI Library for Wia Micro-frontend Platform",
+  "keywords": [
+    "dom",
+    "ui",
+    "wia"
+  ],
+  "homepage": "https://www.wia.pub/ui",
+  "bugs": {
+    "url": "https://github.com/wiajs/ui/issues"
   },
-  "exports": {
-    "./*": "./*",
-    "./actions/*": "./dist/actions/*",
-    "./actions": "./dist/actions/index.js",
-    "./autocomplete/*": "./dist/autocomplete/*",
-    "./autocomplete": "./dist/autocomplete/index.js",
-    "./cropper/*": "./dist/cropper/*",
-    "./cropper": "./dist/cropper/index.js",
-    "./card/*": "./dist/card/*",
-    "./card": "./dist/card/index.js",
-    "./table/*": "./dist/table/*",
-    "./table": "./dist/table/index.js",
-    "./dataTable/*": "./dist/dataTable/*",
-    "./dataTable": "./dist/dataTable/index.js",
-    "./editTable/*": "./dist/editTable/*",
-    "./editTable": "./dist/editTable/index.js",
-    "./dataView/*": "./dist/dataView/*",
-    "./dataView": "./dist/dataView/appbar.js",
-    "./jsonView/*": "./dist/jsonView/*",
-    "./jsonView": "./dist/jsonView/index.js",
-    "./list-nav/*": "./dist/list-nav/*",
-    "./list-nav": "./dist/list-nav/index.js",
-    "./messagebar/*": "./dist/messagebar/*",
-    "./messagebar": "./dist/messagebar/index.js",
-    "./messages/*": "./dist/messages/*",
-    "./messages": "./dist/messages/index.js",
-    "./navTab/*": "./dist/navTab/*",
-    "./navTab": "./dist/navTab/index.js",
-    "./searchbar/*": "./dist/searchbar/*",
-    "./searchbar": "./dist/searchbar/index.js",
-    "./swipeout/*": "./dist/swipeout/*",
-    "./swipeout": "./dist/swipeout/index.js",
-    "./swiper/*": "./dist/swiper/*",
-    "./swiper": "./dist/swiper/index.js",
-    "./tabulate/*": "./dist/tabulate/*",
-    "./tabulate": "./dist/tabulate/index.js",
-    "./catAttach/*": "./dist/catAttach/*",
-    "./catAttach": "./dist/catAttach/index.js",
-    "./uploader": "./dist/uploader/index.js",
-    "./verify": "./dist/verify/index.js"
+  "license": "",
+  "author": {
+    "name": "Sibyl Yu",
+    "email": "sibyl@wia.pub"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/wiajs/ui.git"
   },
-  "keywords": [
-    "wia",
-    "dom",
-    "ui"
+  "type": "module",
+  "sideEffects": [
+    "*.css",
+    "*.less"
   ],
-  "author": {
-    "name": "Sibyl Yu",
-    "email": "sibyl@wia.pub"
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./css/*": "./dist/css/*.css",
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    }
   },
-  "license": "",
-  "bugs": {
-    "url": "https://github.com/wiajs/ui/issues"
-  },
-  "homepage": "https://www.wia.pub/ui",
   "publishConfig": {
     "access": "public"
   },
-  "devDependencies": {},
-  "dependencies": {}
+  "scripts": {
+    "build": "node copy-assets.js",
+    "postbuild": "swc --config-file ./.swcrc src -d dist --strip-leading-paths"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@swc/core": "^1.15.3",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/fs-extra": "^11.0.4",
+    "bun-types": "^1.3.3",
+    "postcss": "^8.5.8",
+    "postcss-lightningcss": "^1.0.2"
+  },
+  "peerDependencies": {
+    "@wiajs/core": "^2.0.0"
+  }
 }

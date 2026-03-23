@@ -1,35 +1,46 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "display": "Node 20",
   "compilerOptions": {
-    // https://github.com/tsconfig/bases/blob/main/bases/node20.json
-    "lib": ["ES2022", "dom"],
-    "module": "Node16", // commonjs
-    "target": "es2022", // es5,es6,es2020,es2021,es2022
-    "jsx": "react",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
-
-    "allowJs": true,
-    // vscode 中 "javascript.validate.enable": false, 则无法开启tscheck
-    "checkJs": true, // 默认是否开启js类型检查，文件中通过@ts-check @ts-nocheck 开启、关闭！
-    "strictNullChecks": false, // 严格 null 检查
-    "useUnknownInCatchVariables": false,
     "baseUrl": ".", // 解析非相对模块的基地址，默认是当前目录
     "outDir": "./dist", // 指定输出目录
-
-    "noImplicitAny": true, // 不允许隐式的any类型
-    "removeComments": true, // 删除注释
-    "preserveConstEnums": true, // 保留 const 和 enum 声明
-    "noFallthroughCasesInSwitch": true, // 防止switch语句贯穿(即如果没有break语句后面不会执行)
-    // "declaration": false, // 生成声明文件，开启后会自动生成声明文件
+    "target": "esnext", // es2020 ESNext
+    "module": "esnext", // es2020 ESNext
+    // Bundler 要求 module 为 es6 以上，node16 在type 为module时，引用要求文件后缀
+    "moduleResolution": "Bundler", // node16  Bundler node
+    "moduleDetection": "force", // 强制为模块，缺省 auto 自动识别 import/export 文件。
+    "lib": ["WebWorker", "DOM", "DOM.Iterable", "ESNext"],
+    "types": ["node", "jquery", "jest", "cypress"],
+    "resolveJsonModule": true,
+    "allowArbitraryExtensions": true, // 允许import 非js、ts、jsx、tsx文件
+    "allowJs": true, // 检查 js
+    "jsx": "react-jsx", // react 17+，_jsx()
+    "noEmit": true, // 不输出，仅类型检查，因为开启了 allowJs，否则提示同名文件无法输出错误
+    "esModuleInterop": true, // ES CommonJS 模块互操作，自动打开allowSyntheticDefaultImports
+    "forceConsistentCasingInFileNames": true, // 文件名是否为大小写敏感，默认为true
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    // "declaration": false, // 生成.d.ts 声明文件，开启后会自动生成声明文件
     // "declarationDir": "./typing", // 指定生成声明文件存放目录
-    // "emitDeclarationOnly": true, // 只生成声明文件，不生成js文件
-    "sourceMap": false // 生成目标文件的sourceMap文件，用于调试
+    // "emitDeclarationOnly": true, // 只生成d.ts 声明文件，不生成js文件
+    /* Type Checking */
+    // vscode 中 "javascript.validate.enable": false, 则无法开启tscheck
+    "checkJs": true, // 默认是否开启js类型检查，文件中通过@ts-check @ts-nocheck 开启、关闭！
+    "skipLibCheck": true, // 跳过.d.ts类型声明文件的类型检查。这样可以加快编译速度。
+    "skipDefaultLibCheck": true, // 跳过 TypeScript 内置类型声明文件的类型检查
+    "strict": true,
+    "noImplicitAny": true, // 不允许隐式的any类型，避免bug，否则自带 any
+    "strictNullChecks": false, // null undefined 可赋值给其他类型
+    "isolatedModules": true, // 某些代码无法通过单文件转译过程正确解释时向您发出警告。
+    // "noUnusedLocals": true, // 未使用局部变量报错
+    // "noUnusedParameters": true, // 未使用函数参数报错
+    // "verbatimModuleSyntax": true, // 非type 导入导出全保留，type 导入导出完全删除
+    "useUnknownInCatchVariables": false, // 保留 err any 类型
+    "noFallthroughCasesInSwitch": true, // 防止switch语句贯穿(避免遗漏break)
+    "preserveConstEnums": true, // 保留 const 和 enum 声明，不转为常量
+
+    "sourceMap": false, // 调式映射文件
+    "removeComments": false // 删除注释
   },
   "include": ["src/**/*", "test/jsdoc/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist"],
 }
